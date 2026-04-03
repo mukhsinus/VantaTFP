@@ -1,4 +1,21 @@
 {
+  "login": {
+    "hero": {
+      "headline": "The platform your team works from",
+      "subheadline": "Tasks, KPIs, and payroll — all in one place. Built for teams that care about clarity.",
+      "feature1": "Assign and track tasks with real-time status",
+      "feature2": "Monitor team performance through KPI dashboards",
+      "feature3": "Manage payroll approvals in a single workflow"
+    },
+    "form": {
+      "title": "Welcome back",
+      "subtitle": "Sign in to your workspace to continue.",
+      "email": "Email address",
+      "password": "Password",
+      "submit": "Sign in",
+      "hint": "Contact your administrator if you don't have an account."
+    }
+  },
   "common": {
     "save": "Save Changes",
     "cancel": "Cancel",

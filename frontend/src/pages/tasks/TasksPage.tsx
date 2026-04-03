@@ -4,6 +4,7 @@ import { Button, Badge, Avatar, Card, EmptyState, PageSkeleton } from '@shared/c
 import { useTasks } from '@features/tasks/hooks/useTasks';
 import { useUpdateTaskStatus } from '@features/tasks/hooks/useUpdateTaskStatus';
 import { CreateTaskModal } from '@features/tasks/components/CreateTaskModal';
+import { usePermissions } from '@shared/hooks/useCanPerform';
 import type { TaskUiModel, TaskStatus, TaskPriority } from '@entities/task/task.types';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -34,6 +35,7 @@ export function TasksPage() {
   const [showCreateModal, setShowCreateModal] = useState(false);
 
   const { tasks, total, isLoading, isError } = useTasks();
+  const { can } = usePermissions();
 
   const overdueTasks = tasks.filter((task) => task.overdue);
 
@@ -109,18 +111,20 @@ export function TasksPage() {
               ))}
             </div>
 
-            <Button
-              variant="primary"
-              size="sm"
-              onClick={() => setShowCreateModal(true)}
-              leftIcon={
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
-                  <path d="M12 5v14M5 12h14" />
-                </svg>
-              }
-            >
-              {t('tasks.create')}
-            </Button>
+            {can('task:create') && (
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={() => setShowCreateModal(true)}
+                leftIcon={
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
+                    <path d="M12 5v14M5 12h14" />
+                  </svg>
+                }
+              >
+                {t('tasks.create')}
+              </Button>
+            )}
           </div>
         </div>
 
@@ -152,7 +156,10 @@ export function TasksPage() {
           <EmptyState
             title={t('tasks.emptyState.title')}
             description={t('tasks.emptyState.description')}
-            action={{ label: t('tasks.create'), onClick: () => setShowCreateModal(true) }}
+            action={can('task:create')
+              ? { label: t('tasks.create'), onClick: () => setShowCreateModal(true) }
+              : undefined
+            }
             icon={
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5}>
                 <path d="M9 11l3 3L22 4" /><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11" />
@@ -178,6 +185,8 @@ export function TasksPage() {
 
 function BoardView({ tasks }: { tasks: TaskUiModel[] }) {
   const { t } = useTranslation();
+  const { can } = usePermissions();
+  const canChangeStatus = can('task:changeStatus');
 
   return (
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, alignItems: 'start' }}>
@@ -222,7 +231,9 @@ function BoardView({ tasks }: { tasks: TaskUiModel[] }) {
                   {t('tasks.empty')}
                 </div>
               ) : (
-                colTasks.map((task) => <TaskCard key={task.id} task={task} />)
+                colTasks.map((task) => (
+                  <TaskCard key={task.id} task={task} canChangeStatus={canChangeStatus} />
+                ))
               )}
             </div>
           </div>
@@ -234,7 +245,7 @@ function BoardView({ tasks }: { tasks: TaskUiModel[] }) {
 
 // ─── Task card (board) ────────────────────────────────────────────────────────
 
-function TaskCard({ task }: { task: TaskUiModel }) {
+function TaskCard({ task, canChangeStatus }: { task: TaskUiModel; canChangeStatus: boolean }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [hovered, setHovered] = useState(false);
   const { updateStatus } = useUpdateTaskStatus();
@@ -268,8 +279,8 @@ function TaskCard({ task }: { task: TaskUiModel }) {
         <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
           <Badge variant={PRIORITY_VARIANT[task.priority]}>{task.priority}</Badge>
 
-          {/* Status action menu */}
-          <div style={{ position: 'relative' }}>
+          {/* Status action menu — hidden for roles without task:changeStatus */}
+          {canChangeStatus && <div style={{ position: 'relative' }}>
             <button
               onClick={(e) => { e.stopPropagation(); setMenuOpen((o) => !o); }}
               style={{
@@ -345,7 +356,7 @@ function TaskCard({ task }: { task: TaskUiModel }) {
                 ))}
               </div>
             )}
-          </div>
+          </div>}
         </div>
       </div>
 
@@ -363,8 +374,8 @@ function TaskCard({ task }: { task: TaskUiModel }) {
         </span>
       </div>
 
-      {/* Quick advance button — visible on hover when there is a next status */}
-      {hovered && nextStatus && (
+      {/* Quick advance button — visible on hover when there is a next status and user has permission */}
+      {hovered && nextStatus && canChangeStatus && (
         <button
           onClick={() => updateStatus({ taskId: task.id, status: nextStatus, taskTitle: task.title })}
           style={{
@@ -397,6 +408,8 @@ function TaskCard({ task }: { task: TaskUiModel }) {
 function ListView({ tasks }: { tasks: TaskUiModel[] }) {
   const { t } = useTranslation();
   const { updateStatus } = useUpdateTaskStatus();
+  const { can } = usePermissions();
+  const canChangeStatus = can('task:changeStatus');
 
   return (
     <Card padding="none">
@@ -432,6 +445,7 @@ function ListView({ tasks }: { tasks: TaskUiModel[] }) {
             <ListRow
               key={task.id}
               task={task}
+              canChangeStatus={canChangeStatus}
               onStatusChange={(status) =>
                 updateStatus({ taskId: task.id, status, taskTitle: task.title })
               }
@@ -445,9 +459,11 @@ function ListView({ tasks }: { tasks: TaskUiModel[] }) {
 
 function ListRow({
   task,
+  canChangeStatus,
   onStatusChange,
 }: {
   task: TaskUiModel;
+  canChangeStatus: boolean;
   onStatusChange: (status: TaskStatus) => void;
 }) {
   const [statusMenuOpen, setStatusMenuOpen] = useState(false);
@@ -507,12 +523,17 @@ function ListRow({
         </span>
       </td>
 
-      {/* Status — click to change */}
+      {/* Status — click to change (only if permitted) */}
       <td style={{ padding: '12px 16px' }}>
         <div style={{ position: 'relative', display: 'inline-block' }}>
           <button
-            onClick={() => setStatusMenuOpen((o) => !o)}
-            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+            onClick={() => canChangeStatus && setStatusMenuOpen((o) => !o)}
+            style={{
+              background: 'none',
+              border: 'none',
+              cursor: canChangeStatus ? 'pointer' : 'default',
+              padding: 0,
+            }}
           >
             <StatusBadge status={task.status} />
           </button>

@@ -10,6 +10,7 @@ export const API = {
   },
 
   users: {
+    me:     '/api/v1/users/me',
     list:   '/api/v1/users',
     detail: (userId: string) => `/api/v1/users/${userId}`,
   },

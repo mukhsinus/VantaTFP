@@ -1,5 +1,5 @@
 import React from 'react';
-import { NavLink, useLocation } from 'react-router-dom';
+import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Avatar } from '@shared/components/ui';
 import { useAuthStore } from '@app/store/auth.store';
@@ -81,6 +81,12 @@ export function Sidebar() {
   const user = useAuthStore((s) => s.user);
   const clearAuth = useAuthStore((s) => s.clearAuth);
   const location = useLocation();
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    clearAuth();
+    navigate('/login', { replace: true });
+  };
 
   return (
     <nav
@@ -203,7 +209,7 @@ export function Sidebar() {
               </p>
             </div>
             <button
-              onClick={clearAuth}
+              onClick={handleLogout}
               title={t('nav.logout')}
               style={{
                 background: 'transparent',
