@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button, Badge, Avatar, Card, CardHeader, EmptyState } from '@shared/components/ui';
+import { useIsMobile } from '@shared/hooks/useIsMobile';
 
 type KpiPeriod = 'WEEKLY' | 'MONTHLY' | 'QUARTERLY';
 
@@ -35,15 +36,16 @@ function progressColor(pct: number): string {
 
 export function KpiPage() {
   const { t } = useTranslation();
+  const isMobile = useIsMobile();
   const [period, setPeriod] = useState<KpiPeriod | 'ALL'>('ALL');
 
   const filtered = period === 'ALL' ? mockKpis : mockKpis.filter((k) => k.period === period);
   const avgProgress = Math.round(filtered.reduce((sum, k) => sum + getProgress(k.actualValue, k.targetValue), 0) / (filtered.length || 1));
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: isMobile ? 14 : 20, width: '100%', maxWidth: '100%' }}>
       {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: isMobile ? 'flex-start' : 'center', gap: isMobile ? 10 : 0 }}>
         <div>
           <h2 style={{ fontSize: 'var(--text-2xl)', fontWeight: 700, color: 'var(--color-text-primary)' }}>
             {t('kpi.title')}
@@ -64,8 +66,8 @@ export function KpiPage() {
       </div>
 
       {/* Summary + filter row */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div style={{ display: 'flex', gap: 6 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: isMobile ? 'flex-start' : 'center', flexDirection: isMobile ? 'column' : 'row', gap: 10 }}>
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', width: '100%' }}>
           {(['ALL', 'WEEKLY', 'MONTHLY', 'QUARTERLY'] as const).map((p) => (
             <button
               key={p}
@@ -104,7 +106,7 @@ export function KpiPage() {
       </div>
 
       {/* KPI cards grid */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 16 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fill, minmax(300px, 1fr))', gap: 12 }}>
         {filtered.map((kpi) => <KpiCard key={kpi.id} kpi={kpi} />)}
       </div>
     </div>

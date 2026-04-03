@@ -1,6 +1,7 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { Card, CardHeader, Badge, Avatar, Skeleton } from '@shared/components/ui';
+import { useIsMobile } from '@shared/hooks/useIsMobile';
 
 interface StatCardProps {
   label: string;
@@ -71,9 +72,10 @@ const typeToVariant = {
 
 export function DashboardPage() {
   const { t } = useTranslation();
+  const isMobile = useIsMobile();
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: isMobile ? 14 : 24, width: '100%', maxWidth: '100%' }}>
       {/* Page header */}
       <div>
         <h2 style={{ fontSize: 'var(--text-2xl)', fontWeight: 700, color: 'var(--color-text-primary)' }}>
@@ -85,7 +87,7 @@ export function DashboardPage() {
       </div>
 
       {/* Stat cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
         <StatCard
           label={t('dashboard.stats.totalTasks')}
           value={48}
@@ -132,7 +134,7 @@ export function DashboardPage() {
       </div>
 
       {/* Two-column layout */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 360px', gap: 20 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 360px', gap: 16, width: '100%', maxWidth: '100%' }}>
         {/* Recent activity */}
         <Card>
           <CardHeader title={t('dashboard.activity.title')} subtitle={t('dashboard.activity.subtitle')} />
@@ -170,7 +172,7 @@ export function DashboardPage() {
                     </span>
                   </p>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
                   <Badge variant={typeToVariant[item.type]} dot>
                     {item.type}
                   </Badge>

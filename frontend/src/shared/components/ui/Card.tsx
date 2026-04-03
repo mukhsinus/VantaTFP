@@ -14,11 +14,14 @@ export function Card({ children, padding = 'md', style, className }: CardProps) 
     <div
       className={className}
       style={{
+        width: '100%',
+        maxWidth: '100%',
         background: 'var(--color-bg)',
         border: '1px solid var(--color-border)',
         borderRadius: 'var(--radius-lg)',
         boxShadow: 'var(--shadow-xs)',
         padding: paddingMap[padding],
+        overflow: 'hidden',
         ...style,
       }}
     >

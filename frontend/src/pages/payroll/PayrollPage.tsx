@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button, Badge, Avatar, Card, CardHeader, EmptyState } from '@shared/components/ui';
+import { useIsMobile } from '@shared/hooks/useIsMobile';
 
 type PayrollStatus = 'DRAFT' | 'APPROVED' | 'PAID' | 'CANCELLED';
 
@@ -36,15 +37,16 @@ function formatCurrency(n: number): string {
 
 export function PayrollPage() {
   const { t } = useTranslation();
+  const isMobile = useIsMobile();
   const [statusFilter, setStatusFilter] = useState<PayrollStatus | 'ALL'>('ALL');
 
   const filtered = statusFilter === 'ALL' ? mockPayroll : mockPayroll.filter((p) => p.status === statusFilter);
   const totalNet = filtered.reduce((sum, p) => sum + p.netSalary, 0);
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: isMobile ? 14 : 20, width: '100%', maxWidth: '100%' }}>
       {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: isMobile ? 'flex-start' : 'center', flexDirection: isMobile ? 'column' : 'row', gap: 10 }}>
         <div>
           <h2 style={{ fontSize: 'var(--text-2xl)', fontWeight: 700, color: 'var(--color-text-primary)' }}>
             {t('payroll.title')}
@@ -70,7 +72,7 @@ export function PayrollPage() {
       </div>
 
       {/* Summary cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(4, 1fr)', gap: 12 }}>
         {[
           { label: t('payroll.stats.totalNet'), value: formatCurrency(totalNet), accent: 'var(--color-accent)' },
           { label: t('payroll.stats.paid'), value: String(mockPayroll.filter((p) => p.status === 'PAID').length), accent: 'var(--color-success)' },
@@ -89,7 +91,7 @@ export function PayrollPage() {
       </div>
 
       {/* Filter + table */}
-      <div style={{ display: 'flex', gap: 6 }}>
+      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
         {(['ALL', 'DRAFT', 'APPROVED', 'PAID', 'CANCELLED'] as const).map((s) => (
           <button
             key={s}
@@ -119,14 +121,16 @@ export function PayrollPage() {
           description={t('payroll.empty.description')}
         />
       ) : (
-        <div
-          style={{
-            background: 'var(--color-bg)',
-            border: '1px solid var(--color-border)',
-            borderRadius: 'var(--radius-lg)',
-            overflow: 'hidden',
-          }}
-        >
+        <div style={{ width: '100%', maxWidth: '100%', overflowX: isMobile ? 'auto' : 'visible' }}>
+          <div
+            style={{
+              background: 'var(--color-bg)',
+              border: '1px solid var(--color-border)',
+              borderRadius: 'var(--radius-lg)',
+              overflow: 'hidden',
+              minWidth: isMobile ? 760 : undefined,
+            }}
+          >
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ background: 'var(--color-bg-subtle)', borderBottom: '1px solid var(--color-border)' }}>
@@ -212,6 +216,7 @@ export function PayrollPage() {
               ))}
             </tbody>
           </table>
+          </div>
         </div>
       )}
     </div>

@@ -19,6 +19,16 @@ export async function tasksRoutes(app: FastifyInstance): Promise<void> {
     '/',
     { preHandler: [authenticate, requireRoles('ADMIN', 'MANAGER', 'EMPLOYEE')] },
     async (request: FastifyRequest, reply: FastifyReply) => {
+      app.log.info(
+        {
+          module: 'tasks',
+          action: 'list',
+          user: request.user,
+          tenantId: request.user?.tenantId,
+          query: request.query,
+        },
+        'Incoming tasks list request'
+      );
       const query = listTasksQuerySchema.parse(request.query);
       const result = await tasksService.listTasks(request.user.tenantId, query);
       return reply.send(result);
