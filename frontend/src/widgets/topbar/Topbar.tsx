@@ -59,11 +59,6 @@ export function Topbar() {
 
   const closeAccountSheet = () => setIsAccountSheetOpen(false);
 
-  const goToProfile = () => {
-    closeAccountSheet();
-    navigate('/settings?tab=profile');
-  };
-
   const goToSettings = () => {
     closeAccountSheet();
     navigate('/settings');
@@ -327,12 +322,6 @@ export function Topbar() {
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              <button
-                onClick={goToProfile}
-                style={sheetActionButtonStyle}
-              >
-                {t('settings.section.profile')}
-              </button>
               <button
                 onClick={goToSettings}
                 style={sheetActionButtonStyle}
