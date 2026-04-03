@@ -34,14 +34,35 @@ interface RequestOptions extends Omit<RequestInit, 'body'> {
   body?: unknown;
 }
 
+function resolveApiBaseUrl(): string {
+  const configuredBaseUrl = (import.meta.env.VITE_API_BASE_URL as string | undefined)?.trim();
+
+  if (configuredBaseUrl) {
+    return configuredBaseUrl;
+  }
+
+  // Local development: Vite proxy handles /api -> backend
+  if (import.meta.env.DEV) {
+    return window.location.origin;
+  }
+
+  // Production without explicit API base URL usually means deployment misconfiguration.
+  // Throw a typed error so UI can show a clear message.
+  throw new ApiError(
+    503,
+    'API_NOT_CONFIGURED',
+    'API base URL is not configured. Set VITE_API_BASE_URL for production.'
+  );
+}
+
 // ─── Core request function ────────────────────────────────────────────────────
 
 async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
   const { params, body, headers: extraHeaders, ...init } = options;
 
   // Build URL with query params
-  const baseUrl = (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? '';
-  const url = new URL(path, baseUrl || window.location.origin);
+  const baseUrl = resolveApiBaseUrl();
+  const url = new URL(path, baseUrl);
 
   if (params) {
     Object.entries(params).forEach(([key, value]) => {

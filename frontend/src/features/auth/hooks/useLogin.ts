@@ -35,6 +35,8 @@ export function useLogin(): UseLoginResult {
       if (err instanceof ApiError) {
         if (err.statusCode === 401 || err.statusCode === 400) {
           setError('Invalid email or password. Please try again.');
+        } else if (err.errorCode === 'API_NOT_CONFIGURED' || err.statusCode === 404) {
+          setError('Backend API is not reachable. Please contact support.');
         } else {
           setError('Unable to sign in right now. Please try again later.');
         }
