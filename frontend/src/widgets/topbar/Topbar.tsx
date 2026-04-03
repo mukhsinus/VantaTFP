@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useLocation } from 'react-router-dom';
 import { Avatar, Badge } from '@shared/components/ui';
 import { useAuthStore } from '@app/store/auth.store';
+import { useIsMobile } from '@shared/hooks/useIsMobile';
 
 const pageTitles: Record<string, string> = {
   '/dashboard': 'nav.dashboard',
@@ -23,6 +24,7 @@ export function Topbar() {
   const { t } = useTranslation();
   const location = useLocation();
   const user = useAuthStore((s) => s.user);
+  const isMobile = useIsMobile();
   const [search, setSearch] = useState('');
 
   const baseRoute = '/' + location.pathname.split('/')[1];
@@ -37,7 +39,7 @@ export function Topbar() {
         display: 'flex',
         alignItems: 'center',
         gap: 16,
-        padding: '0 24px',
+        padding: isMobile ? '0 12px' : '0 24px',
         position: 'sticky',
         top: 0,
         zIndex: 'var(--z-topbar)' as React.CSSProperties['zIndex'],
@@ -56,7 +58,7 @@ export function Topbar() {
       </h1>
 
       {/* Search */}
-      <div style={{ flex: 1, maxWidth: 400, margin: '0 auto' }}>
+      {!isMobile && <div style={{ flex: 1, maxWidth: 400, margin: '0 auto' }}>
         <div style={{ position: 'relative' }}>
           <span
             style={{
@@ -118,12 +120,12 @@ export function Topbar() {
             ⌘K
           </kbd>
         </div>
-      </div>
+      </div>}
 
       {/* Actions */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 4 : 8, flexShrink: 0 }}>
         {/* Notifications bell */}
-        <button
+        {!isMobile && <button
           style={{
             width: 32,
             height: 32,
@@ -157,23 +159,23 @@ export function Topbar() {
               border: '1.5px solid var(--color-bg)',
             }}
           />
-        </button>
+        </button>}
 
         {/* Divider */}
-        <div style={{ width: 1, height: 20, background: 'var(--color-border)' }} />
+        {!isMobile && <div style={{ width: 1, height: 20, background: 'var(--color-border)' }} />}
 
         {/* User */}
         {user && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <Avatar name={`${user.firstName} ${user.lastName}`} size="sm" />
-            <div style={{ lineHeight: 1.3 }}>
+            {!isMobile && <div style={{ lineHeight: 1.3 }}>
               <p style={{ fontSize: 'var(--text-sm)', fontWeight: 500, color: 'var(--color-text-primary)' }}>
                 {user.firstName} {user.lastName}
               </p>
               <Badge variant={roleVariant[user.role] ?? 'default'} style={{ fontSize: 10, padding: '1px 6px' }}>
                 {user.role}
               </Badge>
-            </div>
+            </div>}
           </div>
         )}
       </div>

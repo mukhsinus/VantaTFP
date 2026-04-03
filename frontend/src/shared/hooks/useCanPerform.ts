@@ -25,8 +25,8 @@ const PERMISSION_MAP: Record<Permission, Role[]> = {
   'task:assign':       ['ADMIN', 'MANAGER'],
   'task:changeStatus': ['ADMIN', 'MANAGER', 'EMPLOYEE'],
 
-  'employee:invite':   ['ADMIN'],
-  'employee:manage':   ['ADMIN'],
+  'employee:invite':   ['ADMIN', 'MANAGER'],
+  'employee:manage':   ['ADMIN', 'MANAGER'],
 
   'kpi:create':        ['ADMIN', 'MANAGER'],
   'kpi:delete':        ['ADMIN'],

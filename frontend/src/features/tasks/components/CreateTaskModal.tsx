@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Modal, Button, Input, Select } from '@shared/components/ui';
+import { useIsMobile } from '@shared/hooks/useIsMobile';
 import { useCreateTask } from '../hooks/useCreateTask';
 import type { CreateTaskPayload, TaskPriority } from '@entities/task/task.types';
 
@@ -36,6 +37,7 @@ const INITIAL_STATE: FormState = {
 
 export function CreateTaskModal({ isOpen, onClose }: CreateTaskModalProps) {
   const { t } = useTranslation();
+  const isMobile = useIsMobile();
   const { createTask, isPending } = useCreateTask();
 
   const [form, setForm] = useState<FormState>(INITIAL_STATE);
@@ -86,24 +88,25 @@ export function CreateTaskModal({ isOpen, onClose }: CreateTaskModalProps) {
       onClose={handleClose}
       title={t('tasks.modal.title')}
       description={t('tasks.modal.description')}
-      size="md"
+      size={isMobile ? 'lg' : 'md'}
       footer={
-        <>
-          <Button variant="secondary" size="sm" onClick={handleClose} disabled={isPending}>
+        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : 'auto auto', gap: 8, width: isMobile ? '100%' : undefined }}>
+          <Button variant="secondary" size={isMobile ? 'lg' : 'sm'} onClick={handleClose} disabled={isPending} style={{ width: '100%' }}>
             {t('common.cancel')}
           </Button>
           <Button
             variant="primary"
-            size="sm"
+            size={isMobile ? 'lg' : 'sm'}
             loading={isPending}
             onClick={handleSubmit}
+            style={{ width: '100%' }}
           >
             {t('tasks.modal.submit')}
           </Button>
-        </>
+        </div>
       }
     >
-      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: isMobile ? 12 : 16 }}>
         {/* Title */}
         <Input
           label={t('tasks.modal.fields.title')}
@@ -156,7 +159,7 @@ export function CreateTaskModal({ isOpen, onClose }: CreateTaskModalProps) {
         </div>
 
         {/* Priority + Due date row */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 12 }}>
           <Select
             label={t('tasks.modal.fields.priority')}
             value={form.priority}

@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Button, Badge, Avatar, Card, EmptyState, PageSkeleton } from '@shared/components/ui';
+import { Button, Badge, Avatar, Card, EmptyState, PageSkeleton, Select } from '@shared/components/ui';
 import { useTasks } from '@features/tasks/hooks/useTasks';
 import { useUpdateTaskStatus } from '@features/tasks/hooks/useUpdateTaskStatus';
 import { CreateTaskModal } from '@features/tasks/components/CreateTaskModal';
 import { usePermissions } from '@shared/hooks/useCanPerform';
+import { useIsMobile } from '@shared/hooks/useIsMobile';
 import type { TaskUiModel, TaskStatus, TaskPriority } from '@entities/task/task.types';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -31,6 +32,7 @@ type ViewMode = 'board' | 'list';
 
 export function TasksPage() {
   const { t } = useTranslation();
+  const isMobile = useIsMobile();
   const [view, setView] = useState<ViewMode>('board');
   const [showCreateModal, setShowCreateModal] = useState(false);
 
@@ -58,11 +60,11 @@ export function TasksPage() {
 
   return (
     <>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: isMobile ? 14 : 20 }}>
         {/* Header */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: isMobile ? 'flex-start' : 'center', gap: isMobile ? 10 : 0 }}>
           <div>
-            <h2 style={{ fontSize: 'var(--text-2xl)', fontWeight: 700, color: 'var(--color-text-primary)' }}>
+            <h2 style={{ fontSize: isMobile ? 'var(--text-xl)' : 'var(--text-2xl)', fontWeight: 700, color: 'var(--color-text-primary)' }}>
               {t('tasks.title')}
             </h2>
             <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-secondary)', marginTop: 4 }}>
@@ -78,7 +80,7 @@ export function TasksPage() {
             </p>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          {!isMobile && <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             {/* View toggle */}
             <div
               style={{
@@ -125,7 +127,7 @@ export function TasksPage() {
                 {t('tasks.create')}
               </Button>
             )}
-          </div>
+          </div>}
         </div>
 
         {/* Overdue banner */}
@@ -166,6 +168,8 @@ export function TasksPage() {
               </svg>
             }
           />
+        ) : isMobile ? (
+          <MobileTasksList tasks={tasks} />
         ) : view === 'board' ? (
           <BoardView tasks={tasks} />
         ) : (
@@ -173,11 +177,84 @@ export function TasksPage() {
         )}
       </div>
 
+      {isMobile && can('task:create') && (
+        <button
+          onClick={() => setShowCreateModal(true)}
+          style={{
+            position: 'fixed',
+            left: 12,
+            right: 12,
+            bottom: 74,
+            zIndex: 'var(--z-topbar)' as React.CSSProperties['zIndex'],
+            height: 48,
+            border: 'none',
+            borderRadius: 'var(--radius-lg)',
+            background: 'var(--color-accent)',
+            color: '#fff',
+            fontSize: 'var(--text-base)',
+            fontWeight: 600,
+            boxShadow: 'var(--shadow-lg)',
+            cursor: 'pointer',
+          }}
+        >
+          + {t('tasks.create')}
+        </button>
+      )}
+
       <CreateTaskModal
         isOpen={showCreateModal}
         onClose={() => setShowCreateModal(false)}
       />
     </>
+  );
+}
+
+function MobileTasksList({ tasks }: { tasks: TaskUiModel[] }) {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+      {tasks.map((task) => (
+        <MobileTaskCard key={task.id} task={task} />
+      ))}
+    </div>
+  );
+}
+
+function MobileTaskCard({ task }: { task: TaskUiModel }) {
+  const { updateStatus } = useUpdateTaskStatus();
+  const { can } = usePermissions();
+
+  const statusOptions = STATUS_COLUMNS.map((col) => ({ value: col.id, label: col.label }));
+
+  return (
+    <Card style={{ width: '100%' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10, marginBottom: 10 }}>
+        <div style={{ minWidth: 0 }}>
+          <p style={{ fontSize: 'var(--text-md)', fontWeight: 600, color: 'var(--color-text-primary)', lineHeight: 1.35 }}>
+            {task.title}
+          </p>
+          <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-secondary)', marginTop: 4 }}>
+            {task.assignee}
+          </p>
+        </div>
+        <Badge variant={PRIORITY_VARIANT[task.priority]}>{task.priority}</Badge>
+      </div>
+
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+        <span style={{ fontSize: 'var(--text-sm)', color: task.overdue ? 'var(--color-danger)' : 'var(--color-text-secondary)', fontWeight: task.overdue ? 600 : 400 }}>
+          {task.overdue ? '⚠ ' : ''}{task.dueDate}
+        </span>
+        <StatusBadge status={task.status} />
+      </div>
+
+      {can('task:changeStatus') && (
+        <Select
+          label="Status"
+          value={task.status}
+          options={statusOptions}
+          onChange={(e) => updateStatus({ taskId: task.id, status: e.target.value as TaskStatus, taskTitle: task.title })}
+        />
+      )}
+    </Card>
   );
 }
 

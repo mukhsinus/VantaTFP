@@ -103,10 +103,34 @@
     "active": "active",
     "total": "total",
     "invite": "Invite Employee",
+    "role": "Role",
     "search": "Search employees...",
     "empty": {
       "title": "No employees found",
       "description": "Try adjusting your filters or invite your first team member."
+    },
+    "actions": {
+      "deactivate": "Deactivate",
+      "readonly": "You don't have permission to manage this user.",
+      "self": "You cannot update your own role here."
+    },
+    "modal": {
+      "title": "Create user",
+      "description": "Add a new employee to your tenant.",
+      "submit": "Create",
+      "fields": {
+        "firstName": "First name",
+        "lastName": "Last name",
+        "email": "Email",
+        "password": "Password",
+        "role": "Role"
+      },
+      "errors": {
+        "nameRequired": "First name and last name are required.",
+        "emailRequired": "Email is required.",
+        "passwordShort": "Password must be at least 8 characters.",
+        "managerRole": "Managers can only create EMPLOYEE users."
+      }
     },
     "card": {
       "tasks": "Open Tasks",
