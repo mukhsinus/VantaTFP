@@ -9,7 +9,10 @@ import {
 
 export async function authRoutes(app: FastifyInstance): Promise<void> {
   const authRepository = new AuthRepository(app.db);
-  const authService = new AuthService(authRepository);
+  const authService = new AuthService(
+    authRepository,
+    (payload, expiresIn) => app.jwt.sign(payload, { expiresIn })
+  );
 
   app.post('/login', async (request: FastifyRequest, reply: FastifyReply) => {
     const body = loginRequestSchema.parse(request.body);

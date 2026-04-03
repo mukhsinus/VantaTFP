@@ -8,9 +8,6 @@ export const loginRequestSchema = z.object({
 export const registerRequestSchema = z.object({
   email: z.string().email(),
   password: z.string().min(8),
-  firstName: z.string().min(1),
-  lastName: z.string().min(1),
-  tenantId: z.string().uuid(),
 });
 
 export const refreshTokenRequestSchema = z.object({
