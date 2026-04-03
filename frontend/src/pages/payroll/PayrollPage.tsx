@@ -90,14 +90,24 @@ export function PayrollPage() {
         ))}
       </div>
 
-      {/* Filter + table */}
-      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+      {/* Filters */}
+      <div
+        style={{
+          width: '100%',
+          maxWidth: '100%',
+          overflowX: isMobile ? 'auto' : 'visible',
+          overflowY: 'hidden',
+          boxSizing: 'border-box',
+          paddingBottom: isMobile ? 2 : 0,
+        }}
+      >
+      <div style={{ display: 'flex', gap: 6, flexWrap: 'nowrap', width: 'max-content', minWidth: '100%' }}>
         {(['ALL', 'DRAFT', 'APPROVED', 'PAID', 'CANCELLED'] as const).map((s) => (
           <button
             key={s}
             onClick={() => setStatusFilter(s)}
             style={{
-              padding: '5px 12px',
+              padding: isMobile ? '8px 12px' : '5px 12px',
               fontSize: 'var(--text-sm)',
               fontWeight: 500,
               borderRadius: 'var(--radius-full)',
@@ -107,28 +117,107 @@ export function PayrollPage() {
               background: statusFilter === s ? 'var(--color-accent)' : 'var(--color-bg)',
               color: statusFilter === s ? '#fff' : 'var(--color-text-secondary)',
               borderColor: statusFilter === s ? 'var(--color-accent)' : 'var(--color-border-strong)',
+              whiteSpace: 'nowrap',
+              flexShrink: 0,
             }}
           >
             {s}
           </button>
         ))}
       </div>
+      </div>
 
-      {/* Table */}
+      {/* Content */}
       {filtered.length === 0 ? (
         <EmptyState
           title={t('payroll.empty.title')}
           description={t('payroll.empty.description')}
         />
+      ) : isMobile ? (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, width: '100%', maxWidth: '100%' }}>
+          {filtered.map((entry) => (
+            <Card key={entry.id}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 14, width: '100%', maxWidth: '100%' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10 }}>
+                  <div style={{ minWidth: 0 }}>
+                    <p
+                      style={{
+                        margin: 0,
+                        fontSize: 'var(--text-sm)',
+                        color: 'var(--color-text-secondary)',
+                      }}
+                    >
+                      {entry.period}
+                    </p>
+                    <p
+                      style={{
+                        margin: '4px 0 0',
+                        fontSize: 'var(--text-base)',
+                        fontWeight: 600,
+                        color: 'var(--color-text-primary)',
+                        wordBreak: 'break-word',
+                      }}
+                    >
+                      {entry.employee}
+                    </p>
+                  </div>
+                  <Badge variant={statusVariant[entry.status]} dot>{entry.status}</Badge>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  <p
+                    style={{
+                      margin: 0,
+                      fontSize: 'var(--text-3xl)',
+                      fontWeight: 700,
+                      lineHeight: 1.1,
+                      color: 'var(--color-text-primary)',
+                      fontFamily: 'var(--font-mono)',
+                    }}
+                  >
+                    {formatCurrency(entry.netSalary)}
+                  </p>
+                  <p style={{ margin: 0, fontSize: 'var(--text-sm)', color: 'var(--color-text-secondary)' }}>
+                    {t('payroll.col.base')}: <span style={{ fontFamily: 'var(--font-mono)' }}>{formatCurrency(entry.baseSalary)}</span>
+                  </p>
+                  <p
+                    style={{
+                      margin: 0,
+                      fontSize: 'var(--text-sm)',
+                      color: entry.bonuses > 0 ? 'var(--color-success)' : 'var(--color-text-muted)',
+                    }}
+                  >
+                    {t('payroll.col.bonuses')}: {entry.bonuses > 0 ? '+' : ''}{formatCurrency(entry.bonuses)}
+                  </p>
+                  <p style={{ margin: 0, fontSize: 'var(--text-sm)', color: 'var(--color-danger)' }}>
+                    {t('payroll.col.deductions')}: -{formatCurrency(entry.deductions)}
+                  </p>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, width: '100%' }}>
+                  {entry.status === 'DRAFT' && (
+                    <Button variant="secondary" style={{ width: '100%', minHeight: 44 }}>
+                      {t('payroll.action.approve')}
+                    </Button>
+                  )}
+                  {entry.status === 'APPROVED' && (
+                    <Button variant="primary" style={{ width: '100%', minHeight: 44 }}>
+                      {t('payroll.action.pay')}
+                    </Button>
+                  )}
+                </div>
+              </div>
+            </Card>
+          ))}
+        </div>
       ) : (
-        <div style={{ width: '100%', maxWidth: '100%', overflowX: isMobile ? 'auto' : 'visible' }}>
+        <div style={{ width: '100%', maxWidth: '100%' }}>
           <div
             style={{
               background: 'var(--color-bg)',
               border: '1px solid var(--color-border)',
               borderRadius: 'var(--radius-lg)',
               overflow: 'hidden',
-              minWidth: isMobile ? 760 : undefined,
             }}
           >
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
