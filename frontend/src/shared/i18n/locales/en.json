@@ -1,0 +1,153 @@
+{
+  "common": {
+    "save": "Save Changes",
+    "cancel": "Cancel",
+    "confirm": "Confirm",
+    "delete": "Delete",
+    "edit": "Edit",
+    "loading": "Loading...",
+    "noData": "No data yet"
+  },
+  "nav": {
+    "section": { "main": "Main" },
+    "dashboard": "Dashboard",
+    "tasks": "Tasks",
+    "employees": "Employees",
+    "kpi": "KPI",
+    "payroll": "Payroll",
+    "settings": "Settings",
+    "logout": "Sign out"
+  },
+  "topbar": {
+    "search": "Search anything..."
+  },
+  "dashboard": {
+    "title": "Overview",
+    "subtitle": "Here's what's happening today",
+    "stats": {
+      "totalTasks": "Total Tasks",
+      "completed": "Completed",
+      "overdue": "Overdue",
+      "inProgress": "In Progress"
+    },
+    "activity": {
+      "title": "Recent Activity",
+      "subtitle": "Team updates from the last 24 hours"
+    },
+    "overdue": { "title": "Overdue Tasks" },
+    "progress": { "title": "Task Progress" }
+  },
+  "tasks": {
+    "title": "Tasks",
+    "total": "total tasks",
+    "overdue": "overdue",
+    "overdueAlert": "tasks are overdue and need attention",
+    "create": "New Task",
+    "empty": "No tasks",
+    "view": {
+      "board": "Board",
+      "list": "List"
+    },
+    "col": {
+      "title": "Title",
+      "assignee": "Assignee",
+      "priority": "Priority",
+      "due": "Due Date",
+      "status": "Status"
+    }
+  },
+  "employees": {
+    "title": "Employees",
+    "active": "active",
+    "total": "total",
+    "invite": "Invite Employee",
+    "search": "Search employees...",
+    "empty": {
+      "title": "No employees found",
+      "description": "Try adjusting your filters or invite your first team member."
+    },
+    "card": {
+      "tasks": "Open Tasks",
+      "joined": "Joined",
+      "status": "Status"
+    }
+  },
+  "kpi": {
+    "title": "KPI Tracker",
+    "subtitle": "Monitor team performance and targets",
+    "create": "New KPI",
+    "avgProgress": "Team avg."
+  },
+  "payroll": {
+    "title": "Payroll",
+    "subtitle": "Manage compensation and payments",
+    "create": "New Entry",
+    "export": "Export",
+    "stats": {
+      "totalNet": "Total Net (Filtered)",
+      "paid": "Paid",
+      "pending": "Awaiting Approval",
+      "drafts": "Drafts"
+    },
+    "col": {
+      "employee": "Employee",
+      "period": "Period",
+      "base": "Base Salary",
+      "bonuses": "Bonuses",
+      "deductions": "Deductions",
+      "net": "Net",
+      "status": "Status"
+    },
+    "action": {
+      "approve": "Approve",
+      "pay": "Mark Paid"
+    },
+    "empty": {
+      "title": "No payroll entries",
+      "description": "Create your first payroll entry to get started."
+    }
+  },
+  "settings": {
+    "title": "Settings",
+    "subtitle": "Manage your account and workspace preferences",
+    "section": {
+      "profile": "Profile",
+      "workspace": "Workspace",
+      "notifications": "Notifications",
+      "security": "Security"
+    },
+    "profile": {
+      "title": "Profile",
+      "subtitle": "Update your personal information",
+      "changeAvatar": "Change photo",
+      "avatarHint": "JPG, PNG up to 2MB",
+      "firstName": "First Name",
+      "lastName": "Last Name",
+      "email": "Email Address"
+    },
+    "workspace": {
+      "title": "Workspace",
+      "subtitle": "Manage your organization settings",
+      "name": "Workspace Name",
+      "plan": "Current Plan",
+      "planDescription": "Your plan unlocks features for your team.",
+      "proPlan": "PRO"
+    },
+    "notifications": {
+      "title": "Notifications",
+      "subtitle": "Control when and how you get notified",
+      "taskOverdue": "Task overdue alerts",
+      "taskAssigned": "New task assigned to me",
+      "kpiUpdate": "KPI progress updates",
+      "payrollApproval": "Payroll approval requests"
+    },
+    "security": {
+      "title": "Security",
+      "subtitle": "Manage your password and account security",
+      "currentPassword": "Current Password",
+      "newPassword": "New Password",
+      "confirmPassword": "Confirm New Password",
+      "update": "Update Password"
+    }
+  }
+}
