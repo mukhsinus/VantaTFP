@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useSearchParams } from 'react-router-dom';
 import { Button, Input, Badge, Card, CardHeader, Avatar } from '@shared/components/ui';
 import { useAuthStore } from '@app/store/auth.store';
 
@@ -7,7 +8,23 @@ type SettingsSection = 'profile' | 'workspace' | 'notifications' | 'security';
 
 export function SettingsPage() {
   const { t } = useTranslation();
-  const [section, setSection] = useState<SettingsSection>('profile');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tabParam = searchParams.get('tab');
+
+  const initialSection: SettingsSection =
+    tabParam === 'workspace' || tabParam === 'notifications' || tabParam === 'security'
+      ? tabParam
+      : 'profile';
+
+  const [section, setSection] = useState<SettingsSection>(initialSection);
+
+  useEffect(() => {
+    const nextSection: SettingsSection =
+      tabParam === 'workspace' || tabParam === 'notifications' || tabParam === 'security'
+        ? tabParam
+        : 'profile';
+    setSection(nextSection);
+  }, [tabParam]);
 
   const sections: { id: SettingsSection; label: string; icon: React.ReactNode }[] = [
     {
@@ -59,7 +76,10 @@ export function SettingsPage() {
           {sections.map((s) => (
             <button
               key={s.id}
-              onClick={() => setSection(s.id)}
+              onClick={() => {
+                setSection(s.id);
+                setSearchParams({ tab: s.id });
+              }}
               style={{
                 display: 'flex',
                 alignItems: 'center',

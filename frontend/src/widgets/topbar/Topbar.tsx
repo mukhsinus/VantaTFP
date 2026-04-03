@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useLocation } from 'react-router-dom';
+import { createPortal } from 'react-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { Avatar, Badge } from '@shared/components/ui';
 import { useAuthStore } from '@app/store/auth.store';
 import { useIsMobile } from '@shared/hooks/useIsMobile';
@@ -23,12 +24,56 @@ const roleVariant: Record<string, 'accent' | 'warning' | 'success'> = {
 export function Topbar() {
   const { t } = useTranslation();
   const location = useLocation();
+  const navigate = useNavigate();
   const user = useAuthStore((s) => s.user);
+  const clearAuth = useAuthStore((s) => s.clearAuth);
   const isMobile = useIsMobile();
   const [search, setSearch] = useState('');
+  const [isAccountSheetOpen, setIsAccountSheetOpen] = useState(false);
 
   const baseRoute = '/' + location.pathname.split('/')[1];
   const titleKey = pageTitles[baseRoute] ?? 'nav.dashboard';
+  const fullName = user ? `${user.firstName} ${user.lastName}` : '';
+
+  useEffect(() => {
+    setIsAccountSheetOpen(false);
+  }, [location.pathname, location.search]);
+
+  useEffect(() => {
+    if (!isAccountSheetOpen) return;
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setIsAccountSheetOpen(false);
+      }
+    };
+
+    document.addEventListener('keydown', onKeyDown);
+    document.body.style.overflow = 'hidden';
+
+    return () => {
+      document.removeEventListener('keydown', onKeyDown);
+      document.body.style.overflow = '';
+    };
+  }, [isAccountSheetOpen]);
+
+  const closeAccountSheet = () => setIsAccountSheetOpen(false);
+
+  const goToProfile = () => {
+    closeAccountSheet();
+    navigate('/settings?tab=profile');
+  };
+
+  const goToSettings = () => {
+    closeAccountSheet();
+    navigate('/settings');
+  };
+
+  const handleLogout = () => {
+    closeAccountSheet();
+    clearAuth();
+    navigate('/login', { replace: true });
+  };
 
   return (
     <header
@@ -167,7 +212,29 @@ export function Topbar() {
         {/* User */}
         {user && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <Avatar name={`${user.firstName} ${user.lastName}`} size="sm" />
+            {isMobile ? (
+              <button
+                onClick={() => setIsAccountSheetOpen(true)}
+                aria-label="Open account menu"
+                style={{
+                  width: 40,
+                  height: 40,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  background: 'transparent',
+                  border: 'none',
+                  padding: 0,
+                  borderRadius: '50%',
+                  cursor: 'pointer',
+                  flexShrink: 0,
+                }}
+              >
+                <Avatar name={fullName} size="sm" />
+              </button>
+            ) : (
+              <Avatar name={fullName} size="sm" />
+            )}
             {!isMobile && <div style={{ lineHeight: 1.3 }}>
               <p style={{ fontSize: 'var(--text-sm)', fontWeight: 500, color: 'var(--color-text-primary)' }}>
                 {user.firstName} {user.lastName}
@@ -179,6 +246,130 @@ export function Topbar() {
           </div>
         )}
       </div>
+
+      {isMobile && user && isAccountSheetOpen && createPortal(
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 'var(--z-modal)' as React.CSSProperties['zIndex'],
+            display: 'flex',
+            alignItems: 'flex-end',
+          }}
+        >
+          <button
+            onClick={closeAccountSheet}
+            aria-label="Close account sheet"
+            style={{
+              position: 'absolute',
+              inset: 0,
+              border: 'none',
+              background: 'rgba(0, 0, 0, 0.35)',
+              padding: 0,
+            }}
+          />
+
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="Account actions"
+            style={{
+              position: 'relative',
+              width: '100%',
+              maxWidth: '100%',
+              boxSizing: 'border-box',
+              background: 'var(--color-bg)',
+              borderTopLeftRadius: 18,
+              borderTopRightRadius: 18,
+              borderTop: '1px solid var(--color-border)',
+              boxShadow: '0 -8px 24px rgba(0,0,0,0.12)',
+              padding: '12px 14px calc(16px + env(safe-area-inset-bottom))',
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 12 }}>
+              <span
+                style={{
+                  width: 36,
+                  height: 4,
+                  borderRadius: 999,
+                  background: 'var(--color-border-strong)',
+                }}
+              />
+            </div>
+
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 12,
+                padding: '0 4px 12px',
+                borderBottom: '1px solid var(--color-border)',
+                marginBottom: 8,
+              }}
+            >
+              <Avatar name={fullName} size="md" />
+              <div style={{ minWidth: 0 }}>
+                <p
+                  style={{
+                    margin: 0,
+                    fontSize: 'var(--text-sm)',
+                    fontWeight: 600,
+                    color: 'var(--color-text-primary)',
+                    wordBreak: 'break-word',
+                  }}
+                >
+                  {fullName}
+                </p>
+                <div style={{ marginTop: 4 }}>
+                  <Badge variant={roleVariant[user.role] ?? 'default'}>{user.role}</Badge>
+                </div>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <button
+                onClick={goToProfile}
+                style={sheetActionButtonStyle}
+              >
+                {t('settings.section.profile')}
+              </button>
+              <button
+                onClick={goToSettings}
+                style={sheetActionButtonStyle}
+              >
+                {t('nav.settings')}
+              </button>
+              <button
+                onClick={handleLogout}
+                style={{
+                  ...sheetActionButtonStyle,
+                  color: 'var(--color-danger)',
+                  background: 'var(--color-danger-subtle)',
+                  borderColor: 'var(--color-danger-border)',
+                }}
+              >
+                {t('nav.logout')}
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
     </header>
   );
 }
+
+const sheetActionButtonStyle: React.CSSProperties = {
+  width: '100%',
+  minHeight: 48,
+  borderRadius: 'var(--radius)',
+  border: '1px solid var(--color-border)',
+  background: 'var(--color-bg)',
+  color: 'var(--color-text-primary)',
+  fontSize: 'var(--text-base)',
+  fontWeight: 500,
+  textAlign: 'left',
+  padding: '0 14px',
+  cursor: 'pointer',
+  boxSizing: 'border-box',
+};
