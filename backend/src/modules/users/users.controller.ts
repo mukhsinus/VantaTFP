@@ -24,42 +24,51 @@ export async function usersRoutes(app: FastifyInstance): Promise<void> {
   );
 
   app.get(
-    '/:userId',
+    '/:id',
     { preHandler: [authenticate, requireRoles('ADMIN', 'MANAGER')] },
     async (request: FastifyRequest, reply: FastifyReply) => {
-      const { userId } = userIdParamSchema.parse(request.params);
-      const user = await usersService.getUserById(userId, request.user.tenantId);
+      const { id } = userIdParamSchema.parse(request.params);
+      const user = await usersService.getUserById(id, request.user.tenantId);
       return reply.send(user);
     }
   );
 
   app.post(
     '/',
-    { preHandler: [authenticate, requireRoles('ADMIN')] },
+    { preHandler: [authenticate, requireRoles('ADMIN', 'MANAGER')] },
     async (request: FastifyRequest, reply: FastifyReply) => {
       const body = createUserSchema.parse(request.body);
-      const user = await usersService.createUser(request.user.tenantId, body);
+      const user = await usersService.createUser(request.user.tenantId, body, {
+        actorUserId: request.user.userId,
+        actorRole: request.user.role,
+      });
       return reply.status(201).send(user);
     }
   );
 
   app.patch(
-    '/:userId',
+    '/:id',
     { preHandler: [authenticate, requireRoles('ADMIN', 'MANAGER')] },
     async (request: FastifyRequest, reply: FastifyReply) => {
-      const { userId } = userIdParamSchema.parse(request.params);
+      const { id } = userIdParamSchema.parse(request.params);
       const body = updateUserSchema.parse(request.body);
-      const user = await usersService.updateUser(userId, request.user.tenantId, body);
+      const user = await usersService.updateUser(id, request.user.tenantId, body, {
+        actorUserId: request.user.userId,
+        actorRole: request.user.role,
+      });
       return reply.send(user);
     }
   );
 
   app.delete(
-    '/:userId',
-    { preHandler: [authenticate, requireRoles('ADMIN')] },
+    '/:id',
+    { preHandler: [authenticate, requireRoles('ADMIN', 'MANAGER')] },
     async (request: FastifyRequest, reply: FastifyReply) => {
-      const { userId } = userIdParamSchema.parse(request.params);
-      await usersService.deactivateUser(userId, request.user.tenantId);
+      const { id } = userIdParamSchema.parse(request.params);
+      await usersService.deactivateUser(id, request.user.tenantId, {
+        actorUserId: request.user.userId,
+        actorRole: request.user.role,
+      });
       return reply.status(204).send();
     }
   );
