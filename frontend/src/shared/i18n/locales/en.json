@@ -6,7 +6,10 @@
     "delete": "Delete",
     "edit": "Edit",
     "loading": "Loading...",
-    "noData": "No data yet"
+    "noData": "No data yet",
+    "retry": "Try again",
+    "errorTitle": "Something went wrong",
+    "errorDescription": "We couldn't load this page. Please try again."
   },
   "nav": {
     "section": { "main": "Main" },
@@ -44,6 +47,10 @@
     "overdueAlert": "tasks are overdue and need attention",
     "create": "New Task",
     "empty": "No tasks",
+    "emptyState": {
+      "title": "No tasks yet",
+      "description": "Create your first task to start tracking work."
+    },
     "view": {
       "board": "Board",
       "list": "List"
@@ -54,6 +61,24 @@
       "priority": "Priority",
       "due": "Due Date",
       "status": "Status"
+    },
+    "modal": {
+      "title": "New Task",
+      "description": "Add a task and assign it to your team.",
+      "submit": "Create Task",
+      "fields": {
+        "title": "Title",
+        "description": "Description",
+        "priority": "Priority",
+        "dueDate": "Due Date"
+      },
+      "placeholders": {
+        "title": "What needs to be done?",
+        "description": "Add context or acceptance criteria..."
+      },
+      "errors": {
+        "titleRequired": "Title is required"
+      }
     }
   },
   "employees": {

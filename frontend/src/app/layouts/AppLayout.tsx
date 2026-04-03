@@ -2,6 +2,7 @@ import React from 'react';
 import { Outlet } from 'react-router-dom';
 import { Sidebar } from '@widgets/sidebar/Sidebar';
 import { Topbar } from '@widgets/topbar/Topbar';
+import { ToastRenderer } from '@shared/components/Toast';
 
 export function AppLayout() {
   return (
@@ -28,6 +29,9 @@ export function AppLayout() {
           <Outlet />
         </main>
       </div>
+
+      {/* Global notification layer — lives outside page content */}
+      <ToastRenderer />
     </div>
   );
 }
