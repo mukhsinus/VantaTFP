@@ -21,12 +21,46 @@ export interface UserResponse {
   createdAt: string;
 }
 
+export interface PaginationMeta {
+  total: number;
+  page: number;
+  limit: number;
+  pages: number;
+  hasMore: boolean;
+}
+
+export interface UserListResponse {
+  data: UserResponse[];
+  pagination: PaginationMeta;
+}
+
 export class UsersService {
   constructor(private readonly usersRepository: UsersRepository) {}
 
   async getAllUsers(tenantId: string): Promise<UserResponse[]> {
     const users = await this.usersRepository.findAllActiveByTenant(tenantId);
     return users.map((user) => this.toUserResponse(user));
+  }
+
+  async listUsers(
+    tenantId: string,
+    page: number = 1,
+    limit: number = 20
+  ): Promise<UserListResponse> {
+    const users = await this.usersRepository.findAllActiveByTenantPaginated(tenantId, page, limit);
+    const total = await this.usersRepository.countActiveByTenant(tenantId);
+    const pages = Math.ceil(total / limit);
+
+    return {
+      data: users.map((user) => this.toUserResponse(user)),
+      pagination: {
+        total,
+        page,
+        limit,
+        pages,
+        hasMore: page < pages,
+      },
+    };
   }
 
   async getUserById(userId: string, tenantId: string): Promise<UserResponse> {

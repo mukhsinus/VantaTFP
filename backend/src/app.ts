@@ -9,6 +9,7 @@ import corsPlugin from './plugins/cors.plugin.js';
 import helmetPlugin from './plugins/helmet.plugin.js';
 import sensiblePlugin from './plugins/sensible.plugin.js';
 import jwtPlugin from './plugins/jwt.plugin.js';
+import rateLimitPlugin from './plugins/rate-limit.plugin.js';
 
 // Module routes
 import { authRoutes } from './modules/auth/auth.controller.js';
@@ -20,6 +21,7 @@ import { payrollRoutes } from './modules/payroll/payroll.controller.js';
 
 export async function buildApp(): Promise<FastifyInstance> {
   const app = Fastify({
+    bodyLimit: 1_048_576, // 1MB max request body size to prevent DoS attacks
     logger: {
       level: env.NODE_ENV === 'production' ? 'info' : 'debug',
       transport:
@@ -35,6 +37,7 @@ export async function buildApp(): Promise<FastifyInstance> {
   await app.register(sensiblePlugin);
   await app.register(databasePlugin);
   await app.register(jwtPlugin);
+  await app.register(rateLimitPlugin);
 
   // ── Centralized error handler ─────────────────────────────────────────────
   registerErrorHandler(app);

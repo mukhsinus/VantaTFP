@@ -3,14 +3,24 @@ import { useEffect, useState } from 'react';
 const MOBILE_BREAKPOINT = 768;
 
 export function useIsMobile(): boolean {
-  const getIsMobile = () => window.innerWidth <= MOBILE_BREAKPOINT;
-  const [isMobile, setIsMobile] = useState<boolean>(getIsMobile);
+  const [isMobile, setIsMobile] = useState<boolean>(true); // Default to true for SSR
+  const [hasMounted, setHasMounted] = useState(false);
 
   useEffect(() => {
-    const onResize = () => setIsMobile(getIsMobile());
+    // Set initial value on mount
+    const getIsMobile = () => window.innerWidth <= MOBILE_BREAKPOINT;
+    setIsMobile(getIsMobile());
+    setHasMounted(true);
+
+    // Handle resize
+    const onResize = () => {
+      setIsMobile(getIsMobile());
+    };
+
     window.addEventListener('resize', onResize, { passive: true });
     return () => window.removeEventListener('resize', onResize);
   }, []);
 
-  return isMobile;
+  // Return true during SSR/before mount to avoid hydration mismatch
+  return !hasMounted ? true : isMobile;
 }

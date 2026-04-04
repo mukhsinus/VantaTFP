@@ -73,6 +73,60 @@ input, textarea, select {
   outline-offset: 2px;
 }
 
+/* Mobile optimizations */
+@media (max-width: 768px) {
+  html {
+    font-size: 16px; /* Prevent zoom on input focus */
+  }
+
+  /* Touch-friendly button sizing */
+  button, a, input[type="button"], input[type="submit"], input[type="reset"] {
+    min-height: 44px; /* iOS recommended min touch target */
+  }
+
+  /* Smooth scrolling on mobile */
+  html {
+    scroll-behavior: smooth;
+  }
+
+  /* Prevent text selection on long press in interactive elements */
+  button, a {
+    -webkit-user-select: none;
+    user-select: none;
+  }
+
+  /* Better tap feedback */
+  input[type="search"] {
+    -webkit-appearance: none;
+    appearance: none;
+    border-radius: var(--radius-full);
+  }
+}
+
+/* Large displays (desktop) */
+@media (min-width: 1024px) {
+  /* Enable custom scrollbar on larger screens */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-gray-300) transparent;
+  }
+}
+
+/* Landscape on mobile */
+@media (max-width: 768px) and (orientation: landscape) {
+  body {
+    overflow-y: auto;
+  }
+}
+
+/* Notch support for modern devices */
+@supports (padding: max(0px)) {
+  body {
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+  }
+}
+
 /* Utility */
 .sr-only {
   position: absolute;

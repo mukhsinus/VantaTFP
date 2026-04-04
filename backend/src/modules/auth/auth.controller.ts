@@ -11,7 +11,8 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
   const authRepository = new AuthRepository(app.db);
   const authService = new AuthService(
     authRepository,
-    (payload, expiresIn) => app.jwt.sign(payload, { expiresIn })
+    (payload, expiresIn) => app.jwt.sign(payload, { expiresIn }),
+    (token) => app.jwt.verify(token) as any
   );
 
   app.post('/login', async (request: FastifyRequest, reply: FastifyReply) => {

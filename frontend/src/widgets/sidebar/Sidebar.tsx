@@ -3,6 +3,8 @@ import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Avatar } from '@shared/components/ui';
 import { useAuthStore } from '@app/store/auth.store';
+import { useSidebarStore } from '@app/store/sidebar.store';
+import styles from './Sidebar.module.css';
 
 interface NavItem {
   to: string;
@@ -82,6 +84,10 @@ export function Sidebar() {
   const clearAuth = useAuthStore((s) => s.clearAuth);
   const location = useLocation();
   const navigate = useNavigate();
+  const isCollapsed = useSidebarStore((s) => s.isCollapsed);
+  const toggleCollapsed = useSidebarStore((s) => s.toggleCollapsed);
+
+  const sidebarWidth = isCollapsed ? 64 : 224;
 
   const handleLogout = () => {
     clearAuth();
@@ -90,140 +96,80 @@ export function Sidebar() {
 
   return (
     <nav
+      className={styles.nav}
       style={{
-        width: 'var(--sidebar-width)',
-        minWidth: 'var(--sidebar-width)',
-        height: '100vh',
-        background: 'var(--sidebar-bg)',
-        display: 'flex',
-        flexDirection: 'column',
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        zIndex: 'var(--z-sidebar)' as React.CSSProperties['zIndex'],
-        overflowY: 'auto',
+        width: sidebarWidth,
+        minWidth: sidebarWidth,
       }}
     >
-      {/* Logo */}
-      <div
-        style={{
-          padding: '20px 16px 16px',
-          borderBottom: '1px solid rgba(255,255,255,0.06)',
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <div
-            style={{
-              width: 28,
-              height: 28,
-              borderRadius: 'var(--radius)',
-              background: 'var(--color-accent)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              flexShrink: 0,
-            }}
-          >
+      {/* Logo / Branding */}
+      <div className={styles.header}>
+        <div className={styles.branding}>
+          <div className={styles.logo}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth={2.5}>
               <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
             </svg>
           </div>
-          <div>
-            <p style={{ fontSize: 'var(--text-sm)', fontWeight: 700, color: '#fff', lineHeight: 1.2 }}>
-              TFP
-            </p>
-            <p
-              style={{
-                fontSize: 'var(--text-xs)',
-                color: 'rgba(255,255,255,0.35)',
-                lineHeight: 1.2,
-              }}
-            >
-              {user?.tenantName ?? 'Workspace'}
-            </p>
-          </div>
+          {!isCollapsed && (
+            <div className={styles.brandingText}>
+              <p className={styles.brandingTitle}>TFP</p>
+              <p className={styles.brandingSubtitle}>{user?.tenantName ?? 'Workspace'}</p>
+            </div>
+          )}
         </div>
+
+        {/* Toggle button */}
+        <button
+          onClick={toggleCollapsed}
+          title={isCollapsed ? t('sidebar.expand') : t('sidebar.collapse') ?? (isCollapsed ? 'Expand' : 'Collapse')}
+          className={styles.toggleButton}
+        >
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2}
+            className={`${styles.toggleIcon} ${isCollapsed ? styles.toggleIconCollapsed : ''}`}
+          >
+            <polyline points="15 18l-6-6 6-6" />
+          </svg>
+        </button>
       </div>
 
       {/* Navigation */}
-      <div style={{ flex: 1, padding: '8px 8px' }}>
-        <p
-          style={{
-            fontSize: 10,
-            fontWeight: 600,
-            color: 'rgba(255,255,255,0.25)',
-            letterSpacing: '0.06em',
-            textTransform: 'uppercase',
-            padding: '8px 8px 4px',
-            marginBottom: 2,
-          }}
-        >
+      <div className={styles.navList}>
+        <p className={`${styles.navLabel} ${isCollapsed ? styles.navLabelCollapsed : ''}`}>
           {t('nav.section.main')}
         </p>
         {navItems.map((item) => (
-          <SidebarItem key={item.to} item={item} active={location.pathname.startsWith(item.to)} />
+          <SidebarItem
+            key={item.to}
+            item={item}
+            active={location.pathname.startsWith(item.to)}
+            isCollapsed={isCollapsed}
+          />
         ))}
       </div>
 
       {/* User footer */}
       {user && (
-        <div
-          style={{
-            padding: '12px 8px',
-            borderTop: '1px solid rgba(255,255,255,0.06)',
-          }}
-        >
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 10,
-              padding: '8px',
-              borderRadius: 'var(--radius)',
-            }}
-          >
+        <div className={styles.footer}>
+          <div className={styles.userCard}>
             <Avatar name={`${user.firstName} ${user.lastName}`} size="sm" />
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <p
-                style={{
-                  fontSize: 'var(--text-sm)',
-                  fontWeight: 500,
-                  color: '#fff',
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  whiteSpace: 'nowrap',
-                }}
-              >
-                {user.firstName} {user.lastName}
-              </p>
-              <p
-                style={{
-                  fontSize: 'var(--text-xs)',
-                  color: 'rgba(255,255,255,0.4)',
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  whiteSpace: 'nowrap',
-                }}
-              >
-                {user.role}
-              </p>
-            </div>
+            {!isCollapsed && (
+              <div className={styles.userInfo}>
+                <p className={styles.userName}>
+                  {user.firstName} {user.lastName}
+                </p>
+                <p className={styles.userRole}>{user.role}</p>
+              </div>
+            )}
             <button
               onClick={handleLogout}
               title={t('nav.logout')}
-              style={{
-                background: 'transparent',
-                border: 'none',
-                color: 'rgba(255,255,255,0.3)',
-                cursor: 'pointer',
-                padding: 4,
-                borderRadius: 'var(--radius-sm)',
-                display: 'flex',
-                transition: 'color var(--transition)',
-                flexShrink: 0,
-              }}
-              onMouseEnter={(e) => (e.currentTarget.style.color = 'rgba(255,255,255,0.8)')}
-              onMouseLeave={(e) => (e.currentTarget.style.color = 'rgba(255,255,255,0.3)')}
+              className={styles.logoutButton}
             >
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
                 <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9" />
@@ -236,53 +182,33 @@ export function Sidebar() {
   );
 }
 
-function SidebarItem({ item, active }: { item: NavItem; active: boolean }) {
+function SidebarItem({
+  item,
+  active,
+  isCollapsed,
+}: {
+  item: NavItem;
+  active: boolean;
+  isCollapsed: boolean;
+}) {
   const { t } = useTranslation();
 
   return (
     <NavLink
       to={item.to}
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: 10,
-        padding: '8px 8px',
-        borderRadius: 'var(--radius)',
-        color: active ? 'var(--sidebar-text-active)' : 'var(--sidebar-text)',
-        background: active ? 'var(--sidebar-item-active)' : 'transparent',
-        textDecoration: 'none',
-        fontSize: 'var(--text-sm)',
-        fontWeight: active ? 500 : 400,
-        transition: 'background var(--transition), color var(--transition)',
-        marginBottom: 2,
-      }}
-      onMouseEnter={(e) => {
-        if (!active) {
-          (e.currentTarget as HTMLElement).style.background = 'var(--sidebar-item-hover)';
-          (e.currentTarget as HTMLElement).style.color = '#fff';
-        }
-      }}
-      onMouseLeave={(e) => {
-        if (!active) {
-          (e.currentTarget as HTMLElement).style.background = 'transparent';
-          (e.currentTarget as HTMLElement).style.color = 'var(--sidebar-text)';
-        }
-      }}
+      title={isCollapsed ? t(item.labelKey) : undefined}
+      className={`${styles.navItem} ${active ? styles.navItemActive : ''} ${
+        isCollapsed ? styles.navItemCollapsed : ''
+      }`}
     >
-      <span style={{ opacity: active ? 1 : 0.6, flexShrink: 0 }}>{item.icon}</span>
-      {t(item.labelKey)}
-      {active && (
-        <span
-          style={{
-            marginLeft: 'auto',
-            width: 5,
-            height: 5,
-            borderRadius: '50%',
-            background: 'var(--color-accent)',
-            flexShrink: 0,
-          }}
-        />
+      <span className={styles.navItemIcon}>{item.icon}</span>
+      {!isCollapsed && (
+        <>
+          <span className={styles.navItemLabel}>{t(item.labelKey)}</span>
+          {active && <span className={styles.navItemDot} />}
+        </>
       )}
+      {isCollapsed && active && <span className={styles.navItemDot} />}
     </NavLink>
   );
 }

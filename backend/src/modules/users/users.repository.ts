@@ -43,6 +43,50 @@ export class UsersRepository {
     return result.rows;
   }
 
+  async findAllActiveByTenantPaginated(
+    tenantId: string,
+    page: number = 1,
+    limit: number = 20
+  ): Promise<UserRecord[]> {
+    const offset = (page - 1) * limit;
+    const result = await this.db.query<UserRecord>(
+      `
+      SELECT
+        id,
+        tenant_id,
+        email,
+        password_hash,
+        first_name,
+        last_name,
+        role,
+        manager_id,
+        is_active,
+        created_at,
+        updated_at
+      FROM users
+      WHERE tenant_id = $1
+        AND is_active = TRUE
+      ORDER BY created_at DESC
+      LIMIT $2 OFFSET $3
+      `,
+      [tenantId, limit, offset]
+    );
+
+    return result.rows;
+  }
+
+  async countActiveByTenant(tenantId: string): Promise<number> {
+    const result = await this.db.query<{ count: string }>(
+      `
+      SELECT COUNT(*) as count
+      FROM users
+      WHERE tenant_id = $1 AND is_active = TRUE
+      `,
+      [tenantId]
+    );
+    return parseInt(result.rows[0].count, 10);
+  }
+
   async findByIdAndTenant(userId: string, tenantId: string): Promise<UserRecord | null> {
     const result = await this.db.query<UserRecord>(
       `

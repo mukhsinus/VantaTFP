@@ -1,6 +1,7 @@
 import React from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import styles from './MobileBottomTabs.module.css';
 
 interface TabItem {
   to: string;
@@ -69,41 +70,14 @@ export function MobileBottomTabs() {
   const location = useLocation();
 
   return (
-    <nav
-      style={{
-        position: 'fixed',
-        left: 0,
-        right: 0,
-        bottom: 0,
-        zIndex: 'var(--z-topbar)' as React.CSSProperties['zIndex'],
-        background: 'var(--color-bg)',
-        borderTop: '1px solid var(--color-border)',
-        display: 'grid',
-        gridTemplateColumns: 'repeat(5, 1fr)',
-        padding: '6px 6px calc(6px + env(safe-area-inset-bottom))',
-      }}
-    >
+    <nav className={styles.nav}>
       {tabs.map((tab) => {
         const active = location.pathname.startsWith(tab.to);
         return (
           <NavLink
             key={tab.to}
             to={tab.to}
-            style={{
-              textDecoration: 'none',
-              color: active ? 'var(--color-accent)' : 'var(--color-text-muted)',
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 4,
-              minHeight: 48,
-              borderRadius: 'var(--radius)',
-              background: active ? 'var(--color-accent-subtle)' : 'transparent',
-              transition: 'all var(--transition-fast)',
-              fontSize: 10,
-              fontWeight: 600,
-            }}
+            className={`${styles.tab} ${active ? styles.tabActive : ''}`}
           >
             {tab.icon}
             <span>{t(tab.labelKey)}</span>

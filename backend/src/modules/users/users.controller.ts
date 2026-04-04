@@ -6,6 +6,7 @@ import {
   createUserSchema,
   updateUserSchema,
   userIdParamSchema,
+  listUsersQuerySchema,
 } from './users.schema.js';
 
 export async function usersRoutes(app: FastifyInstance): Promise<void> {
@@ -18,8 +19,9 @@ export async function usersRoutes(app: FastifyInstance): Promise<void> {
     '/',
     { preHandler: [authenticate, requireRoles('ADMIN', 'MANAGER')] },
     async (request: FastifyRequest, reply: FastifyReply) => {
-      const users = await usersService.getAllUsers(request.user.tenantId);
-      return reply.send(users);
+      const query = listUsersQuerySchema.parse(request.query);
+      const result = await usersService.listUsers(request.user.tenantId, query.page, query.limit);
+      return reply.send(result);
     }
   );
 

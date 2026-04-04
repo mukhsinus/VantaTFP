@@ -1,0 +1,351 @@
+.header {
+  height: var(--topbar-height);
+  background: var(--color-bg);
+  border-bottom: 1px solid var(--color-border);
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  position: sticky;
+  top: 0;
+  z-index: var(--z-topbar);
+}
+
+.headerMobile {
+  padding: 0 12px;
+}
+
+.headerDesktop {
+  padding: 0 24px;
+}
+
+.toggleButton {
+  background: transparent;
+  border: none;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  padding: 6px 8px;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color var(--transition);
+  flex-shrink: 0;
+}
+
+.toggleButton:hover {
+  color: var(--color-text-primary);
+}
+
+.title {
+  font-size: var(--text-md);
+  font-weight: 600;
+  color: var(--color-text-primary);
+  flex-shrink: 0;
+  margin: 0;
+}
+
+.searchContainer {
+  flex: 1;
+  max-width: 400px;
+  margin: 0 auto;
+}
+
+.searchWrapper {
+  position: relative;
+}
+
+.searchIcon {
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--color-text-muted);
+  pointer-events: none;
+}
+
+.searchInput {
+  width: 100%;
+  height: 32px;
+  padding: 0 12px 0 32px;
+  font-size: var(--text-sm);
+  color: var(--color-text-primary);
+  background: var(--color-bg-subtle);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-full);
+  outline: none;
+  transition: border-color var(--transition), background var(--transition);
+}
+
+.searchInput:focus {
+  border-color: var(--color-accent);
+  background: var(--color-bg);
+  box-shadow: 0 0 0 3px var(--color-accent-subtle);
+}
+
+.searchShortcut {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 10px;
+  color: var(--color-text-muted);
+  background: var(--color-bg-muted);
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  padding: 1px 4px;
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.actionsMobile {
+  gap: 4px;
+}
+
+.notificationButton {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  position: relative;
+  transition: background var(--transition);
+}
+
+.notificationButton:hover {
+  background: var(--color-bg-muted);
+}
+
+.notificationDot {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--color-danger);
+  border: 1.5px solid var(--color-bg);
+}
+
+.divider {
+  width: 1px;
+  height: 20px;
+  background: var(--color-border);
+}
+
+.userSection {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.userButtonMobile {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  padding: 0;
+  border-radius: 50%;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.userInfo {
+  line-height: 1.3;
+}
+
+.userName {
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--color-text-primary);
+  margin: 0;
+}
+
+.userBadge {
+  font-size: 10px;
+  padding: 1px 6px;
+}
+
+.mobileSheet {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-modal);
+  display: flex;
+  align-items: flex-end;
+}
+
+.sheetBackdrop {
+  position: absolute;
+  inset: 0;
+  border: none;
+  background: rgba(0, 0, 0, 0.35);
+  padding: 0;
+  cursor: pointer;
+}
+
+.sheetContent {
+  animation: slideUp 200ms ease-out;
+  width: 100%;
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.sheetHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.sheetTitle {
+  font-size: var(--text-md);
+  font-weight: 600;
+  color: var(--color-text-primary);
+  margin: 0;
+}
+
+.sheetCloseButton {
+  background: transparent;
+  border: none;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color var(--transition);
+}
+
+.sheetCloseButton:hover {
+  color: var(--color-text-primary);
+}
+
+.sheetBody {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.sheetMenu {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sheetMenuItem {
+  padding: 12px 16px;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius);
+  color: var(--color-text-primary);
+  cursor: pointer;
+  text-align: left;
+  font-size: var(--text-sm);
+  transition: background var(--transition);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.sheetMenuItem:hover {
+  background: var(--color-bg-muted);
+}
+
+.sheetMenuDivider {
+  height: 1px;
+  background: var(--color-border);
+  margin: 4px 0;
+}
+
+.sheetHandle {
+  width: 36px;
+  height: 4px;
+  border-radius: 999px;
+  background: var(--color-border-strong);
+  margin: 0 auto 12px;
+}
+
+.sheetUserSection {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 4px 12px;
+  border-bottom: 1px solid var(--color-border);
+  margin-bottom: 8px;
+}
+
+.sheetUserInfo {
+  min-width: 0;
+}
+
+.sheetUserName {
+  margin: 0;
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--color-text-primary);
+  word-break: break-word;
+}
+
+.sheetUserBadge {
+  margin-top: 4px;
+}
+
+.sheetActions {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.sheetActionButton {
+  width: 100%;
+  min-height: 48px;
+  border-radius: var(--radius);
+  border: 1px solid var(--color-border);
+  background: var(--color-bg);
+  color: var(--color-text-primary);
+  font-size: var(--text-base);
+  font-weight: 500;
+  text-align: left;
+  padding: 0 14px;
+  cursor: pointer;
+  box-sizing: border-box;
+  transition: background var(--transition);
+}
+
+.sheetActionButton:hover {
+  background: var(--color-bg-muted);
+}
+
+.sheetActionButtonDanger {
+  color: var(--color-danger);
+  background: var(--color-danger-subtle);
+  border-color: var(--color-danger-border);
+}
+
+.sheetActionButtonDanger:hover {
+  background: var(--color-danger-subtle-hover, var(--color-danger-subtle));
+}

@@ -119,3 +119,42 @@
   --z-modal:    400;
   --z-toast:    500;
 }
+
+/* Mobile adjustments */
+@media (max-width: 768px) {
+  :root {
+    /* Slightly smaller text on mobile */
+    --text-xs:   10px;
+    --text-sm:   12px;
+    --text-base: 13px;
+    --text-md:   14px;
+    --text-lg:   16px;
+    --text-xl:   18px;
+    --text-2xl:  22px;
+    --text-3xl:  28px;
+
+    /* Tighter spacing on small screens */
+    --space-1:  3px;
+    --space-2:  6px;
+    --space-3:  10px;
+    --space-4:  12px;
+    --space-5:  16px;
+    --space-6:  20px;
+    --space-8:  28px;
+    --space-10: 36px;
+    --space-12: 44px;
+    --space-16: 56px;
+  }
+}
+
+/* Extra small devices (phones < 360px) */
+@media (max-width: 359px) {
+  :root {
+    --space-1:  2px;
+    --space-2:  4px;
+    --space-3:  8px;
+    --space-4:  10px;
+    --radius-sm: 4px;
+    --radius:    6px;
+  }
+}

@@ -5,32 +5,28 @@ import { Topbar } from '@widgets/topbar/Topbar';
 import { MobileBottomTabs } from '@widgets/mobile-bottom-tabs/MobileBottomTabs';
 import { ToastRenderer } from '@shared/components/Toast';
 import { useIsMobile } from '@shared/hooks/useIsMobile';
+import { useSidebarStore } from '@app/store/sidebar.store';
+import styles from './AppLayout.module.css';
 
 export function AppLayout() {
   const isMobile = useIsMobile();
+  const isCollapsed = useSidebarStore((s) => s.isCollapsed);
+
+  const sidebarWidth = !isMobile && isCollapsed ? 64 : !isMobile ? 224 : 0;
 
   return (
-    <div style={{ display: 'flex', minHeight: '100vh' }}>
+    <div className={styles.container}>
       {!isMobile && <Sidebar />}
+      
       <div
+        className={styles.mainWrapper}
         style={{
-          marginLeft: isMobile ? 0 : 'var(--sidebar-width)',
-          flex: 1,
-          display: 'flex',
-          flexDirection: 'column',
-          minHeight: '100vh',
-          minWidth: 0,
+          marginLeft: sidebarWidth,
         }}
       >
         <Topbar />
-        <main
-          style={{
-            flex: 1,
-            padding: isMobile ? 12 : 28,
-            paddingBottom: isMobile ? 86 : 28,
-            background: 'var(--color-bg-subtle)',
-          }}
-        >
+        
+        <main className={styles.mainContent}>
           <Outlet />
         </main>
       </div>

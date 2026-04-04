@@ -6,6 +6,7 @@ import {
   createTenantSchema,
   updateTenantSchema,
   tenantIdParamSchema,
+  listTenantsQuerySchema,
 } from './tenants.schema.js';
 
 export async function tenantsRoutes(app: FastifyInstance): Promise<void> {
@@ -18,9 +19,10 @@ export async function tenantsRoutes(app: FastifyInstance): Promise<void> {
   app.get(
     '/',
     { preHandler: [authenticate, requireRoles('ADMIN')] },
-    async (_request: FastifyRequest, reply: FastifyReply) => {
-      const tenants = await tenantsService.getAllTenants();
-      return reply.send(tenants);
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      const query = listTenantsQuerySchema.parse(request.query);
+      const result = await tenantsService.listTenants(query.page, query.limit);
+      return reply.send(result);
     }
   );
 

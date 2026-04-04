@@ -7,6 +7,7 @@ import {
   updateKpiSchema,
   recordKpiProgressSchema,
   kpiIdParamSchema,
+  listKpiQuerySchema,
 } from './kpi.schema.js';
 
 export async function kpiRoutes(app: FastifyInstance): Promise<void> {
@@ -19,8 +20,9 @@ export async function kpiRoutes(app: FastifyInstance): Promise<void> {
     '/',
     { preHandler: [authenticate, requireRoles('ADMIN', 'MANAGER', 'EMPLOYEE')] },
     async (request: FastifyRequest, reply: FastifyReply) => {
-      const kpis = await kpiService.listKpis(request.user.tenantId);
-      return reply.send(kpis);
+      const query = listKpiQuerySchema.parse(request.query);
+      const result = await kpiService.listKpisPaginated(request.user.tenantId, query.page, query.limit);
+      return reply.send(result);
     }
   );
 

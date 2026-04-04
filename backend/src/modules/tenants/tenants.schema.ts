@@ -15,6 +15,12 @@ export const tenantIdParamSchema = z.object({
   tenantId: z.string().uuid(),
 });
 
+export const listTenantsQuerySchema = z.object({
+  page: z.coerce.number().int().positive().default(1),
+  limit: z.coerce.number().int().positive().max(100).default(20),
+});
+
 export type CreateTenantDto = z.infer<typeof createTenantSchema>;
 export type UpdateTenantDto = z.infer<typeof updateTenantSchema>;
 export type TenantIdParam = z.infer<typeof tenantIdParamSchema>;
+export type ListTenantsQuery = z.infer<typeof listTenantsQuerySchema>;

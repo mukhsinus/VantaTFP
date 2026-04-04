@@ -23,6 +23,21 @@ export interface TenantRecord {
   updated_at: Date;
 }
 
+export interface TenantInviteRecord {
+  id: string;
+  tenant_id: string;
+  email: string;
+  role: 'ADMIN' | 'MANAGER' | 'EMPLOYEE';
+  token: string;
+  token_hash: string;
+  expires_at: Date;
+  used_at: Date | null;
+  used_by_user_id: string | null;
+  created_by_user_id: string;
+  created_at: Date;
+  updated_at: Date;
+}
+
 export interface UserWithTenantRecord extends UserRecord {
   tenant_name: string;
 }
@@ -55,6 +70,67 @@ export class AuthRepository {
     );
 
     return result.rows[0] ?? null;
+  }
+
+  async findUserByIdAndTenant(userId: string, tenantId: string): Promise<UserRecord | null> {
+    const result = await this.db.query<UserRecord>(
+      `
+      SELECT
+        id,
+        tenant_id,
+        email,
+        password_hash,
+        first_name,
+        last_name,
+        role,
+        is_active,
+        created_at,
+        updated_at
+      FROM users
+      WHERE id = $1 AND tenant_id = $2 AND is_active = TRUE
+      LIMIT 1
+      `,
+      [userId, tenantId]
+    );
+
+    return result.rows[0] ?? null;
+  }
+
+  async findInviteByToken(token: string): Promise<TenantInviteRecord | null> {
+    const result = await this.db.query<TenantInviteRecord>(
+      `
+      SELECT
+        id,
+        tenant_id,
+        email,
+        role,
+        token,
+        token_hash,
+        expires_at,
+        used_at,
+        used_by_user_id,
+        created_by_user_id,
+        created_at,
+        updated_at
+      FROM tenant_invites
+      WHERE token = $1 AND used_at IS NULL AND expires_at > NOW()
+      LIMIT 1
+      `,
+      [token]
+    );
+
+    return result.rows[0] ?? null;
+  }
+
+  async markInviteAsUsed(inviteId: string, userId: string): Promise<void> {
+    await this.db.query(
+      `
+      UPDATE tenant_invites
+      SET used_at = NOW(), used_by_user_id = $1, updated_at = NOW()
+      WHERE id = $2
+      `,
+      [userId, inviteId]
+    );
   }
 
   async findFirstActiveTenant(): Promise<TenantRecord | null> {
