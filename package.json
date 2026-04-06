@@ -17,6 +17,7 @@
     "eslint": "^10.2.0"
   },
   "dependencies": {
+    "@fastify/rate-limit": "^10.3.0",
     "bcrypt": "^6.0.0",
     "bcryptjs": "^3.0.3"
   }

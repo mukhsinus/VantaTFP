@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Navigate, useSearchParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Button, Input } from '@shared/components/ui';
@@ -10,7 +10,13 @@ export function LoginPage() {
   const { t } = useTranslation();
   const isMobile = useIsMobile();
   const [searchParams] = useSearchParams();
-  const redirectTo = searchParams.get('redirect') ?? '/dashboard';
+  const redirectTo = useMemo(() => {
+    const raw = searchParams.get('redirect');
+    if (!raw || !raw.startsWith('/')) return '/dashboard';
+    // Prevent redirect loops like /login?redirect=/login
+    if (raw === '/login' || raw.startsWith('/login?')) return '/dashboard';
+    return raw;
+  }, [searchParams]);
 
   const isAuthenticated = useAuthStore((s) => Boolean(s.user && s.accessToken));
 
