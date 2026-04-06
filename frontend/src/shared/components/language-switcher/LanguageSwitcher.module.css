@@ -1,11 +1,11 @@
 .switcher {
   display: inline-flex;
   align-items: center;
-  gap: 2px;
-  padding: 2px;
+  gap: 4px;
+  padding: 4px;
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-full);
-  background: var(--color-bg);
+  border-radius: 12px;
+  background: var(--color-bg-subtle);
 }
 
 .button {
@@ -15,10 +15,10 @@
   font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.02em;
-  min-width: 34px;
-  height: 24px;
+  min-width: 36px;
+  height: 32px;
   padding: 0 8px;
-  border-radius: var(--radius-full);
+  border-radius: 10px;
   cursor: pointer;
   transition: background var(--transition), color var(--transition);
 }
@@ -35,5 +35,9 @@
 
 .fullWidth {
   width: 100%;
-  justify-content: center;
+  justify-content: stretch;
+}
+
+.fullWidth .button {
+  flex: 1;
 }

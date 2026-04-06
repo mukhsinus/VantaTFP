@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button, Badge, Avatar, Card, CardHeader, EmptyState } from '@shared/components/ui';
 import { useIsMobile } from '@shared/hooks/useIsMobile';
+import { formatCurrency } from '@shared/utils/currency';
 
 type PayrollStatus = 'DRAFT' | 'APPROVED' | 'PAID' | 'CANCELLED';
 
@@ -31,13 +32,12 @@ const statusVariant: Record<PayrollStatus, 'success' | 'accent' | 'default' | 'd
   CANCELLED: 'danger',
 };
 
-function formatCurrency(n: number): string {
-  return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(n);
-}
-
 export function PayrollPage() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const isMobile = useIsMobile();
+  const localeBase = (i18n.resolvedLanguage ?? i18n.language ?? 'ru').split('-')[0];
+  const locale: 'ru' | 'uz' | 'en' =
+    localeBase === 'ru' || localeBase === 'uz' || localeBase === 'en' ? localeBase : 'en';
   const [statusFilter, setStatusFilter] = useState<PayrollStatus | 'ALL'>('ALL');
   const statusLabel = (status: PayrollStatus | 'ALL') => {
     if (status === 'ALL') return t('common.all');
@@ -81,7 +81,7 @@ export function PayrollPage() {
       {/* Summary cards */}
       <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(4, 1fr)', gap: 12 }}>
         {[
-          { label: t('payroll.stats.totalNet'), value: formatCurrency(totalNet), accent: 'var(--color-accent)' },
+          { label: t('payroll.stats.totalNet'), value: formatCurrency(totalNet, locale), accent: 'var(--color-accent)' },
           { label: t('payroll.stats.paid'), value: String(mockPayroll.filter((p) => p.status === 'PAID').length), accent: 'var(--color-success)' },
           { label: t('payroll.stats.pending'), value: String(mockPayroll.filter((p) => p.status === 'APPROVED').length), accent: 'var(--color-warning)' },
           { label: t('payroll.stats.drafts'), value: String(mockPayroll.filter((p) => p.status === 'DRAFT').length), accent: 'var(--color-gray-400)' },
@@ -182,10 +182,10 @@ export function PayrollPage() {
                       fontFamily: 'var(--font-mono)',
                     }}
                   >
-                    {formatCurrency(entry.netSalary)}
+                    {formatCurrency(entry.netSalary, locale)}
                   </p>
                   <p style={{ margin: 0, fontSize: 'var(--text-sm)', color: 'var(--color-text-secondary)' }}>
-                    {t('payroll.table.baseSalary')}: <span style={{ fontFamily: 'var(--font-mono)' }}>{formatCurrency(entry.baseSalary)}</span>
+                    {t('payroll.table.baseSalary')}: <span style={{ fontFamily: 'var(--font-mono)' }}>{formatCurrency(entry.baseSalary, locale)}</span>
                   </p>
                   <p
                     style={{
@@ -194,10 +194,10 @@ export function PayrollPage() {
                       color: entry.bonuses > 0 ? 'var(--color-success)' : 'var(--color-text-muted)',
                     }}
                   >
-                    {t('payroll.table.bonuses')}: {entry.bonuses > 0 ? '+' : ''}{formatCurrency(entry.bonuses)}
+                    {t('payroll.table.bonuses')}: {entry.bonuses > 0 ? '+' : ''}{formatCurrency(entry.bonuses, locale)}
                   </p>
                   <p style={{ margin: 0, fontSize: 'var(--text-sm)', color: 'var(--color-danger)' }}>
-                    {t('payroll.table.deductions')}: -{formatCurrency(entry.deductions)}
+                    {t('payroll.table.deductions')}: -{formatCurrency(entry.deductions, locale)}
                   </p>
                 </div>
 
@@ -275,22 +275,22 @@ export function PayrollPage() {
                   </td>
                   <td style={{ padding: '12px 16px' }}>
                     <span style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-primary)', fontFamily: 'var(--font-mono)' }}>
-                      {formatCurrency(entry.baseSalary)}
+                      {formatCurrency(entry.baseSalary, locale)}
                     </span>
                   </td>
                   <td style={{ padding: '12px 16px' }}>
                     <span style={{ fontSize: 'var(--text-sm)', color: entry.bonuses > 0 ? 'var(--color-success)' : 'var(--color-text-muted)', fontFamily: 'var(--font-mono)' }}>
-                      {entry.bonuses > 0 ? '+' : ''}{formatCurrency(entry.bonuses)}
+                      {entry.bonuses > 0 ? '+' : ''}{formatCurrency(entry.bonuses, locale)}
                     </span>
                   </td>
                   <td style={{ padding: '12px 16px' }}>
                     <span style={{ fontSize: 'var(--text-sm)', color: 'var(--color-danger)', fontFamily: 'var(--font-mono)' }}>
-                      -{formatCurrency(entry.deductions)}
+                      -{formatCurrency(entry.deductions, locale)}
                     </span>
                   </td>
                   <td style={{ padding: '12px 16px' }}>
                     <span style={{ fontSize: 'var(--text-sm)', fontWeight: 700, color: 'var(--color-text-primary)', fontFamily: 'var(--font-mono)' }}>
-                      {formatCurrency(entry.netSalary)}
+                      {formatCurrency(entry.netSalary, locale)}
                     </span>
                   </td>
                   <td style={{ padding: '12px 16px' }}>

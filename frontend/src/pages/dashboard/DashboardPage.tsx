@@ -9,26 +9,45 @@ interface StatCardProps {
   delta?: { value: string; positive: boolean };
   icon: React.ReactNode;
   accent?: string;
+  compact?: boolean;
 }
 
-function StatCard({ label, value, delta, icon, accent = 'var(--color-accent)' }: StatCardProps) {
+function StatCard({ label, value, delta, icon, accent = 'var(--color-accent)', compact = false }: StatCardProps) {
   return (
-    <Card>
+    <Card padding={compact ? 'sm' : 'md'}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-        <div>
-          <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-secondary)', marginBottom: 6 }}>
+        <div style={{ minWidth: 0 }}>
+          <p
+            style={{
+              fontSize: compact ? '11px' : 'var(--text-sm)',
+              color: 'var(--color-text-secondary)',
+              marginBottom: compact ? 4 : 6,
+              lineHeight: 1.25,
+            }}
+          >
             {label}
           </p>
-          <p style={{ fontSize: 'var(--text-3xl)', fontWeight: 700, color: 'var(--color-text-primary)', lineHeight: 1 }}>
+          <p
+            style={{
+              fontSize: compact ? 'var(--text-2xl)' : 'var(--text-3xl)',
+              fontWeight: 700,
+              color: 'var(--color-text-primary)',
+              lineHeight: 1,
+            }}
+          >
             {value}
           </p>
           {delta && (
             <p
               style={{
-                fontSize: 'var(--text-xs)',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 4,
+                fontSize: compact ? '10px' : 'var(--text-xs)',
                 color: delta.positive ? 'var(--color-success)' : 'var(--color-danger)',
-                marginTop: 6,
+                marginTop: compact ? 4 : 6,
                 fontWeight: 500,
+                lineHeight: 1.2,
               }}
             >
               {delta.positive ? '↑' : '↓'} {delta.value}
@@ -37,9 +56,9 @@ function StatCard({ label, value, delta, icon, accent = 'var(--color-accent)' }:
         </div>
         <div
           style={{
-            width: 40,
-            height: 40,
-            borderRadius: 'var(--radius-lg)',
+            width: compact ? 32 : 40,
+            height: compact ? 32 : 40,
+            borderRadius: compact ? 'var(--radius)' : 'var(--radius-lg)',
             background: accent + '18',
             display: 'flex',
             alignItems: 'center',
@@ -75,26 +94,35 @@ export function DashboardPage() {
   ];
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: isMobile ? 14 : 24, width: '100%', maxWidth: '100%' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: isMobile ? 12 : 24, width: '100%', maxWidth: '100%' }}>
       {/* Page header */}
-      <div>
-        <h2 style={{ fontSize: 'var(--text-2xl)', fontWeight: 700, color: 'var(--color-text-primary)' }}>
-          {t('overview.title')}
-        </h2>
-        <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-secondary)', marginTop: 4 }}>
-          {t('overview.subtitle')}
-        </p>
-      </div>
+      {isMobile ? (
+        <div>
+          <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', margin: 0 }}>
+            {t('overview.subtitle')}
+          </p>
+        </div>
+      ) : (
+        <div>
+          <h2 style={{ fontSize: 'var(--text-2xl)', fontWeight: 700, color: 'var(--color-text-primary)' }}>
+            {t('overview.title')}
+          </h2>
+          <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-secondary)', marginTop: 4 }}>
+            {t('overview.subtitle')}
+          </p>
+        </div>
+      )}
 
       {/* Stat cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(auto-fit, minmax(200px, 1fr))', gap: isMobile ? 8 : 12 }}>
         <StatCard
           label={t('overview.stats.totalTasks')}
           value={48}
           delta={{ value: t('overview.stats.delta.totalTasksWeek'), positive: true }}
           accent="var(--color-accent)"
+          compact={isMobile}
           icon={
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75}>
+            <svg width={isMobile ? '16' : '18'} height={isMobile ? '16' : '18'} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75}>
               <path d="M9 11l3 3L22 4" /><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11" />
             </svg>
           }
@@ -104,8 +132,9 @@ export function DashboardPage() {
           value={31}
           delta={{ value: t('overview.stats.delta.completedWeek'), positive: true }}
           accent="var(--color-success)"
+          compact={isMobile}
           icon={
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75}>
+            <svg width={isMobile ? '16' : '18'} height={isMobile ? '16' : '18'} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75}>
               <circle cx="12" cy="12" r="10" /><path d="M9 12l2 2 4-4" />
             </svg>
           }
@@ -115,8 +144,9 @@ export function DashboardPage() {
           value={5}
           delta={{ value: t('overview.stats.delta.overdueSinceYesterday'), positive: false }}
           accent="var(--color-danger)"
+          compact={isMobile}
           icon={
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75}>
+            <svg width={isMobile ? '16' : '18'} height={isMobile ? '16' : '18'} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75}>
               <circle cx="12" cy="12" r="10" /><path d="M12 8v4M12 16h.01" />
             </svg>
           }
@@ -125,8 +155,9 @@ export function DashboardPage() {
           label={t('overview.stats.inProgress')}
           value={12}
           accent="var(--color-warning)"
+          compact={isMobile}
           icon={
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75}>
+            <svg width={isMobile ? '16' : '18'} height={isMobile ? '16' : '18'} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75}>
               <circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" />
             </svg>
           }
@@ -136,7 +167,7 @@ export function DashboardPage() {
       {/* Two-column layout */}
       <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 360px', gap: 16, width: '100%', maxWidth: '100%' }}>
         {/* Recent activity */}
-        <Card>
+        <Card padding={isMobile ? 'sm' : 'md'}>
           <CardHeader title={t('overview.activity.title')} subtitle={t('overview.activity.subtitle')} />
           <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
             {mockActivity.map((item, index) => (
@@ -145,30 +176,46 @@ export function DashboardPage() {
                 style={{
                   display: 'flex',
                   alignItems: 'center',
-                  gap: 12,
-                  padding: '12px 0',
+                  gap: isMobile ? 8 : 12,
+                  padding: isMobile ? '8px 0' : '12px 0',
                   borderBottom: index < mockActivity.length - 1 ? '1px solid var(--color-border)' : 'none',
                 }}
               >
                 <Avatar name={t(item.userKey)} size="sm" />
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-primary)' }}>
-                    <span
-                      style={{
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        whiteSpace: 'normal',
-                      }}
-                    >
-                      {t(`overview.activity.${item.actionKey}`, {
-                        user: t(item.userKey),
-                        task: t(item.taskKey),
-                      })}
-                    </span>
-                  </p>
+                  {(() => {
+                    const userName = t(item.userKey);
+                    const activity = t(`overview.activity.${item.actionKey}`, {
+                      user: userName,
+                      task: t(item.taskKey),
+                    });
+                    const actionText = activity.startsWith(userName)
+                      ? activity.slice(userName.length).trimStart()
+                      : activity;
+
+                    return (
+                      <p style={{ fontSize: isMobile ? '13px' : 'var(--text-sm)', color: 'var(--color-text-primary)', lineHeight: 1.4 }}>
+                        <strong style={{ fontWeight: 600 }}>{userName}</strong>{' '}
+                        <span style={{ color: 'var(--color-text-secondary)' }}>{actionText}</span>
+                      </p>
+                    );
+                  })()}
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-                  <Badge variant={typeToVariant[item.type]} dot>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                  <Badge
+                    variant={typeToVariant[item.type]}
+                    dot
+                    style={
+                      isMobile
+                        ? {
+                            padding: '1px 6px',
+                            fontSize: '10px',
+                            lineHeight: 1.4,
+                            opacity: 0.85,
+                          }
+                        : undefined
+                    }
+                  >
                     {item.type === 'success'
                       ? t('status.success')
                       : item.type === 'warning'
@@ -177,7 +224,7 @@ export function DashboardPage() {
                           ? t('status.danger')
                           : t('status.accent')}
                   </Badge>
-                  <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', whiteSpace: 'nowrap' }}>
+                  <span style={{ fontSize: isMobile ? '10px' : 'var(--text-xs)', color: 'var(--color-text-muted)', whiteSpace: 'nowrap' }}>
                     {item.time}
                   </span>
                 </div>
@@ -188,9 +235,9 @@ export function DashboardPage() {
 
         {/* Quick overview */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          <Card>
+          <Card padding={isMobile ? 'sm' : 'md'}>
             <CardHeader title={t('overview.overdue.title')} />
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: isMobile ? 8 : 10 }}>
                 {[
                   t('overview.overdue.items.invoiceProcessing'),
                   t('overview.overdue.items.budgetReviewQ4'),
@@ -202,7 +249,7 @@ export function DashboardPage() {
                     display: 'flex',
                     alignItems: 'center',
                     gap: 10,
-                    padding: '8px 10px',
+                    padding: isMobile ? '8px' : '8px 10px',
                     background: 'var(--color-danger-subtle)',
                     border: '1px solid var(--color-danger-border)',
                     borderRadius: 'var(--radius)',
@@ -222,9 +269,9 @@ export function DashboardPage() {
             </div>
           </Card>
 
-          <Card>
+          <Card padding={isMobile ? 'sm' : 'md'}>
             <CardHeader title={t('overview.progress.title')} />
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: isMobile ? 12 : 14 }}>
               {[
                 { label: t('overview.stats.completed'), value: 31, total: 48, color: 'var(--color-success)' },
                 { label: t('overview.stats.inProgress'), value: 12, total: 48, color: 'var(--color-warning)' },

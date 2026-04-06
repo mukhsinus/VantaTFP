@@ -18,6 +18,13 @@ const pageTitles: Record<string, string> = {
   '/settings': 'nav.settings',
 };
 
+const mobileSubtitleKeys: Partial<Record<string, string>> = {
+  '/dashboard': 'overview.subtitle',
+  '/kpi': 'kpi.subtitle',
+  '/payroll': 'payroll.subtitle',
+  '/settings': 'settings.subtitle',
+};
+
 const roleVariant: Record<string, 'accent' | 'warning' | 'success'> = {
   ADMIN: 'danger' as never,
   MANAGER: 'warning',
@@ -37,6 +44,7 @@ export function Topbar() {
 
   const baseRoute = '/' + location.pathname.split('/')[1];
   const titleKey = pageTitles[baseRoute] ?? 'nav.overview';
+  const subtitleKey = mobileSubtitleKeys[baseRoute];
   const fullName = user ? `${user.firstName} ${user.lastName}` : '';
 
   useEffect(() => {
@@ -92,7 +100,14 @@ export function Topbar() {
       )}
 
       {/* Page title */}
-      <h1 className={styles.title}>{t(titleKey)}</h1>
+      {isMobile ? (
+        <div className={styles.mobileTitleWrap}>
+          <h1 className={`${styles.title} ${styles.titleMobile}`}>{t(titleKey)}</h1>
+          {subtitleKey && <p className={styles.mobileSubtitle}>{t(subtitleKey)}</p>}
+        </div>
+      ) : (
+        <h1 className={styles.title}>{t(titleKey)}</h1>
+      )}
 
       {/* Search */}
       {!isMobile && (
@@ -187,44 +202,54 @@ export function Topbar() {
                 maxWidth: '100%',
                 boxSizing: 'border-box',
                 background: 'var(--color-bg)',
-                borderTopLeftRadius: 18,
-                borderTopRightRadius: 18,
+                borderTopLeftRadius: 20,
+                borderTopRightRadius: 20,
                 borderTop: '1px solid var(--color-border)',
-                boxShadow: '0 -8px 24px rgba(0,0,0,0.12)',
-                padding: '12px 14px calc(16px + env(safe-area-inset-bottom))',
+                boxShadow: '0 -12px 32px rgba(0,0,0,0.16)',
+                padding: '12px 16px calc(20px + env(safe-area-inset-bottom))',
               }}
             >
               <div className={styles.sheetHandle} />
 
-              <div className={styles.sheetUserSection}>
-                <Avatar name={fullName} size="md" />
-                <div className={styles.sheetUserInfo}>
-                  <p className={styles.sheetUserName}>{fullName}</p>
-                  <div className={styles.sheetUserBadge}>
-                    <Badge variant={roleVariant[user.role] ?? 'default'}>
-                      {user.role === 'ADMIN'
-                        ? t('profile.roles.admin')
-                        : user.role === 'MANAGER'
-                          ? t('profile.roles.manager')
-                          : t('profile.roles.employee')}
-                    </Badge>
+              <div className={styles.sheetSection}>
+                <p className={styles.sheetSectionTitle}>{t('settings.profile.title')}</p>
+                <div className={styles.sheetUserSection}>
+                  <Avatar name={fullName} size="md" />
+                  <div className={styles.sheetUserInfo}>
+                    <p className={styles.sheetUserName}>{fullName}</p>
+                    <div className={styles.sheetUserBadge}>
+                      <Badge variant={roleVariant[user.role] ?? 'default'}>
+                        {user.role === 'ADMIN'
+                          ? t('profile.roles.admin')
+                          : user.role === 'MANAGER'
+                            ? t('profile.roles.manager')
+                            : t('profile.roles.employee')}
+                      </Badge>
+                    </div>
                   </div>
                 </div>
               </div>
 
-              <div className={styles.sheetActions}>
+              <div className={styles.sheetSection}>
+                <p className={styles.sheetSectionTitle}>{t('common.languageSwitcher')}</p>
                 <div className={styles.sheetLanguage}>
                   <LanguageSwitcher fullWidth />
                 </div>
-                <button onClick={goToSettings} className={styles.sheetActionButton}>
-                  {t('nav.labels.settings')}
-                </button>
-                <button
-                  onClick={handleLogout}
-                  className={`${styles.sheetActionButton} ${styles.sheetActionButtonDanger}`}
-                >
-                  {t('nav.labels.logout')}
-                </button>
+              </div>
+
+              <div className={styles.sheetSection}>
+                <p className={styles.sheetSectionTitle}>{t('nav.account.actionsTitle')}</p>
+                <div className={styles.sheetActions}>
+                  <button onClick={goToSettings} className={styles.sheetActionButton}>
+                    {t('nav.labels.settings')}
+                  </button>
+                  <button
+                    onClick={handleLogout}
+                    className={`${styles.sheetActionButton} ${styles.sheetActionButtonDanger}`}
+                  >
+                    {t('nav.labels.logout')}
+                  </button>
+                </div>
               </div>
             </div>
           </div>,
