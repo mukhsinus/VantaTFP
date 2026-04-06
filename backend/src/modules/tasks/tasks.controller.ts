@@ -30,7 +30,7 @@ export async function tasksRoutes(app: FastifyInstance): Promise<void> {
         'Incoming tasks list request'
       );
       const query = listTasksQuerySchema.parse(request.query);
-      const result = await tasksService.listTasks(request.user.tenantId, query);
+      const result = await tasksService.listTasks(request.user.tenantId!, query);
       return reply.send(result);
     }
   );
@@ -40,7 +40,7 @@ export async function tasksRoutes(app: FastifyInstance): Promise<void> {
     { preHandler: [authenticate, requireRoles('ADMIN', 'MANAGER', 'EMPLOYEE')] },
     async (request: FastifyRequest, reply: FastifyReply) => {
       const { taskId } = taskIdParamSchema.parse(request.params);
-      const task = await tasksService.getTaskById(taskId, request.user.tenantId);
+      const task = await tasksService.getTaskById(taskId, request.user.tenantId!);
       return reply.send(task);
     }
   );
@@ -51,7 +51,7 @@ export async function tasksRoutes(app: FastifyInstance): Promise<void> {
     async (request: FastifyRequest, reply: FastifyReply) => {
       const body = createTaskSchema.parse(request.body);
       const task = await tasksService.createTask(
-        request.user.tenantId,
+        request.user.tenantId!,
         request.user.userId,
         body
       );
@@ -65,7 +65,7 @@ export async function tasksRoutes(app: FastifyInstance): Promise<void> {
     async (request: FastifyRequest, reply: FastifyReply) => {
       const { taskId } = taskIdParamSchema.parse(request.params);
       const body = updateTaskSchema.parse(request.body);
-      const task = await tasksService.updateTask(taskId, request.user.tenantId, body);
+      const task = await tasksService.updateTask(taskId, request.user.tenantId!, body);
       return reply.send(task);
     }
   );
@@ -75,7 +75,7 @@ export async function tasksRoutes(app: FastifyInstance): Promise<void> {
     { preHandler: [authenticate, requireRoles('ADMIN', 'MANAGER')] },
     async (request: FastifyRequest, reply: FastifyReply) => {
       const { taskId } = taskIdParamSchema.parse(request.params);
-      await tasksService.deleteTask(taskId, request.user.tenantId);
+      await tasksService.deleteTask(taskId, request.user.tenantId!);
       return reply.status(204).send();
     }
   );

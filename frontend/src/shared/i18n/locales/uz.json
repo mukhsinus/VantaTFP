@@ -36,7 +36,19 @@
     },
     "languageSwitcher": "Til tanlash",
     "errorTitle": "Xatolik yuz berdi",
-    "errorDescription": "Sahifa yuklanmadi. Qayta urinib ko‘ring.",
+    "errorDescription": "Sahifa yuklanmadi. Qayta urinib ko'ring.",
+    "notifications": {
+      "empty": "Bildirishnomalar yo'q",
+      "markAllAsRead": "Barchasi o'qilgan deb belgilash",
+      "welcome": {
+        "title": "Xush kelibsiz",
+        "message": "Sizning menejerdан yangi xabar keldi"
+      },
+      "taskCompleted": {
+        "title": "Vazifa bajarildi",
+        "message": "\"Choraklik hisobot\" vazifasi bajarilgan deb belgilandi"
+      }
+    },
     "brand": {
       "shortName": "TFP",
       "fullName": "Team Flow Platform"

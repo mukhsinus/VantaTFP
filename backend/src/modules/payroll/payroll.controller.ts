@@ -20,7 +20,7 @@ export async function payrollRoutes(app: FastifyInstance): Promise<void> {
     { preHandler: [authenticate, requireRoles('ADMIN', 'MANAGER')] },
     async (request: FastifyRequest, reply: FastifyReply) => {
       const query = listPayrollQuerySchema.parse(request.query);
-      const result = await payrollService.listPayrollEntries(request.user.tenantId, query);
+      const result = await payrollService.listPayrollEntries(request.user.tenantId!, query);
       return reply.send(result);
     }
   );
@@ -30,7 +30,7 @@ export async function payrollRoutes(app: FastifyInstance): Promise<void> {
     { preHandler: [authenticate, requireRoles('ADMIN', 'MANAGER')] },
     async (request: FastifyRequest, reply: FastifyReply) => {
       const { payrollId } = payrollIdParamSchema.parse(request.params);
-      const entry = await payrollService.getPayrollEntryById(payrollId, request.user.tenantId);
+      const entry = await payrollService.getPayrollEntryById(payrollId, request.user.tenantId!);
       return reply.send(entry);
     }
   );
@@ -40,7 +40,7 @@ export async function payrollRoutes(app: FastifyInstance): Promise<void> {
     { preHandler: [authenticate, requireRoles('ADMIN', 'MANAGER')] },
     async (request: FastifyRequest, reply: FastifyReply) => {
       const body = createPayrollEntrySchema.parse(request.body);
-      const entry = await payrollService.createPayrollEntry(request.user.tenantId, body);
+      const entry = await payrollService.createPayrollEntry(request.user.tenantId!, body);
       return reply.status(201).send(entry);
     }
   );
@@ -53,7 +53,7 @@ export async function payrollRoutes(app: FastifyInstance): Promise<void> {
       const body = updatePayrollEntrySchema.parse(request.body);
       const entry = await payrollService.updatePayrollEntry(
         payrollId,
-        request.user.tenantId,
+        request.user.tenantId!,
         body
       );
       return reply.send(entry);
@@ -68,7 +68,7 @@ export async function payrollRoutes(app: FastifyInstance): Promise<void> {
       const { payrollId } = payrollIdParamSchema.parse(request.params);
       const entry = await payrollService.approvePayrollEntry(
         payrollId,
-        request.user.tenantId,
+        request.user.tenantId!,
         request.user.userId
       );
       return reply.send(entry);

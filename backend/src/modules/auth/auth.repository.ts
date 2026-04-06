@@ -39,7 +39,9 @@ export interface TenantInviteRecord {
 }
 
 export interface UserWithTenantRecord extends UserRecord {
-  tenant_name: string;
+  tenant_name: string | null;
+  tenant_plan?: string | null;
+  is_super_admin?: boolean;
 }
 
 export class AuthRepository {
@@ -57,11 +59,13 @@ export class AuthRepository {
         u.last_name,
         u.role,
         u.is_active,
+        u.is_super_admin,
         u.created_at,
         u.updated_at,
-        t.name AS tenant_name
+        t.name AS tenant_name,
+        t.plan AS tenant_plan
       FROM users u
-      INNER JOIN tenants t ON t.id = u.tenant_id
+      LEFT JOIN tenants t ON t.id = u.tenant_id
       WHERE LOWER(u.email) = LOWER($1)
         AND u.is_active = TRUE
       LIMIT 1
@@ -91,6 +95,30 @@ export class AuthRepository {
       LIMIT 1
       `,
       [userId, tenantId]
+    );
+
+    return result.rows[0] ?? null;
+  }
+
+  async findUserById(userId: string): Promise<UserRecord | null> {
+    const result = await this.db.query<UserRecord>(
+      `
+      SELECT
+        id,
+        tenant_id,
+        email,
+        password_hash,
+        first_name,
+        last_name,
+        role,
+        is_active,
+        created_at,
+        updated_at
+      FROM users
+      WHERE id = $1 AND is_active = TRUE
+      LIMIT 1
+      `,
+      [userId]
     );
 
     return result.rows[0] ?? null;

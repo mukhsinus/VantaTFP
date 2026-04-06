@@ -254,7 +254,7 @@ export class PayrollRepository {
       params.push(filters.status);
     }
 
-    const result = await this.db.query<{ count: number }>(query, params);
+    const result = await this.db.query<{ count: string }>(query, params);
     return parseInt(result.rows[0]?.count ?? '0', 10);
   }
 }

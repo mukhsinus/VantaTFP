@@ -58,7 +58,19 @@
     "noData": "No data yet",
     "retry": "Try again",
     "errorTitle": "Something went wrong",
-    "errorDescription": "We couldn't load this page. Please try again."
+    "errorDescription": "We couldn't load this page. Please try again.",
+    "notifications": {
+      "empty": "No notifications yet",
+      "markAllAsRead": "Mark all as read",
+      "welcome": {
+        "title": "Welcome",
+        "message": "You have a new message from your manager"
+      },
+      "taskCompleted": {
+        "title": "Task Completed",
+        "message": "Task \"Quarterly Report\" has been marked as complete"
+      }
+    }
   },
   "nav": {
     "section": { "main": "Main" },
@@ -77,6 +89,7 @@
       "collapseSidebar": "Collapse"
     },
     "notifications": {
+      "markAllAsRead": "Mark all as read",
       "title": "Notifications"
     },
     "account": {

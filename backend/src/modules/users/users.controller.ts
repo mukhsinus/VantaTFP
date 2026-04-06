@@ -20,7 +20,7 @@ export async function usersRoutes(app: FastifyInstance): Promise<void> {
     { preHandler: [authenticate, requireRoles('ADMIN', 'MANAGER')] },
     async (request: FastifyRequest, reply: FastifyReply) => {
       const query = listUsersQuerySchema.parse(request.query);
-      const result = await usersService.listUsers(request.user.tenantId, query.page, query.limit);
+      const result = await usersService.listUsers(request.user.tenantId!, query.page, query.limit);
       return reply.send(result);
     }
   );
@@ -30,7 +30,7 @@ export async function usersRoutes(app: FastifyInstance): Promise<void> {
     { preHandler: [authenticate, requireRoles('ADMIN', 'MANAGER')] },
     async (request: FastifyRequest, reply: FastifyReply) => {
       const { id } = userIdParamSchema.parse(request.params);
-      const user = await usersService.getUserById(id, request.user.tenantId);
+      const user = await usersService.getUserById(id, request.user.tenantId!);
       return reply.send(user);
     }
   );
@@ -40,7 +40,7 @@ export async function usersRoutes(app: FastifyInstance): Promise<void> {
     { preHandler: [authenticate, requireRoles('ADMIN', 'MANAGER')] },
     async (request: FastifyRequest, reply: FastifyReply) => {
       const body = createUserSchema.parse(request.body);
-      const user = await usersService.createUser(request.user.tenantId, body, {
+      const user = await usersService.createUser(request.user.tenantId!, body, {
         actorUserId: request.user.userId,
         actorRole: request.user.role,
       });
@@ -54,7 +54,7 @@ export async function usersRoutes(app: FastifyInstance): Promise<void> {
     async (request: FastifyRequest, reply: FastifyReply) => {
       const { id } = userIdParamSchema.parse(request.params);
       const body = updateUserSchema.parse(request.body);
-      const user = await usersService.updateUser(id, request.user.tenantId, body, {
+      const user = await usersService.updateUser(id, request.user.tenantId!, body, {
         actorUserId: request.user.userId,
         actorRole: request.user.role,
       });
@@ -67,7 +67,7 @@ export async function usersRoutes(app: FastifyInstance): Promise<void> {
     { preHandler: [authenticate, requireRoles('ADMIN', 'MANAGER')] },
     async (request: FastifyRequest, reply: FastifyReply) => {
       const { id } = userIdParamSchema.parse(request.params);
-      await usersService.deactivateUser(id, request.user.tenantId, {
+      await usersService.deactivateUser(id, request.user.tenantId!, {
         actorUserId: request.user.userId,
         actorRole: request.user.role,
       });

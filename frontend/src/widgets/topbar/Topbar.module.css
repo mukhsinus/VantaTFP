@@ -1,5 +1,4 @@
 .header {
-  height: var(--topbar-height);
   background: var(--color-bg);
   border-bottom: 1px solid var(--color-border);
   display: flex;
@@ -11,13 +10,36 @@
 }
 
 .headerMobile {
-  min-height: 64px;
+  height: auto;
   padding: max(8px, env(safe-area-inset-top)) 12px 8px;
   gap: 12px;
 }
 
 .headerDesktop {
+  height: var(--topbar-height);
   padding: 0 24px;
+}
+
+.notificationPanelWrapper {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 24px;
+  z-index: 1001;
+}
+
+.notificationOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 1000;
+  display: flex;
+  align-items: flex-end;
+}
+
+@media (max-width: 768px) {
+  .notificationPanelWrapper {
+    right: 12px;
+  }
 }
 
 .toggleButton {
@@ -48,10 +70,11 @@
 
 .mobileTitleWrap {
   min-width: 0;
-  flex: 1;
+  flex: 0 1 auto;
   display: flex;
   flex-direction: column;
   gap: 4px;
+  max-width: 50%;
 }
 
 .titleMobile {
@@ -125,16 +148,20 @@
   align-items: center;
   gap: 8px;
   flex-shrink: 0;
+  white-space: nowrap;
+  margin-left: auto;
 }
 
-.actionsMobile {
-  margin-left: auto;
-  gap: 4px;
+@media (max-width: 480px) {
+  .notificationButton {
+    width: 28px;
+    height: 28px;
+  }
 }
 
 .notificationButton {
-  width: 32px;
-  height: 32px;
+  width: 40px;
+  height: 40px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -144,22 +171,35 @@
   color: var(--color-text-secondary);
   cursor: pointer;
   position: relative;
-  transition: background var(--transition);
+  transition: background var(--transition), color var(--transition);
+  flex-shrink: 0;
 }
 
 .notificationButton:hover {
   background: var(--color-bg-muted);
+  color: var(--color-text-primary);
+}
+
+.notificationButton[aria-pressed="true"] {
+  background: var(--color-bg-muted);
+  color: var(--color-accent);
 }
 
 .notificationDot {
   position: absolute;
-  top: 5px;
-  right: 5px;
-  width: 7px;
-  height: 7px;
+  top: 2px;
+  right: 2px;
+  width: 14px;
+  height: 14px;
   border-radius: 50%;
   background: var(--color-danger);
-  border: 1.5px solid var(--color-bg);
+  border: 1px solid var(--color-bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 8px;
+  font-weight: 600;
+  color: white;
 }
 
 .divider {

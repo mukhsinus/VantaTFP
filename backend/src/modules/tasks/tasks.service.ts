@@ -1,6 +1,7 @@
 import { TasksRepository } from './tasks.repository.js';
 import { CreateTaskDto, UpdateTaskDto, ListTasksQuery } from './tasks.schema.js';
 import { ApplicationError } from '../../shared/utils/application-error.js';
+import { getTierFeatures } from '../../shared/config/tier.config.js';
 
 export class TasksService {
   constructor(private readonly tasksRepository: TasksRepository) {}
@@ -98,6 +99,21 @@ export class TasksService {
     const deleted = await this.tasksRepository.delete(taskId, tenantId);
     if (!deleted) {
       throw ApplicationError.notFound('Task');
+    }
+  }
+
+  /**
+   * Check if a specific task feature is available for the tenant plan
+   */
+  checkFeatureAvailable(tenantPlan: string, feature: 'timeTracking' | 'auditHistory'): void {
+    const tierFeatures = getTierFeatures(tenantPlan);
+    const isAvailable = tierFeatures.tasksFeatures[feature];
+
+    if (!isAvailable) {
+      const featureName = feature === 'timeTracking' ? 'Time Tracking' : 'Task History & Audit';
+      throw ApplicationError.forbidden(
+        `${featureName} is not available in your current plan (${tenantPlan}). Please upgrade to PRO or ENTERPRISE.`
+      );
     }
   }
 

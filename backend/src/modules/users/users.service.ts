@@ -2,6 +2,7 @@ import { UsersRepository } from './users.repository.js';
 import { CreateUserDto, UpdateUserDto } from './users.schema.js';
 import { ApplicationError } from '../../shared/utils/application-error.js';
 import { Role } from '../../shared/types/common.types.js';
+import { getTierFeatures, PlanType } from '../../shared/config/tier.config.js';
 import bcrypt from 'bcrypt';
 
 interface ActorContext {
@@ -75,9 +76,20 @@ export class UsersService {
   async createUser(
     tenantId: string,
     data: CreateUserDto,
-    context: ActorContext
+    context: ActorContext,
+    tenantPlan: string = 'FREE'
   ): Promise<UserResponse> {
     this.assertCreateRoleAllowed(context.actorRole, data.role);
+
+    // Check user limit based on plan
+    const tierFeatures = getTierFeatures(tenantPlan);
+    const currentUserCount = await this.usersRepository.countActiveByTenant(tenantId);
+    
+    if (currentUserCount >= tierFeatures.maxUsers) {
+      throw ApplicationError.forbidden(
+        `User limit (${tierFeatures.maxUsers}) reached for your plan (${tenantPlan}). Please upgrade to add more users.`
+      );
+    }
 
     const existing = await this.usersRepository.findByEmail(data.email);
     if (existing) {

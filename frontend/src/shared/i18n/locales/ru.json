@@ -37,6 +37,18 @@
     "languageSwitcher": "Переключение языка",
     "errorTitle": "Что-то пошло не так",
     "errorDescription": "Не удалось загрузить страницу. Попробуйте снова.",
+    "notifications": {
+      "empty": "Нет уведомлений",
+      "markAllAsRead": "Отметить все как прочитанные",
+      "welcome": {
+        "title": "Добро пожаловать",
+        "message": "У вас новое сообщение от вашего менеджера"
+      },
+      "taskCompleted": {
+        "title": "Задача завершена",
+        "message": "Задача \"Квартальный отчет\" отмечена как завершенная"
+      }
+    },
     "brand": {
       "shortName": "TFP",
       "fullName": "Team Flow Platform"

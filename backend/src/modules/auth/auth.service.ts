@@ -123,14 +123,22 @@ export class AuthService {
       // Decode refresh token (should have long expiry)
       const decoded = this.verifyToken(refreshToken);
 
-      // Verify user and tenant still exist and are active
-      const user = await this.authRepository.findUserByIdAndTenant(
-        decoded.userId,
-        decoded.tenantId
-      );
+      // For super admins (tenantId is null), just verify the user exists
+      if (!decoded.tenantId) {
+        const user = await this.authRepository.findUserById(decoded.userId);
+        if (!user) {
+          throw ApplicationError.unauthorized('Super admin user no longer exists');
+        }
+      } else {
+        // Verify user and tenant still exist and are active
+        const user = await this.authRepository.findUserByIdAndTenant(
+          decoded.userId,
+          decoded.tenantId
+        );
 
-      if (!user) {
-        throw ApplicationError.unauthorized('User or tenant no longer exists');
+        if (!user) {
+          throw ApplicationError.unauthorized('User or tenant no longer exists');
+        }
       }
 
       // Create new token pair
@@ -152,6 +160,8 @@ export class AuthService {
       tenantId: user.tenant_id,
       email: user.email,
       role: user.role as Role,
+      tenantPlan: user.tenant_plan as 'FREE' | 'PRO' | 'ENTERPRISE',
+      is_super_admin: (user as any).is_super_admin,
     };
 
     return {
@@ -160,7 +170,7 @@ export class AuthService {
       user: {
         userId: user.id,
         tenantId: user.tenant_id,
-        tenantName: user.tenant_name,
+        tenantName: user.tenant_name ?? 'Platform Admin',
         email: user.email,
         firstName: user.first_name,
         lastName: user.last_name,

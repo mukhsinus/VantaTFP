@@ -1,6 +1,7 @@
 import { KpiRepository, KpiRecord, KpiProgressRecord } from './kpi.repository.js';
 import { CreateKpiDto, UpdateKpiDto, RecordKpiProgressDto } from './kpi.schema.js';
 import { ApplicationError } from '../../shared/utils/application-error.js';
+import { getTierFeatures } from '../../shared/config/tier.config.js';
 
 export interface KpiResponse {
   id: string;
@@ -187,6 +188,45 @@ export class KpiService {
 
     const progress = await this.kpiRepository.findProgressByKpi(kpiId, tenantId);
     return progress.map(this.progressToResponse);
+  }
+
+  /**
+   * Check if KPI per-employee feature is available for the tenant plan
+   */
+  checkPerEmployeeFeature(tenantPlan: string): void {
+    const tierFeatures = getTierFeatures(tenantPlan);
+
+    if (!tierFeatures.kpiModule.perEmployee) {
+      throw ApplicationError.forbidden(
+        `Per-employee KPI tracking is not available in ${tenantPlan} plan. Please upgrade to PRO or ENTERPRISE.`
+      );
+    }
+  }
+
+  /**
+   * Check if KPI filters feature is available for the tenant plan
+   */
+  checkFiltersFeature(tenantPlan: string): void {
+    const tierFeatures = getTierFeatures(tenantPlan);
+
+    if (!tierFeatures.kpiModule.filters) {
+      throw ApplicationError.forbidden(
+        `KPI filters are not available in ${tenantPlan} plan. Please upgrade to PRO or ENTERPRISE.`
+      );
+    }
+  }
+
+  /**
+   * Check if KPI analytics feature is available for the tenant plan
+   */
+  checkAnalyticsFeature(tenantPlan: string): void {
+    const tierFeatures = getTierFeatures(tenantPlan);
+
+    if (!tierFeatures.kpiModule.analytics) {
+      throw ApplicationError.forbidden(
+        `KPI analytics and detailed reporting are not available in ${tenantPlan} plan. Please upgrade to PRO or ENTERPRISE.`
+      );
+    }
   }
 
   private toResponse(kpi: KpiRecord): KpiResponse {

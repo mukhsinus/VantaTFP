@@ -1,6 +1,7 @@
 import { PayrollRepository, PayrollEntryRecord } from './payroll.repository.js';
 import { CreatePayrollEntryDto, UpdatePayrollEntryDto, ListPayrollQuery } from './payroll.schema.js';
 import { ApplicationError } from '../../shared/utils/application-error.js';
+import { getTierFeatures } from '../../shared/config/tier.config.js';
 
 export interface PayrollEntryResponse {
   id: string;
@@ -170,6 +171,34 @@ export class PayrollService {
     });
 
     return this.toResponse(updated);
+  }
+
+  /**
+   * Check if payroll CRUD operations are allowed for the tenant plan
+   */
+  checkWriteAccessAllowed(tenantPlan: string): void {
+    const tierFeatures = getTierFeatures(tenantPlan);
+
+    if (!tierFeatures.payroll.fullCrud) {
+      throw ApplicationError.forbidden(
+        `Payroll management is not available in ${tenantPlan} plan. Please upgrade to PRO or ENTERPRISE to manage payroll.`
+      );
+    }
+  }
+
+  /**
+   * Check if a payroll feature is available for the tenant plan
+   */
+  checkFeatureAvailable(tenantPlan: string, feature: 'kpiBasedCalculation' | 'flexibleCalculation'): void {
+    const tierFeatures = getTierFeatures(tenantPlan);
+    const isAvailable = tierFeatures.payroll[feature];
+
+    if (!isAvailable) {
+      const featureName = feature === 'kpiBasedCalculation' ? 'KPI-Based Payroll Calculation' : 'Flexible Salary Calculation';
+      throw ApplicationError.forbidden(
+        `${featureName} is not available in your current plan (${tenantPlan}). Please upgrade to PRO or ENTERPRISE.`
+      );
+    }
   }
 
   private toResponse(entry: PayrollEntryRecord): PayrollEntryResponse {

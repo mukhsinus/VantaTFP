@@ -2,9 +2,11 @@ export type Role = 'ADMIN' | 'MANAGER' | 'EMPLOYEE';
 
 export interface AuthenticatedUser {
   userId: string;
-  tenantId: string;
+  tenantId: string | null; // NULL for super admins
   email: string;
   role: Role;
+  tenantPlan?: 'FREE' | 'PRO' | 'ENTERPRISE';
+  is_super_admin?: boolean; // Set to true for super admin users
 }
 
 export interface PaginationQuery {

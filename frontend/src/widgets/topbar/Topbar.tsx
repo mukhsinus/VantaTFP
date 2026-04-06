@@ -4,8 +4,10 @@ import { createPortal } from 'react-dom';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Avatar, Badge } from '@shared/components/ui';
 import { LanguageSwitcher } from '@shared/components/language-switcher/LanguageSwitcher';
+import { NotificationPanel } from '@shared/components/NotificationPanel';
 import { useAuthStore } from '@app/store/auth.store';
 import { useSidebarStore } from '@app/store/sidebar.store';
+import { useNotificationStore } from '@app/store/notifications.store';
 import { useIsMobile } from '@shared/hooks/useIsMobile';
 import styles from './Topbar.module.css';
 
@@ -41,6 +43,8 @@ export function Topbar() {
   const isMobile = useIsMobile();
   const [search, setSearch] = useState('');
   const [isAccountSheetOpen, setIsAccountSheetOpen] = useState(false);
+  const [isNotificationPanelOpen, setIsNotificationPanelOpen] = useState(false);
+  const unreadCount = useNotificationStore((s: any) => s.getUnreadCount());
 
   const baseRoute = '/' + location.pathname.split('/')[1];
   const titleKey = pageTitles[baseRoute] ?? 'nav.overview';
@@ -49,6 +53,7 @@ export function Topbar() {
 
   useEffect(() => {
     setIsAccountSheetOpen(false);
+    setIsNotificationPanelOpen(false);
   }, [location.pathname, location.search]);
 
   useEffect(() => {
@@ -133,19 +138,23 @@ export function Topbar() {
 
       {/* Actions */}
       <div className={`${styles.actions} ${isMobile ? styles.actionsMobile : ''}`}>
-        {!isMobile && <LanguageSwitcher />}
+        {/* Language switcher - show on desktop and mobile */}
+        <LanguageSwitcher />
 
-        {/* Notifications bell */}
-        {!isMobile && (
-          <button className={styles.notificationButton} aria-label={t('nav.notifications.title')}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75}>
-              <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 01-3.46 0" />
-            </svg>
-            <span className={styles.notificationDot} />
-          </button>
-        )}
+        {/* Notifications bell - now visible on both desktop and mobile */}
+        <button
+          onClick={() => setIsNotificationPanelOpen(!isNotificationPanelOpen)}
+          className={styles.notificationButton}
+          aria-label={t('nav.notifications.title')}
+          aria-pressed={isNotificationPanelOpen}
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75}>
+            <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 01-3.46 0" />
+          </svg>
+          {unreadCount > 0 && <span className={styles.notificationDot}>{unreadCount > 9 ? '9+' : unreadCount}</span>}
+        </button>
 
-        {/* Divider */}
+        {/* Divider - hide on mobile */}
         {!isMobile && <div className={styles.divider} />}
 
         {/* User */}
@@ -231,13 +240,6 @@ export function Topbar() {
               </div>
 
               <div className={styles.sheetSection}>
-                <p className={styles.sheetSectionTitle}>{t('common.languageSwitcher')}</p>
-                <div className={styles.sheetLanguage}>
-                  <LanguageSwitcher fullWidth />
-                </div>
-              </div>
-
-              <div className={styles.sheetSection}>
                 <p className={styles.sheetSectionTitle}>{t('nav.account.actionsTitle')}</p>
                 <div className={styles.sheetActions}>
                   <button onClick={goToSettings} className={styles.sheetActionButton}>
@@ -255,6 +257,37 @@ export function Topbar() {
           </div>,
           document.body
         )}
+
+      {/* Notification Panel - Render as portal on mobile, inline on desktop */}
+      {isMobile && isNotificationPanelOpen ? (
+        createPortal(
+          <div
+            className={styles.notificationOverlay}
+            onClick={(e) => {
+              if (e.target === e.currentTarget) {
+                setIsNotificationPanelOpen(false);
+              }
+            }}
+          >
+            <NotificationPanel
+              isOpen={isNotificationPanelOpen}
+              onClose={() => setIsNotificationPanelOpen(false)}
+              isMobile={true}
+            />
+          </div>,
+          document.body
+        )
+      ) : (
+        !isMobile && isNotificationPanelOpen && (
+          <div className={styles.notificationPanelWrapper}>
+            <NotificationPanel
+              isOpen={isNotificationPanelOpen}
+              onClose={() => setIsNotificationPanelOpen(false)}
+              isMobile={false}
+            />
+          </div>
+        )
+      )}
     </header>
   );
 }

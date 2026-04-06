@@ -1,0 +1,499 @@
+/* PlanSelector styles */
+
+.plan-selector {
+  padding: 3rem 1rem;
+  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+  min-height: 100vh;
+}
+
+.plan-selector__header {
+  text-align: center;
+  margin-bottom: 3rem;
+}
+
+.plan-selector__header h1 {
+  font-size: 2.5rem;
+  margin-bottom: 0.5rem;
+  color: #1a202c;
+}
+
+.plan-selector__header p {
+  font-size: 1.1rem;
+  color: #4a5568;
+}
+
+.plan-selector__toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  margin-bottom: 3rem;
+}
+
+.toggle-switch {
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+  position: relative;
+  width: 3rem;
+  height: 1.5rem;
+}
+
+.toggle-switch input {
+  display: none;
+}
+
+.toggle-slider {
+  display: block;
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #cbd5e0;
+  border-radius: 1rem;
+  transition: 0.3s;
+}
+
+.toggle-slider::before {
+  content: '';
+  position: absolute;
+  height: 1.2rem;
+  width: 1.2rem;
+  left: 0.2rem;
+  bottom: 0.15rem;
+  background-color: white;
+  border-radius: 50%;
+  transition: 0.3s;
+}
+
+.toggle-switch input:checked + .toggle-slider {
+  background-color: #48bb78;
+}
+
+.toggle-switch input:checked + .toggle-slider::before {
+  transform: translateX(1.5rem);
+}
+
+/* Plans grid */
+.plans-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 2rem;
+  max-width: 1200px;
+  margin: 0 auto 3rem;
+}
+
+/* Plan card */
+.plan-card {
+  background: white;
+  border-radius: 1rem;
+  padding: 2rem;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+.plan-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 20px rgba(0, 0, 0, 0.15);
+}
+
+.plan-card--featured {
+  border: 2px solid #667eea;
+  transform: scale(1.05);
+}
+
+.plan-card--featured:hover {
+  transform: scale(1.05) translateY(-4px);
+}
+
+.plan-card--current {
+  border: 2px solid #48bb78;
+  background: #f0fff4;
+}
+
+.plan-card__badge {
+  position: absolute;
+  top: -0.75rem;
+  right: 1.5rem;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  font-weight: 600;
+  font-size: 0.85rem;
+}
+
+.plan-card__header {
+  margin-bottom: 1.5rem;
+}
+
+.plan-card__name {
+  font-size: 1.75rem;
+  margin-bottom: 0.5rem;
+  color: #1a202c;
+}
+
+.plan-card__description {
+  color: #718096;
+  font-size: 0.95rem;
+}
+
+.plan-card__price {
+  margin-bottom: 1.5rem;
+  font-size: 1.1rem;
+}
+
+.plan-card__amount {
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: #1a202c;
+}
+
+.plan-card__period {
+  color: #718096;
+  margin-left: 0.5rem;
+}
+
+.plan-card__highlights {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 2rem;
+}
+
+.plan-card__highlight {
+  font-size: 0.95rem;
+  color: #4a5568;
+  padding-left: 1.5rem;
+  position: relative;
+}
+
+.plan-card__highlight::before {
+  content: '✓';
+  position: absolute;
+  left: 0;
+  color: #48bb78;
+  font-weight: bold;
+}
+
+.plan-card__button {
+  padding: 0.75rem 1.5rem;
+  border: none;
+  border-radius: 0.5rem;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin-bottom: 2rem;
+}
+
+.plan-card__button--primary {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+}
+
+.plan-card__button--primary:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 16px rgba(102, 126, 234, 0.4);
+}
+
+.plan-card__button--secondary {
+  background-color: #f7fafc;
+  color: #667eea;
+  border: 2px solid #667eea;
+}
+
+.plan-card__button--secondary:hover:not(:disabled) {
+  background-color: #667eea;
+  color: white;
+}
+
+.plan-card__button:disabled {
+  opacity: 0.6;
+  cursor: default;
+  transform: none;
+}
+
+.plan-card__features {
+  flex-grow: 1;
+}
+
+/* Feature groups */
+.feature-group {
+  margin-bottom: 1.5rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.feature-group:last-child {
+  border-bottom: none;
+  margin-bottom: 0;
+  padding-bottom: 0;
+}
+
+.feature-group__title {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #4a5568;
+  margin-bottom: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.feature-group__list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+/* Feature items */
+.feature-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+  margin-bottom: 0.5rem;
+  color: #4a5568;
+}
+
+.feature-item__icon {
+  min-width: 1.2rem;
+  text-align: center;
+  font-weight: bold;
+}
+
+.feature-item--included .feature-item__icon {
+  color: #48bb78;
+}
+
+.feature-item--excluded {
+  opacity: 0.5;
+}
+
+.feature-item--excluded .feature-item__icon {
+  color: #cbd5e0;
+}
+
+/* Plan footer */
+.plan-selector__footer {
+  text-align: center;
+  padding-top: 2rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.plan-selector__footer p {
+  color: #4a5568;
+  margin-bottom: 0.5rem;
+}
+
+/* Comparison table */
+.comparison-table {
+  max-width: 1200px;
+  margin: 3rem auto;
+  background: white;
+  padding: 2rem;
+  border-radius: 1rem;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.comparison-table h2 {
+  margin-bottom: 2rem;
+  color: #1a202c;
+}
+
+.comparison-table table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.comparison-table th {
+  background-color: #f7fafc;
+  padding: 1rem;
+  text-align: left;
+  font-weight: 600;
+  color: #1a202c;
+  border-bottom: 2px solid #e2e8f0;
+}
+
+.plan-header {
+  text-align: center;
+  font-size: 1.1rem;
+}
+
+.comparison-table td {
+  padding: 1rem;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.section-header td {
+  background-color: #f7fafc;
+  padding: 1rem;
+  font-weight: 600;
+  color: #1a202c;
+}
+
+.section-toggle {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #667eea;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0;
+}
+
+.toggle-icon {
+  display: inline-block;
+  transition: transform 0.2s ease;
+}
+
+.feature-row:nth-child(even) td {
+  background-color: #f7fafc;
+}
+
+.feature-name {
+  color: #4a5568;
+  font-weight: 500;
+}
+
+.col-free,
+.col-pro,
+.col-enterprise {
+  text-align: center;
+}
+
+.feature-cell {
+  font-weight: 600;
+  font-size: 1.2rem;
+}
+
+.feature-cell--included {
+  color: #48bb78;
+}
+
+.feature-cell--excluded {
+  color: #cbd5e0;
+}
+
+/* Responsive styles */
+@media (max-width: 1024px) {
+  .plan-card--featured {
+    transform: scale(1);
+  }
+
+  .plan-card--featured:hover {
+    transform: translateY(-4px);
+  }
+
+  .plans-grid {
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  }
+}
+
+@media (max-width: 768px) {
+  .plan-selector {
+    padding: 2rem 0.5rem;
+  }
+
+  .plan-selector__header h1 {
+    font-size: 1.75rem;
+  }
+
+  .plans-grid {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+  }
+
+  .plan-card {
+    padding: 1.5rem;
+  }
+
+  .plan-card__badge {
+    right: 1rem;
+  }
+
+  .plan-selector__toggle {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .comparison-table {
+    overflow-x: auto;
+    padding: 1rem;
+  }
+
+  .comparison-table table {
+    font-size: 0.85rem;
+  }
+
+  .comparison-table th,
+  .comparison-table td {
+    padding: 0.75rem;
+  }
+}
+
+@media (prefers-color-scheme: dark) {
+  .plan-selector {
+    background: linear-gradient(135deg, #1a202c 0%, #2d3748 100%);
+  }
+
+  .plan-selector__header h1 {
+    color: #f7fafc;
+  }
+
+  .plan-selector__header p {
+    color: #cbd5e0;
+  }
+
+  .plan-card {
+    background: #2d3748;
+    color: #e2e8f0;
+  }
+
+  .plan-card__name {
+    color: #f7fafc;
+  }
+
+  .plan-card__description {
+    color: #a0aec0;
+  }
+
+  .plan-card__amount {
+    color: #f7fafc;
+  }
+
+  .plan-card__period {
+    color: #a0aec0;
+  }
+
+  .comparison-table {
+    background: #2d3748;
+  }
+
+  .comparison-table h2 {
+    color: #f7fafc;
+  }
+
+  .comparison-table th {
+    background-color: #1a202c;
+    color: #f7fafc;
+  }
+
+  .section-header td {
+    background-color: #1a202c;
+    color: #f7fafc;
+  }
+
+  .feature-row:nth-child(even) td {
+    background-color: #1a202c;
+  }
+}

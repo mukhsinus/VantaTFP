@@ -41,3 +41,18 @@
 .fullWidth .button {
   flex: 1;
 }
+
+/* Mobile responsive */
+@media (max-width: 480px) {
+  .switcher {
+    gap: 2px;
+    padding: 2px;
+  }
+
+  .button {
+    min-width: 28px;
+    height: 24px;
+    padding: 0 4px;
+    font-size: 10px;
+  }
+}

@@ -21,7 +21,7 @@ export async function kpiRoutes(app: FastifyInstance): Promise<void> {
     { preHandler: [authenticate, requireRoles('ADMIN', 'MANAGER', 'EMPLOYEE')] },
     async (request: FastifyRequest, reply: FastifyReply) => {
       const query = listKpiQuerySchema.parse(request.query);
-      const result = await kpiService.listKpisPaginated(request.user.tenantId, query.page, query.limit);
+      const result = await kpiService.listKpisPaginated(request.user.tenantId!, query.page, query.limit);
       return reply.send(result);
     }
   );
@@ -31,7 +31,7 @@ export async function kpiRoutes(app: FastifyInstance): Promise<void> {
     { preHandler: [authenticate, requireRoles('ADMIN', 'MANAGER', 'EMPLOYEE')] },
     async (request: FastifyRequest, reply: FastifyReply) => {
       const { kpiId } = kpiIdParamSchema.parse(request.params);
-      const kpi = await kpiService.getKpiById(kpiId, request.user.tenantId);
+      const kpi = await kpiService.getKpiById(kpiId, request.user.tenantId!);
       return reply.send(kpi);
     }
   );
@@ -41,7 +41,7 @@ export async function kpiRoutes(app: FastifyInstance): Promise<void> {
     { preHandler: [authenticate, requireRoles('ADMIN', 'MANAGER')] },
     async (request: FastifyRequest, reply: FastifyReply) => {
       const body = createKpiSchema.parse(request.body);
-      const kpi = await kpiService.createKpi(request.user.tenantId, request.user.userId, body);
+      const kpi = await kpiService.createKpi(request.user.tenantId!, request.user.userId, body);
       return reply.status(201).send(kpi);
     }
   );
@@ -52,7 +52,7 @@ export async function kpiRoutes(app: FastifyInstance): Promise<void> {
     async (request: FastifyRequest, reply: FastifyReply) => {
       const { kpiId } = kpiIdParamSchema.parse(request.params);
       const body = updateKpiSchema.parse(request.body);
-      const kpi = await kpiService.updateKpi(kpiId, request.user.tenantId, body);
+      const kpi = await kpiService.updateKpi(kpiId, request.user.tenantId!, body);
       return reply.send(kpi);
     }
   );
@@ -62,7 +62,7 @@ export async function kpiRoutes(app: FastifyInstance): Promise<void> {
     { preHandler: [authenticate, requireRoles('ADMIN')] },
     async (request: FastifyRequest, reply: FastifyReply) => {
       const { kpiId } = kpiIdParamSchema.parse(request.params);
-      await kpiService.deleteKpi(kpiId, request.user.tenantId);
+      await kpiService.deleteKpi(kpiId, request.user.tenantId!);
       return reply.status(204).send();
     }
   );
@@ -74,7 +74,7 @@ export async function kpiRoutes(app: FastifyInstance): Promise<void> {
     async (request: FastifyRequest, reply: FastifyReply) => {
       const { kpiId } = kpiIdParamSchema.parse(request.params);
       const body = recordKpiProgressSchema.parse(request.body);
-      const progress = await kpiService.recordProgress(kpiId, request.user.tenantId, body);
+      const progress = await kpiService.recordProgress(kpiId, request.user.tenantId!, body);
       return reply.status(201).send(progress);
     }
   );
@@ -84,7 +84,7 @@ export async function kpiRoutes(app: FastifyInstance): Promise<void> {
     { preHandler: [authenticate, requireRoles('ADMIN', 'MANAGER', 'EMPLOYEE')] },
     async (request: FastifyRequest, reply: FastifyReply) => {
       const { kpiId } = kpiIdParamSchema.parse(request.params);
-      const progress = await kpiService.getKpiProgress(kpiId, request.user.tenantId);
+      const progress = await kpiService.getKpiProgress(kpiId, request.user.tenantId!);
       return reply.send(progress);
     }
   );

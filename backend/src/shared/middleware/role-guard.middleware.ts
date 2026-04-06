@@ -93,7 +93,7 @@ export function validateTenantContext() {
     reply: FastifyReply
   ): Promise<void> {
     const user = request.user;
-    const requestedTenantId = request.params.tenantId ?? request.query.tenantId ?? user?.tenantId;
+    const requestedTenantId = (request.params as any).tenantId ?? (request.query as any).tenantId ?? user?.tenantId;
 
     if (!user) {
       const error = ApplicationError.unauthorized();
