@@ -1,0 +1,209 @@
+{
+  "nav": {
+    "overview": "Обзор",
+    "dashboard": "Обзор",
+    "tasks": "Задачи",
+    "employees": "Сотрудники",
+    "kpi": "KPI",
+    "payroll": "Зарплата",
+    "settings": "Настройки",
+    "logout": "Выйти",
+    "notifications": {
+      "title": "Уведомления"
+    },
+    "account": {
+      "openMenu": "Открыть меню аккаунта",
+      "closeSheet": "Закрыть панель аккаунта",
+      "actionsTitle": "Действия аккаунта"
+    }
+  },
+  "common": {
+    "actions": {
+      "save": "Сохранить",
+      "cancel": "Отмена",
+      "retry": "Повторить"
+    },
+    "save": "Сохранить",
+    "cancel": "Отмена",
+    "retry": "Повторить",
+    "search": "Поиск",
+    "export": "Экспорт",
+    "all": "Все",
+    "languages": {
+      "ru": "RU",
+      "uz": "UZ",
+      "en": "EN"
+    },
+    "languageSwitcher": "Переключение языка",
+    "errorTitle": "Что-то пошло не так",
+    "errorDescription": "Не удалось загрузить страницу. Попробуйте снова.",
+    "brand": {
+      "shortName": "TFP",
+      "fullName": "Team Flow Platform"
+    }
+  },
+  "login": {
+    "form": {
+      "title": "С возвращением",
+      "subtitle": "Войдите в рабочее пространство.",
+      "submit": "Войти"
+    }
+  },
+  "topbar": {
+    "search": "Поиск...",
+    "shortcut": "⌘K"
+  },
+  "tasks": {
+    "title": "Задачи",
+    "total": "всего задач",
+    "overdue": "просрочено",
+    "overdueAlert": "задач требуют внимания",
+    "create": "Новая задача",
+    "moveTo": "Переместить в",
+    "empty": {
+      "title": "Пока нет задач",
+      "subtitle": "Создайте первую задачу, чтобы начать отслеживание."
+    },
+    "view": {
+      "board": "Доска",
+      "list": "Список"
+    },
+    "col": {
+      "title": "Название",
+      "assignee": "Исполнитель",
+      "priority": "Приоритет",
+      "due": "Срок",
+      "status": "Статус"
+    }
+  },
+  "overview": {
+    "title": "Обзор",
+    "subtitle": "Что происходит сегодня",
+    "stats": {
+      "totalTasks": "Всего задач",
+      "completed": "Выполнено",
+      "overdue": "Просрочено",
+      "inProgress": "В работе",
+      "delta": {
+        "totalTasksWeek": "12% за неделю",
+        "completedWeek": "8% за неделю",
+        "overdueSinceYesterday": "2 со вчера"
+      }
+    },
+    "activity": {
+      "title": "Последняя активность",
+      "subtitle": "Обновления команды за 24 часа",
+      "completedTask": "{{user}} завершил(а) задачу {{task}}",
+      "createdTask": "{{user}} создал(а) задачу {{task}}",
+      "overdueTask": "{{user}}: задача просрочена {{task}}",
+      "updatedKpi": "{{user}} обновил(а) KPI {{task}}"
+    },
+    "sample": {
+      "users": {
+        "sofiaChen": "София Чен",
+        "jamesPark": "Джеймс Парк",
+        "amaraDiallo": "Амара Диалло",
+        "lucaFerrari": "Лука Феррари",
+        "mariaSantos": "Мария Сантос"
+      },
+      "tasks": {
+        "q1ReportDraft": "Черновик отчета Q1",
+        "clientOnboardingFlow": "Онбординг клиентов",
+        "invoiceProcessing": "Обработка счетов",
+        "monthlySalesTarget": "Месячный план продаж",
+        "teamReviewMeeting": "Командная встреча по ревью"
+      }
+    },
+    "overdue": {
+      "title": "Просроченные задачи",
+      "items": {
+        "invoiceProcessing": "Обработка счетов",
+        "budgetReviewQ4": "Проверка бюджета Q4",
+        "teamFeedbackSession": "Сессия командной обратной связи"
+      }
+    },
+    "progress": {
+      "title": "Прогресс задач"
+    }
+  },
+  "errors": {
+    "loadFailed": {
+      "title": "Что-то пошло не так",
+      "description": "Не удалось загрузить страницу. Попробуйте снова."
+    }
+  },
+  "status": {
+    "paid": "Оплачено",
+    "approved": "Подтверждено",
+    "draft": "Черновик",
+    "cancelled": "Отменено",
+    "success": "Успех",
+    "warning": "Внимание",
+    "danger": "Ошибка",
+    "accent": "Инфо",
+    "todo": "К выполнению",
+    "inProgress": "В работе",
+    "inReview": "На проверке",
+    "done": "Готово",
+    "low": "Низкий",
+    "medium": "Средний",
+    "high": "Высокий",
+    "critical": "Критичный"
+  },
+  "time": {
+    "minutesAgo": "{{count}} мин назад",
+    "hoursAgo": "{{count}} ч назад"
+  },
+  "kpi": {
+    "title": "KPI Трекер",
+    "subtitle": "Контроль эффективности команды и целей",
+    "create": "Новый KPI",
+    "avgProgress": "Среднее по команде",
+    "progress": "Прогресс",
+    "target": "Цель",
+    "actual": "Факт",
+    "metrics": {
+      "salesClosed": "Закрытые продажи",
+      "customerSatisfaction": "Удовлетворенность клиентов",
+      "tasksCompleted": "Выполненные задачи",
+      "responseTime": "Время ответа",
+      "revenueTarget": "План по выручке"
+    },
+    "period": {
+      "all": "Все",
+      "weekly": "Неделя",
+      "monthly": "Месяц",
+      "quarterly": "Квартал"
+    }
+  },
+  "payroll": {
+    "title": "Зарплата",
+    "subtitle": "Управление выплатами и начислениями",
+    "create": "Новая запись",
+    "table": {
+      "employee": "Сотрудник",
+      "period": "Период",
+      "baseSalary": "Оклад",
+      "bonuses": "Бонусы",
+      "deductions": "Удержания",
+      "net": "К выплате",
+      "status": "Статус"
+    }
+  },
+  "settings": {
+    "title": "Настройки",
+    "subtitle": "Управляйте аккаунтом и параметрами рабочего пространства",
+    "nav": {
+      "profile": "Профиль",
+      "workspace": "Рабочее пространство",
+      "notifications": "Уведомления",
+      "security": "Безопасность"
+    },
+    "profile": {
+      "changeAvatar": "Сменить фото",
+      "firstName": "Имя",
+      "lastName": "Фамилия",
+      "email": "Email"
+    }
+  }
+}

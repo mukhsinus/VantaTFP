@@ -4,6 +4,7 @@ import { mapTaskDtoToUiModel } from '@entities/task/task.mapper';
 import type { CreateTaskPayload, TaskUiModel } from '@entities/task/task.types';
 import { toast } from '@app/store/toast.store';
 import { ApiError } from '@shared/api/client';
+import i18n from '@shared/i18n/i18n';
 import { taskKeys } from './task.query-keys';
 
 interface UseCreateTaskResult {
@@ -21,16 +22,16 @@ export function useCreateTask(): UseCreateTaskResult {
       // Invalidate all task lists so every active query re-fetches
       queryClient.invalidateQueries({ queryKey: taskKeys.lists() });
       toast.success(
-        'Task created',
-        `"${createdDto.title}" has been added.`
+        i18n.t('errors.task.created'),
+        i18n.t('errors.task.addedDescription', { title: createdDto.title })
       );
     },
 
     onError: (error: unknown) => {
       if (error instanceof ApiError) {
-        toast.error('Failed to create task', error.message);
+        toast.error(i18n.t('errors.task.createFailed'), error.message);
       } else {
-        toast.error('Failed to create task', 'An unexpected error occurred.');
+        toast.error(i18n.t('errors.task.createFailed'), i18n.t('errors.generic.unexpected'));
       }
     },
   });

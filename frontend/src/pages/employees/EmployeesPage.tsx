@@ -41,8 +41,9 @@ export function EmployeesPage() {
   if (isError) {
     return (
       <EmptyState
-        title={t('common.errorTitle')}
-        description={t('common.errorDescription')}
+        title={t('errors.loadFailed.title')}
+        description={t('errors.loadFailed.description')}
+        action={{ label: t('common.actions.retry'), onClick: () => window.location.reload() }}
       />
     );
   }
@@ -79,7 +80,7 @@ export function EmployeesPage() {
         <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexDirection: isMobile ? 'column' : 'row' }}>
           <div style={{ flex: 1, maxWidth: isMobile ? '100%' : 300, width: '100%' }}>
             <Input
-              placeholder={t('employees.search')}
+              placeholder={t('common.search')}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               leftIcon={
@@ -107,7 +108,13 @@ export function EmployeesPage() {
                   borderColor: roleFilter === r ? 'var(--color-accent)' : 'var(--color-border-strong)',
                 }}
               >
-                {r}
+                {r === 'ALL'
+                  ? t('profile.roles.all')
+                  : r === 'ADMIN'
+                    ? t('profile.roles.admin')
+                    : r === 'MANAGER'
+                      ? t('profile.roles.manager')
+                      : t('profile.roles.employee')}
               </button>
             ))}
           </div>
@@ -172,11 +179,11 @@ function EmployeeCard({
   const canEditThisUser = canManage && !managerCannotManageTarget;
 
   const availableRoleOptions = currentRole === 'MANAGER'
-    ? [{ value: 'EMPLOYEE', label: 'EMPLOYEE' }]
+    ? [{ value: 'EMPLOYEE', label: t('profile.roles.employee') }]
     : [
-      { value: 'ADMIN', label: 'ADMIN' },
-      { value: 'MANAGER', label: 'MANAGER' },
-      { value: 'EMPLOYEE', label: 'EMPLOYEE' },
+      { value: 'ADMIN', label: t('profile.roles.admin') },
+      { value: 'MANAGER', label: t('profile.roles.manager') },
+      { value: 'EMPLOYEE', label: t('profile.roles.employee') },
     ];
 
   return (
@@ -210,7 +217,13 @@ function EmployeeCard({
             </p>
           </div>
         </div>
-        <Badge variant={roleVariant[employee.role]}>{employee.role}</Badge>
+        <Badge variant={roleVariant[employee.role]}>
+          {employee.role === 'ADMIN'
+            ? t('profile.roles.admin')
+            : employee.role === 'MANAGER'
+              ? t('profile.roles.manager')
+              : t('profile.roles.employee')}
+        </Badge>
       </div>
 
       <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-secondary)', marginBottom: 12, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -233,7 +246,7 @@ function EmployeeCard({
             disabled={isUpdating || roleDraft === employee.role}
             onClick={() => updateUser(employee.id, { role: roleDraft })}
           >
-            {t('common.save')}
+            {t('common.actions.save')}
           </Button>
           <Button
             size="sm"

@@ -149,7 +149,7 @@ export function LoginPage() {
             <Input
               label={t('login.form.email')}
               type="email"
-              placeholder="you@company.com"
+              placeholder={t('auth.placeholders.email')}
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               autoComplete="email"
@@ -161,7 +161,7 @@ export function LoginPage() {
             <Input
               label={t('login.form.password')}
               type={showPassword ? 'text' : 'password'}
-              placeholder="••••••••"
+              placeholder={t('auth.placeholders.passwordMasked')}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               autoComplete="current-password"
@@ -183,7 +183,7 @@ export function LoginPage() {
                     justifyContent: 'center',
                     pointerEvents: 'auto',
                   }}
-                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  aria-label={showPassword ? t('auth.password.hide') : t('auth.password.show')}
                 >
                   {showPassword ? (
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
@@ -286,7 +286,7 @@ export function LoginPage() {
             </svg>
           </div>
           <span style={{ fontSize: 'var(--text-md)', fontWeight: 700, color: '#fff' }}>
-            TFP
+            {t('common.brand.shortName')}
           </span>
         </div>
 
@@ -341,7 +341,11 @@ export function LoginPage() {
 
         {/* Footer */}
         <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-gray-500)' }}>
-          © {new Date().getFullYear()} TFP · Team Flow Platform
+          {t('footer.copyright', {
+            year: new Date().getFullYear(),
+            brandShort: t('common.brand.shortName'),
+            brandFull: t('common.brand.fullName'),
+          })}
         </p>
       </div>
 
@@ -412,7 +416,7 @@ export function LoginPage() {
             <Input
               label={t('login.form.email')}
               type="email"
-              placeholder="you@company.com"
+              placeholder={t('auth.placeholders.email')}
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               autoComplete="email"
@@ -424,7 +428,7 @@ export function LoginPage() {
               <Input
                 label={t('login.form.password')}
                 type={showPassword ? 'text' : 'password'}
-                placeholder="••••••••"
+                placeholder={t('auth.placeholders.passwordMasked')}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 autoComplete="current-password"
@@ -442,7 +446,7 @@ export function LoginPage() {
                       display: 'flex',
                       pointerEvents: 'auto',
                     }}
-                    aria-label={showPassword ? 'Hide password' : 'Show password'}
+                    aria-label={showPassword ? t('auth.password.hide') : t('auth.password.show')}
                   >
                     {showPassword ? (
                       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>

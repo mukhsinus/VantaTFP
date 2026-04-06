@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
 import { createPortal } from 'react-dom';
+import { useTranslation } from 'react-i18next';
 import { Button } from './Button';
 
 interface ModalProps {
@@ -15,6 +16,7 @@ interface ModalProps {
 const sizeMap = { sm: 400, md: 520, lg: 680 };
 
 export function Modal({ isOpen, onClose, title, description, children, footer, size = 'md' }: ModalProps) {
+  const { t } = useTranslation();
   useEffect(() => {
     if (!isOpen) return;
     const onKeyDown = (e: KeyboardEvent) => {
@@ -107,7 +109,7 @@ export function Modal({ isOpen, onClose, title, description, children, footer, s
           </div>
           <button
             onClick={onClose}
-            aria-label="Close"
+            aria-label={t('common.actions.close')}
             style={{
               width: 28,
               height: 28,
@@ -159,7 +161,7 @@ export function ConfirmModal({
   onConfirm,
   title,
   description,
-  confirmLabel = 'Confirm',
+  confirmLabel,
   variant = 'danger',
 }: {
   isOpen: boolean;
@@ -170,6 +172,9 @@ export function ConfirmModal({
   confirmLabel?: string;
   variant?: 'primary' | 'danger';
 }) {
+  const { t } = useTranslation();
+  const resolvedConfirmLabel = confirmLabel ?? t('common.actions.confirm');
+
   return (
     <Modal
       isOpen={isOpen}
@@ -180,10 +185,10 @@ export function ConfirmModal({
       footer={
         <>
           <Button variant="secondary" size="sm" onClick={onClose}>
-            Cancel
+            {t('common.actions.cancel')}
           </Button>
           <Button variant={variant} size="sm" onClick={onConfirm}>
-            {confirmLabel}
+            {resolvedConfirmLabel}
           </Button>
         </>
       }

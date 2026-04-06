@@ -10,11 +10,11 @@ import type { TaskUiModel, TaskStatus, TaskPriority } from '@entities/task/task.
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const STATUS_COLUMNS: { id: TaskStatus; label: string; color: string }[] = [
-  { id: 'TODO',        label: 'To Do',       color: 'var(--color-gray-400)' },
-  { id: 'IN_PROGRESS', label: 'In Progress', color: 'var(--color-warning)'  },
-  { id: 'IN_REVIEW',   label: 'In Review',   color: 'var(--color-accent)'   },
-  { id: 'DONE',        label: 'Done',        color: 'var(--color-success)'  },
+const STATUS_COLUMNS: { id: TaskStatus; labelKey: string; color: string }[] = [
+  { id: 'TODO',        labelKey: 'status.todo',       color: 'var(--color-gray-400)' },
+  { id: 'IN_PROGRESS', labelKey: 'status.inProgress', color: 'var(--color-warning)'  },
+  { id: 'IN_REVIEW',   labelKey: 'status.inReview',   color: 'var(--color-accent)'   },
+  { id: 'DONE',        labelKey: 'status.done',       color: 'var(--color-success)'  },
 ];
 
 const STATUS_SEQUENCE: TaskStatus[] = ['TODO', 'IN_PROGRESS', 'IN_REVIEW', 'DONE'];
@@ -24,6 +24,13 @@ const PRIORITY_VARIANT: Record<TaskPriority, 'danger' | 'warning' | 'info' | 'de
   HIGH:     'warning',
   MEDIUM:   'info',
   LOW:      'default',
+};
+
+const PRIORITY_LABEL_KEY: Record<TaskPriority, string> = {
+  LOW: 'status.low',
+  MEDIUM: 'status.medium',
+  HIGH: 'status.high',
+  CRITICAL: 'status.critical',
 };
 
 type ViewMode = 'board' | 'list';
@@ -46,9 +53,9 @@ export function TasksPage() {
   if (isError) {
     return (
       <EmptyState
-        title={t('common.errorTitle')}
-        description={t('common.errorDescription')}
-        action={{ label: t('common.retry'), onClick: () => window.location.reload() }}
+        title={t('errors.loadFailed.title')}
+        description={t('errors.loadFailed.description')}
+        action={{ label: t('common.actions.retry'), onClick: () => window.location.reload() }}
         icon={
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5}>
             <circle cx="12" cy="12" r="10" /><path d="M12 8v4M12 16h.01" />
@@ -156,8 +163,8 @@ export function TasksPage() {
         {/* Empty state */}
         {tasks.length === 0 ? (
           <EmptyState
-            title={t('tasks.emptyState.title')}
-            description={t('tasks.emptyState.description')}
+            title={t('tasks.empty.title')}
+            description={t('tasks.empty.subtitle')}
             action={can('task:create')
               ? { label: t('tasks.create'), onClick: () => setShowCreateModal(true) }
               : undefined
@@ -220,10 +227,11 @@ function MobileTasksList({ tasks }: { tasks: TaskUiModel[] }) {
 }
 
 function MobileTaskCard({ task }: { task: TaskUiModel }) {
+  const { t } = useTranslation();
   const { updateStatus } = useUpdateTaskStatus();
   const { can } = usePermissions();
 
-  const statusOptions = STATUS_COLUMNS.map((col) => ({ value: col.id, label: col.label }));
+  const statusOptions = STATUS_COLUMNS.map((col) => ({ value: col.id, label: t(col.labelKey) }));
 
   return (
     <Card style={{ width: '100%' }}>
@@ -236,7 +244,7 @@ function MobileTaskCard({ task }: { task: TaskUiModel }) {
             {task.assignee}
           </p>
         </div>
-        <Badge variant={PRIORITY_VARIANT[task.priority]}>{task.priority}</Badge>
+        <Badge variant={PRIORITY_VARIANT[task.priority]}>{t(PRIORITY_LABEL_KEY[task.priority])}</Badge>
       </div>
 
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
@@ -248,7 +256,7 @@ function MobileTaskCard({ task }: { task: TaskUiModel }) {
 
       {can('task:changeStatus') && (
         <Select
-          label="Status"
+          label={t('common.fields.status')}
           value={task.status}
           options={statusOptions}
           onChange={(e) => updateStatus({ taskId: task.id, status: e.target.value as TaskStatus, taskTitle: task.title })}
@@ -275,7 +283,7 @@ function BoardView({ tasks }: { tasks: TaskUiModel[] }) {
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12, padding: '0 4px' }}>
               <span style={{ width: 8, height: 8, borderRadius: '50%', background: col.color, flexShrink: 0 }} />
               <span style={{ fontSize: 'var(--text-sm)', fontWeight: 600, color: 'var(--color-text-primary)' }}>
-                {col.label}
+                {t(col.labelKey)}
               </span>
               <span
                 style={{
@@ -305,7 +313,7 @@ function BoardView({ tasks }: { tasks: TaskUiModel[] }) {
                     fontSize: 'var(--text-sm)',
                   }}
                 >
-                  {t('tasks.empty')}
+                  {t('tasks.empty.title')}
                 </div>
               ) : (
                 colTasks.map((task) => (
@@ -323,6 +331,7 @@ function BoardView({ tasks }: { tasks: TaskUiModel[] }) {
 // ─── Task card (board) ────────────────────────────────────────────────────────
 
 function TaskCard({ task, canChangeStatus }: { task: TaskUiModel; canChangeStatus: boolean }) {
+  const { t } = useTranslation();
   const [menuOpen, setMenuOpen] = useState(false);
   const [hovered, setHovered] = useState(false);
   const { updateStatus } = useUpdateTaskStatus();
@@ -354,7 +363,7 @@ function TaskCard({ task, canChangeStatus }: { task: TaskUiModel; canChangeStatu
           {task.title}
         </p>
         <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
-          <Badge variant={PRIORITY_VARIANT[task.priority]}>{task.priority}</Badge>
+          <Badge variant={PRIORITY_VARIANT[task.priority]}>{t(PRIORITY_LABEL_KEY[task.priority])}</Badge>
 
           {/* Status action menu — hidden for roles without task:changeStatus */}
           {canChangeStatus && <div style={{ position: 'relative' }}>
@@ -400,7 +409,7 @@ function TaskCard({ task, canChangeStatus }: { task: TaskUiModel; canChangeStatu
                 }}
               >
                 <p style={{ padding: '6px 10px 4px', fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                  Move to
+                  {t('tasks.moveTo')}
                 </p>
                 {STATUS_COLUMNS.filter((col) => col.id !== task.status).map((col) => (
                   <button
@@ -428,7 +437,7 @@ function TaskCard({ task, canChangeStatus }: { task: TaskUiModel; canChangeStatu
                     onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
                   >
                     <span style={{ width: 7, height: 7, borderRadius: '50%', background: col.color, flexShrink: 0 }} />
-                    {col.label}
+                    {t(col.labelKey)}
                   </button>
                 ))}
               </div>
@@ -473,7 +482,7 @@ function TaskCard({ task, canChangeStatus }: { task: TaskUiModel; canChangeStatu
             zIndex: 1,
           }}
         >
-          → {STATUS_COLUMNS.find((c) => c.id === nextStatus)?.label}
+          → {t(STATUS_COLUMNS.find((c) => c.id === nextStatus)?.labelKey ?? 'status.todo')}
         </button>
       )}
     </div>
@@ -543,6 +552,7 @@ function ListRow({
   canChangeStatus: boolean;
   onStatusChange: (status: TaskStatus) => void;
 }) {
+  const { t } = useTranslation();
   const [statusMenuOpen, setStatusMenuOpen] = useState(false);
 
   return (
@@ -584,7 +594,7 @@ function ListRow({
 
       {/* Priority */}
       <td style={{ padding: '12px 16px' }}>
-        <Badge variant={PRIORITY_VARIANT[task.priority]}>{task.priority}</Badge>
+        <Badge variant={PRIORITY_VARIANT[task.priority]}>{t(PRIORITY_LABEL_KEY[task.priority])}</Badge>
       </td>
 
       {/* Due date */}
@@ -653,7 +663,7 @@ function ListRow({
                   onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
                 >
                   <span style={{ width: 7, height: 7, borderRadius: '50%', background: col.color, flexShrink: 0 }} />
-                  {col.label}
+                  {t(col.labelKey)}
                 </button>
               ))}
             </div>
@@ -665,12 +675,13 @@ function ListRow({
 }
 
 function StatusBadge({ status }: { status: TaskStatus }) {
-  const map: Record<TaskStatus, { label: string; variant: 'default' | 'warning' | 'accent' | 'success' }> = {
-    TODO:        { label: 'To Do',       variant: 'default'  },
-    IN_PROGRESS: { label: 'In Progress', variant: 'warning'  },
-    IN_REVIEW:   { label: 'In Review',   variant: 'accent'   },
-    DONE:        { label: 'Done',        variant: 'success'  },
+  const { t } = useTranslation();
+  const map: Record<TaskStatus, { labelKey: string; variant: 'default' | 'warning' | 'accent' | 'success' }> = {
+    TODO:        { labelKey: 'status.todo',       variant: 'default'  },
+    IN_PROGRESS: { labelKey: 'status.inProgress', variant: 'warning'  },
+    IN_REVIEW:   { labelKey: 'status.inReview',   variant: 'accent'   },
+    DONE:        { labelKey: 'status.done',       variant: 'success'  },
   };
-  const { label, variant } = map[status];
-  return <Badge variant={variant} dot>{label}</Badge>;
+  const { labelKey, variant } = map[status];
+  return <Badge variant={variant} dot>{t(labelKey)}</Badge>;
 }

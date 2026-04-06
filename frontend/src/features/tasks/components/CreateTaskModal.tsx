@@ -21,11 +21,11 @@ interface FormErrors {
   title?: string;
 }
 
-const PRIORITY_OPTIONS: { value: TaskPriority; label: string }[] = [
-  { value: 'LOW',      label: 'Low' },
-  { value: 'MEDIUM',   label: 'Medium' },
-  { value: 'HIGH',     label: 'High' },
-  { value: 'CRITICAL', label: 'Critical' },
+const PRIORITY_OPTIONS: { value: TaskPriority; labelKey: string }[] = [
+  { value: 'LOW',      labelKey: 'status.low' },
+  { value: 'MEDIUM',   labelKey: 'status.medium' },
+  { value: 'HIGH',     labelKey: 'status.high' },
+  { value: 'CRITICAL', labelKey: 'status.critical' },
 ];
 
 const INITIAL_STATE: FormState = {
@@ -39,6 +39,7 @@ export function CreateTaskModal({ isOpen, onClose }: CreateTaskModalProps) {
   const { t } = useTranslation();
   const isMobile = useIsMobile();
   const { createTask, isPending } = useCreateTask();
+  const priorityOptions = PRIORITY_OPTIONS.map((opt) => ({ value: opt.value, label: t(opt.labelKey) }));
 
   const [form, setForm] = useState<FormState>(INITIAL_STATE);
   const [errors, setErrors] = useState<FormErrors>({});
@@ -92,7 +93,7 @@ export function CreateTaskModal({ isOpen, onClose }: CreateTaskModalProps) {
       footer={
         <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : 'auto auto', gap: 8, width: isMobile ? '100%' : undefined }}>
           <Button variant="secondary" size={isMobile ? 'lg' : 'sm'} onClick={handleClose} disabled={isPending} style={{ width: '100%' }}>
-            {t('common.cancel')}
+            {t('common.actions.cancel')}
           </Button>
           <Button
             variant="primary"
@@ -163,7 +164,7 @@ export function CreateTaskModal({ isOpen, onClose }: CreateTaskModalProps) {
           <Select
             label={t('tasks.modal.fields.priority')}
             value={form.priority}
-            options={PRIORITY_OPTIONS}
+            options={priorityOptions}
             onChange={(e) => field('priority', e.target.value as TaskPriority)}
           />
 

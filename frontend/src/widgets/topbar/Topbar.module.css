@@ -320,6 +320,10 @@
   gap: 6px;
 }
 
+.sheetLanguage {
+  margin-bottom: 8px;
+}
+
 .sheetActionButton {
   width: 100%;
   min-height: 48px;

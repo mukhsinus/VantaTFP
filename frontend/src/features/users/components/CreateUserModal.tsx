@@ -36,14 +36,14 @@ export function CreateUserModal({ isOpen, onClose, creatorRole }: CreateUserModa
 
   const roleOptions = useMemo(() => {
     if (creatorRole === 'MANAGER') {
-      return [{ value: 'EMPLOYEE', label: 'EMPLOYEE' }];
+      return [{ value: 'EMPLOYEE', label: t('profile.roles.employee') }];
     }
     return [
-      { value: 'ADMIN', label: 'ADMIN' },
-      { value: 'MANAGER', label: 'MANAGER' },
-      { value: 'EMPLOYEE', label: 'EMPLOYEE' },
+      { value: 'ADMIN', label: t('profile.roles.admin') },
+      { value: 'MANAGER', label: t('profile.roles.manager') },
+      { value: 'EMPLOYEE', label: t('profile.roles.employee') },
     ];
-  }, [creatorRole]);
+  }, [creatorRole, t]);
 
   const setField = <K extends keyof FormState>(key: K, value: FormState[K]) => {
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -104,7 +104,7 @@ export function CreateUserModal({ isOpen, onClose, creatorRole }: CreateUserModa
       footer={
         <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : 'auto auto', gap: 8, width: isMobile ? '100%' : undefined }}>
           <Button variant="secondary" size={isMobile ? 'lg' : 'sm'} onClick={handleClose} disabled={isPending} style={{ width: '100%' }}>
-            {t('common.cancel')}
+            {t('common.actions.cancel')}
           </Button>
           <Button variant="primary" size={isMobile ? 'lg' : 'sm'} onClick={handleSubmit} loading={isPending} style={{ width: '100%' }}>
             {t('employees.modal.submit')}

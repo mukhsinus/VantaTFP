@@ -4,6 +4,7 @@ import type { TaskStatus, TaskListApiResponse, TaskUiModel } from '@entities/tas
 import { mapTaskDtoToUiModel } from '@entities/task/task.mapper';
 import { toast } from '@app/store/toast.store';
 import { ApiError } from '@shared/api/client';
+import i18n from '@shared/i18n/i18n';
 import { taskKeys } from './task.query-keys';
 
 interface UpdateStatusVariables {
@@ -61,9 +62,9 @@ export function useUpdateTaskStatus(): UseUpdateTaskStatusResult {
       }
 
       const message =
-        error instanceof ApiError ? error.message : 'An unexpected error occurred.';
+        error instanceof ApiError ? error.message : i18n.t('errors.generic.unexpected');
       toast.error(
-        'Failed to update status',
+        i18n.t('errors.task.updateStatusFailed'),
         variables.taskTitle ? `"${variables.taskTitle}": ${message}` : message
       );
     },

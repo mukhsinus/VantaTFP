@@ -1,4 +1,5 @@
 import type { UserApiDto, UserUiModel } from './users.types';
+import i18n from '@shared/i18n/i18n';
 
 const dateFormatter = new Intl.DateTimeFormat('en-US', {
   month: 'short',
@@ -15,7 +16,7 @@ export function mapUserDtoToUiModel(dto: UserApiDto): UserUiModel {
     role: dto.role,
     isActive: dto.isActive,
     createdAtLabel: Number.isNaN(createdAt.getTime())
-      ? '—'
+      ? i18n.t('common.states.notAvailable')
       : dateFormatter.format(createdAt),
   };
 }

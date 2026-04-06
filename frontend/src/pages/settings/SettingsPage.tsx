@@ -31,22 +31,22 @@ export function SettingsPage() {
   const sections: { id: SettingsSection; label: string; icon: React.ReactNode }[] = [
     {
       id: 'profile',
-      label: t('settings.section.profile'),
+      label: t('settings.nav.profile'),
       icon: <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75}><circle cx="12" cy="8" r="4" /><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" /></svg>,
     },
     {
       id: 'workspace',
-      label: t('settings.section.workspace'),
+      label: t('settings.nav.workspace'),
       icon: <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75}><rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" /><rect x="3" y="14" width="7" height="7" rx="1" /><rect x="14" y="14" width="7" height="7" rx="1" /></svg>,
     },
     {
       id: 'notifications',
-      label: t('settings.section.notifications'),
+      label: t('settings.nav.notifications'),
       icon: <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75}><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 01-3.46 0" /></svg>,
     },
     {
       id: 'security',
-      label: t('settings.section.security'),
+      label: t('settings.nav.security'),
       icon: <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75}><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /></svg>,
     },
   ];
@@ -181,7 +181,7 @@ function ProfileSection({ isMobile }: { isMobile: boolean }) {
       <CardHeader title={t('settings.profile.title')} subtitle={t('settings.profile.subtitle')} />
       <div style={{ display: 'flex', flexDirection: 'column', gap: 20, width: '100%', maxWidth: '100%' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-          <Avatar name={user ? `${user.firstName} ${user.lastName}` : 'U'} size="lg" />
+          <Avatar name={user ? `${user.firstName} ${user.lastName}` : t('profile.placeholders.unknownUserInitial')} size="lg" />
           <div>
             <Button variant="secondary" size="sm">{t('settings.profile.changeAvatar')}</Button>
             <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', marginTop: 4 }}>
@@ -195,8 +195,8 @@ function ProfileSection({ isMobile }: { isMobile: boolean }) {
         </div>
         <Input label={t('settings.profile.email')} defaultValue={user?.email} type="email" />
         <div style={{ display: 'flex', justifyContent: isMobile ? 'stretch' : 'flex-end', gap: 8, flexDirection: isMobile ? 'column' : 'row' }}>
-          <Button variant="secondary" size="sm" style={isMobile ? { width: '100%', minHeight: 44 } : undefined}>{t('common.cancel')}</Button>
-          <Button variant="primary" size="sm" style={isMobile ? { width: '100%', minHeight: 44 } : undefined}>{t('common.save')}</Button>
+          <Button variant="secondary" size="sm" style={isMobile ? { width: '100%', minHeight: 44 } : undefined}>{t('common.actions.cancel')}</Button>
+          <Button variant="primary" size="sm" style={isMobile ? { width: '100%', minHeight: 44 } : undefined}>{t('common.actions.save')}</Button>
         </div>
       </div>
     </Card>
@@ -234,7 +234,7 @@ function WorkspaceSection({ isMobile }: { isMobile: boolean }) {
           <Badge variant="accent">{t('settings.workspace.proPlan')}</Badge>
         </div>
         <div style={{ display: 'flex', justifyContent: isMobile ? 'stretch' : 'flex-end' }}>
-          <Button variant="primary" size="sm" style={isMobile ? { width: '100%', minHeight: 44 } : undefined}>{t('common.save')}</Button>
+          <Button variant="primary" size="sm" style={isMobile ? { width: '100%', minHeight: 44 } : undefined}>{t('common.actions.save')}</Button>
         </div>
       </div>
     </Card>
@@ -289,9 +289,9 @@ function SecuritySection({ isMobile }: { isMobile: boolean }) {
     <Card>
       <CardHeader title={t('settings.security.title')} subtitle={t('settings.security.subtitle')} />
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16, width: '100%', maxWidth: '100%' }}>
-        <Input label={t('settings.security.currentPassword')} type="password" placeholder="••••••••" />
-        <Input label={t('settings.security.newPassword')} type="password" placeholder="••••••••" />
-        <Input label={t('settings.security.confirmPassword')} type="password" placeholder="••••••••" />
+        <Input label={t('settings.security.currentPassword')} type="password" placeholder={t('auth.placeholders.passwordMasked')} />
+        <Input label={t('settings.security.newPassword')} type="password" placeholder={t('auth.placeholders.passwordMasked')} />
+        <Input label={t('settings.security.confirmPassword')} type="password" placeholder={t('auth.placeholders.passwordMasked')} />
         <div style={{ display: 'flex', justifyContent: isMobile ? 'stretch' : 'flex-end' }}>
           <Button variant="primary" size="sm" style={isMobile ? { width: '100%', minHeight: 44 } : undefined}>{t('settings.security.update')}</Button>
         </div>

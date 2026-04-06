@@ -17,6 +17,38 @@
     }
   },
   "common": {
+    "actions": {
+      "save": "Save",
+      "cancel": "Cancel",
+      "confirm": "Confirm",
+      "close": "Close",
+      "retry": "Try again",
+      "create": "Create"
+    },
+    "fields": {
+      "status": "Status"
+    },
+    "states": {
+      "unassigned": "Unassigned",
+      "notAvailable": "—"
+    },
+    "emptyState": {
+      "title": "No items yet",
+      "description": "Items you create will appear here."
+    },
+    "brand": {
+      "shortName": "TFP",
+      "fullName": "Team Flow Platform"
+    },
+    "search": "Search",
+    "export": "Export",
+    "all": "All",
+    "languages": {
+      "ru": "RU",
+      "uz": "UZ",
+      "en": "EN"
+    },
+    "languageSwitcher": "Language switcher",
     "save": "Save Changes",
     "cancel": "Cancel",
     "confirm": "Confirm",
@@ -30,6 +62,32 @@
   },
   "nav": {
     "section": { "main": "Main" },
+    "labels": {
+      "dashboard": "Dashboard",
+      "tasks": "Tasks",
+      "employees": "Employees",
+      "kpi": "KPI",
+      "payroll": "Payroll",
+      "settings": "Settings",
+      "logout": "Sign out"
+    },
+    "actions": {
+      "toggleSidebar": "Toggle sidebar",
+      "expandSidebar": "Expand",
+      "collapseSidebar": "Collapse"
+    },
+    "notifications": {
+      "title": "Notifications"
+    },
+    "account": {
+      "openMenu": "Open account menu",
+      "closeSheet": "Close account sheet",
+      "actionsTitle": "Account actions"
+    },
+    "workspace": {
+      "fallbackName": "Workspace"
+    },
+    "overview": "Overview",
     "dashboard": "Dashboard",
     "tasks": "Tasks",
     "employees": "Employees",
@@ -39,7 +97,8 @@
     "logout": "Sign out"
   },
   "topbar": {
-    "search": "Search anything..."
+    "search": "Search anything...",
+    "shortcut": "⌘K"
   },
   "dashboard": {
     "title": "Overview",
@@ -48,25 +107,263 @@
       "totalTasks": "Total Tasks",
       "completed": "Completed",
       "overdue": "Overdue",
-      "inProgress": "In Progress"
+      "inProgress": "In Progress",
+      "delta": {
+        "totalTasksWeek": "12% this week",
+        "completedWeek": "8% this week",
+        "overdueSinceYesterday": "2 since yesterday"
+      }
     },
     "activity": {
       "title": "Recent Activity",
       "subtitle": "Team updates from the last 24 hours"
     },
-    "overdue": { "title": "Overdue Tasks" },
+    "overdue": {
+      "title": "Overdue Tasks",
+      "items": {
+        "invoiceProcessing": "Invoice Processing",
+        "budgetReviewQ4": "Budget Review Q4",
+        "teamFeedbackSession": "Team Feedback Session"
+      }
+    },
     "progress": { "title": "Task Progress" }
+    ,
+    "labels": {
+      "completed": "Completed",
+      "inProgress": "In Progress",
+      "overdue": "Overdue"
+    },
+    "activityLabels": {
+      "completedTask": "completed task",
+      "createdTask": "created task",
+      "taskOverdue": "task is overdue",
+      "updatedKpi": "updated KPI",
+      "minutesAgo": "{{count}}m ago",
+      "hoursAgo": "{{count}}h ago"
+    },
+    "sample": {
+      "users": {
+        "sofiaChen": "Sofia Chen",
+        "jamesPark": "James Park",
+        "amaraDiallo": "Amara Diallo",
+        "lucaFerrari": "Luca Ferrari",
+        "mariaSantos": "Maria Santos"
+      },
+      "targets": {
+        "q1ReportDraft": "Q1 Report Draft",
+        "clientOnboardingFlow": "Client Onboarding Flow",
+        "invoiceProcessing": "Invoice Processing",
+        "monthlySalesTarget": "Monthly Sales Target",
+        "teamReviewMeeting": "Team Review Meeting"
+      }
+    }
+  },
+  "overview": {
+    "title": "Overview",
+    "subtitle": "Here's what's happening today",
+    "stats": {
+      "totalTasks": "Total Tasks",
+      "completed": "Completed",
+      "overdue": "Overdue",
+      "inProgress": "In Progress",
+      "delta": {
+        "totalTasksWeek": "12% this week",
+        "completedWeek": "8% this week",
+        "overdueSinceYesterday": "2 since yesterday"
+      }
+    },
+    "activity": {
+      "title": "Recent Activity",
+      "subtitle": "Team updates from the last 24 hours",
+      "completedTask": "{{user}} completed task {{task}}",
+      "createdTask": "{{user}} created task {{task}}",
+      "overdueTask": "{{user}} task is overdue {{task}}",
+      "updatedKpi": "{{user}} updated KPI {{task}}"
+    },
+    "sample": {
+      "users": {
+        "sofiaChen": "Sofia Chen",
+        "jamesPark": "James Park",
+        "amaraDiallo": "Amara Diallo",
+        "lucaFerrari": "Luca Ferrari",
+        "mariaSantos": "Maria Santos"
+      },
+      "tasks": {
+        "q1ReportDraft": "Q1 Report Draft",
+        "clientOnboardingFlow": "Client Onboarding Flow",
+        "invoiceProcessing": "Invoice Processing",
+        "monthlySalesTarget": "Monthly Sales Target",
+        "teamReviewMeeting": "Team Review Meeting"
+      }
+    },
+    "overdue": {
+      "title": "Overdue Tasks",
+      "items": {
+        "invoiceProcessing": "Invoice Processing",
+        "budgetReviewQ4": "Budget Review Q4",
+        "teamFeedbackSession": "Team Feedback Session"
+      }
+    },
+    "progress": {
+      "title": "Task Progress"
+    }
+  },
+  "footer": {
+    "copyright": "© {{year}} {{brandShort}} · {{brandFull}}"
+  },
+  "booking": {
+    "tasks": {
+      "status": {
+        "todo": "To Do",
+        "inProgress": "In Progress",
+        "inReview": "In Review",
+        "done": "Done"
+      },
+      "actions": {
+        "moveTo": "Move to"
+      },
+      "fields": {
+        "status": "Status"
+      },
+      "priority": {
+        "low": "Low",
+        "medium": "Medium",
+        "high": "High",
+        "critical": "Critical"
+      }
+    },
+    "payroll": {
+      "filters": {
+        "all": "ALL"
+      },
+      "status": {
+        "draft": "DRAFT",
+        "approved": "APPROVED",
+        "paid": "PAID",
+        "cancelled": "CANCELLED"
+      },
+      "sample": {
+        "users": {
+          "sofiaChen": "Sofia Chen",
+          "jamesPark": "James Park",
+          "amaraDiallo": "Amara Diallo",
+          "lucaFerrari": "Luca Ferrari",
+          "mariaSantos": "Maria Santos"
+        },
+        "periods": {
+          "mar2026": "Mar 2026"
+        }
+      }
+    },
+    "kpi": {
+      "filters": {
+        "all": "ALL",
+        "weekly": "WEEKLY",
+        "monthly": "MONTHLY",
+        "quarterly": "QUARTERLY"
+      },
+      "labels": {
+        "progress": "Progress",
+        "actual": "Actual",
+        "target": "Target"
+      },
+      "sample": {
+        "users": {
+          "sofiaChen": "Sofia Chen",
+          "jamesPark": "James Park",
+          "amaraDiallo": "Amara Diallo",
+          "lucaFerrari": "Luca Ferrari",
+          "mariaSantos": "Maria Santos"
+        },
+        "names": {
+          "salesClosed": "Sales Closed",
+          "customerSatisfaction": "Customer Satisfaction",
+          "tasksCompleted": "Tasks Completed",
+          "responseTime": "Response Time",
+          "revenueTarget": "Revenue Target"
+        },
+        "units": {
+          "deals": "deals",
+          "percent": "%",
+          "tasks": "tasks",
+          "hours": "hrs",
+          "currency": "$"
+        }
+      }
+    }
+  },
+  "auth": {
+    "placeholders": {
+      "email": "you@company.com",
+      "passwordMasked": "••••••••"
+    },
+    "password": {
+      "show": "Show password",
+      "hide": "Hide password"
+    },
+    "session": {
+      "expired": "Session expired. Please sign in again."
+    }
+  },
+  "profile": {
+    "roles": {
+      "all": "ALL",
+      "admin": "ADMIN",
+      "manager": "MANAGER",
+      "employee": "EMPLOYEE"
+    },
+    "placeholders": {
+      "unknownUserInitial": "U"
+    },
+    "employee": {
+      "actions": {
+        "deactivateTitle": "User deactivated",
+        "deactivateDescription": "The user is now inactive."
+      }
+    }
+  },
+  "errors": {
+    "loadFailed": {
+      "title": "Something went wrong",
+      "description": "We couldn't load this page. Please try again."
+    },
+    "generic": {
+      "unexpected": "An unexpected error occurred.",
+      "network": "A network error occurred. Please check your connection.",
+      "backendUnavailable": "Backend API is not reachable. Please contact support.",
+      "requestFailed": "Request failed with status {{statusCode}}",
+      "apiNotConfigured": "API base URL is not configured. Set VITE_API_BASE_URL for production."
+    },
+    "auth": {
+      "invalidCredentials": "Invalid email or password. Please try again.",
+      "unableToSignIn": "Unable to sign in right now. Please try again later."
+    },
+    "user": {
+      "createFailed": "Failed to create user",
+      "updateFailed": "Failed to update user",
+      "deactivateFailed": "Failed to deactivate user",
+      "created": "User created",
+      "updated": "User updated",
+      "addedDescription": "{{fullName}} has been added.",
+      "updatedDescription": "{{fullName}} has been updated."
+    },
+    "task": {
+      "createFailed": "Failed to create task",
+      "updateStatusFailed": "Failed to update status",
+      "created": "Task created",
+      "addedDescription": "\"{{title}}\" has been added."
+    }
   },
   "tasks": {
     "title": "Tasks",
+    "moveTo": "Move to",
     "total": "total tasks",
     "overdue": "overdue",
     "overdueAlert": "tasks are overdue and need attention",
     "create": "New Task",
-    "empty": "No tasks",
-    "emptyState": {
+    "empty": {
       "title": "No tasks yet",
-      "description": "Create your first task to start tracking work."
+      "subtitle": "Create your first task to start tracking work."
     },
     "view": {
       "board": "Board",
@@ -142,12 +439,44 @@
     "title": "KPI Tracker",
     "subtitle": "Monitor team performance and targets",
     "create": "New KPI",
-    "avgProgress": "Team avg."
+    "avgProgress": "Team avg.",
+    "progress": "Progress",
+    "target": "Target",
+    "actual": "Actual",
+    "metrics": {
+      "salesClosed": "Sales Closed",
+      "customerSatisfaction": "Customer Satisfaction",
+      "tasksCompleted": "Tasks Completed",
+      "responseTime": "Response Time",
+      "revenueTarget": "Revenue Target"
+    },
+    "period": {
+      "all": "All",
+      "weekly": "Weekly",
+      "monthly": "Monthly",
+      "quarterly": "Quarterly"
+    }
   },
   "payroll": {
     "title": "Payroll",
     "subtitle": "Manage compensation and payments",
     "create": "New Entry",
+    "table": {
+      "employee": "Employee",
+      "period": "Period",
+      "baseSalary": "Base Salary",
+      "bonuses": "Bonuses",
+      "deductions": "Deductions",
+      "net": "Net",
+      "status": "Status"
+    },
+    "employee": "Employee",
+    "period": "Period",
+    "base": "Base Salary",
+    "bonuses": "Bonuses",
+    "deductions": "Deductions",
+    "net": "Net",
+    "status": "Status",
     "export": "Export",
     "stats": {
       "totalNet": "Total Net (Filtered)",
@@ -176,6 +505,12 @@
   "settings": {
     "title": "Settings",
     "subtitle": "Manage your account and workspace preferences",
+    "nav": {
+      "profile": "Profile",
+      "workspace": "Workspace",
+      "notifications": "Notifications",
+      "security": "Security"
+    },
     "section": {
       "profile": "Profile",
       "workspace": "Workspace",
@@ -215,5 +550,29 @@
       "confirmPassword": "Confirm New Password",
       "update": "Update Password"
     }
+  }
+  ,
+  "status": {
+    "paid": "Paid",
+    "approved": "Approved",
+    "draft": "Draft",
+    "cancelled": "Cancelled",
+    "overdue": "Overdue",
+    "success": "Success",
+    "warning": "Warning",
+    "danger": "Danger",
+    "accent": "Info",
+    "todo": "To Do",
+    "inProgress": "In Progress",
+    "inReview": "In Review",
+    "done": "Done",
+    "low": "Low",
+    "medium": "Medium",
+    "high": "High",
+    "critical": "Critical"
+  },
+  "time": {
+    "minutesAgo": "{{count}}m ago",
+    "hoursAgo": "{{count}}h ago"
   }
 }

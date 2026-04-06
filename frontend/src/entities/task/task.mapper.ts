@@ -1,4 +1,5 @@
 import { TaskApiDto, TaskUiModel } from './task.types';
+import i18n from '@shared/i18n/i18n';
 
 const dateFormatter = new Intl.DateTimeFormat('en-US', {
   month: 'short',
@@ -21,7 +22,7 @@ export function mapTaskDtoToUiModel(dto: TaskApiDto): TaskUiModel {
 
   const assigneeName = dto.assignee
     ? `${dto.assignee.firstName} ${dto.assignee.lastName}`
-    : 'Unassigned';
+    : i18n.t('common.states.unassigned');
 
   return {
     id:          dto.id,
@@ -31,7 +32,7 @@ export function mapTaskDtoToUiModel(dto: TaskApiDto): TaskUiModel {
     assigneeId:  dto.assignee?.id ?? null,
     priority:    dto.priority,
     status:      dto.status,
-    dueDate:     dueDate ? dateFormatter.format(dueDate) : '—',
+    dueDate:     dueDate ? dateFormatter.format(dueDate) : i18n.t('common.states.notAvailable'),
     dueDateIso:  dto.dueDate,
     overdue:     isOverdue,
     createdAt:   dto.createdAt,

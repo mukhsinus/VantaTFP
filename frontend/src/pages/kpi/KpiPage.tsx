@@ -7,21 +7,21 @@ type KpiPeriod = 'WEEKLY' | 'MONTHLY' | 'QUARTERLY';
 
 interface KpiMetric {
   id: string;
-  name: string;
-  assignee: string;
+  nameKey: string;
+  assigneeKey: string;
   targetValue: number;
   actualValue: number;
-  unit: string;
+  unitKey: string;
   period: KpiPeriod;
   trend: 'up' | 'down' | 'stable';
 }
 
 const mockKpis: KpiMetric[] = [
-  { id: '1', name: 'Sales Closed', assignee: 'Luca Ferrari', targetValue: 20, actualValue: 17, unit: 'deals', period: 'MONTHLY', trend: 'up' },
-  { id: '2', name: 'Customer Satisfaction', assignee: 'Sofia Chen', targetValue: 90, actualValue: 86, unit: '%', period: 'MONTHLY', trend: 'stable' },
-  { id: '3', name: 'Tasks Completed', assignee: 'Amara Diallo', targetValue: 50, actualValue: 31, unit: 'tasks', period: 'MONTHLY', trend: 'up' },
-  { id: '4', name: 'Response Time', assignee: 'James Park', targetValue: 2, actualValue: 3.2, unit: 'hrs', period: 'WEEKLY', trend: 'down' },
-  { id: '5', name: 'Revenue Target', assignee: 'Maria Santos', targetValue: 100000, actualValue: 78000, unit: '$', period: 'QUARTERLY', trend: 'up' },
+  { id: '1', nameKey: 'kpi.metrics.salesClosed', assigneeKey: 'booking.kpi.sample.users.lucaFerrari', targetValue: 20, actualValue: 17, unitKey: 'booking.kpi.sample.units.deals', period: 'MONTHLY', trend: 'up' },
+  { id: '2', nameKey: 'kpi.metrics.customerSatisfaction', assigneeKey: 'booking.kpi.sample.users.sofiaChen', targetValue: 90, actualValue: 86, unitKey: 'booking.kpi.sample.units.percent', period: 'MONTHLY', trend: 'stable' },
+  { id: '3', nameKey: 'kpi.metrics.tasksCompleted', assigneeKey: 'booking.kpi.sample.users.amaraDiallo', targetValue: 50, actualValue: 31, unitKey: 'booking.kpi.sample.units.tasks', period: 'MONTHLY', trend: 'up' },
+  { id: '4', nameKey: 'kpi.metrics.responseTime', assigneeKey: 'booking.kpi.sample.users.jamesPark', targetValue: 2, actualValue: 3.2, unitKey: 'booking.kpi.sample.units.hours', period: 'WEEKLY', trend: 'down' },
+  { id: '5', nameKey: 'kpi.metrics.revenueTarget', assigneeKey: 'booking.kpi.sample.users.mariaSantos', targetValue: 100000, actualValue: 78000, unitKey: 'booking.kpi.sample.units.currency', period: 'QUARTERLY', trend: 'up' },
 ];
 
 function getProgress(actual: number, target: number): number {
@@ -38,6 +38,12 @@ export function KpiPage() {
   const { t } = useTranslation();
   const isMobile = useIsMobile();
   const [period, setPeriod] = useState<KpiPeriod | 'ALL'>('ALL');
+  const periodLabel = (value: KpiPeriod | 'ALL') => {
+    if (value === 'ALL') return t('kpi.period.all');
+    if (value === 'WEEKLY') return t('kpi.period.weekly');
+    if (value === 'MONTHLY') return t('kpi.period.monthly');
+    return t('kpi.period.quarterly');
+  };
 
   const filtered = period === 'ALL' ? mockKpis : mockKpis.filter((k) => k.period === period);
   const avgProgress = Math.round(filtered.reduce((sum, k) => sum + getProgress(k.actualValue, k.targetValue), 0) / (filtered.length || 1));
@@ -85,7 +91,7 @@ export function KpiPage() {
                 borderColor: period === p ? 'var(--color-accent)' : 'var(--color-border-strong)',
               }}
             >
-              {p}
+              {periodLabel(p)}
             </button>
           ))}
         </div>
@@ -132,6 +138,7 @@ const trendIcon = {
 };
 
 function KpiCard({ kpi }: { kpi: KpiMetric }) {
+  const { t } = useTranslation();
   const pct = getProgress(kpi.actualValue, kpi.targetValue);
   const color = progressColor(pct);
 
@@ -140,12 +147,12 @@ function KpiCard({ kpi }: { kpi: KpiMetric }) {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
         <div>
           <p style={{ fontSize: 'var(--text-md)', fontWeight: 600, color: 'var(--color-text-primary)' }}>
-            {kpi.name}
+            {t(kpi.nameKey)}
           </p>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
-            <Avatar name={kpi.assignee} size="xs" />
+            <Avatar name={t(kpi.assigneeKey)} size="xs" />
             <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-secondary)' }}>
-              {kpi.assignee}
+              {t(kpi.assigneeKey)}
             </span>
           </div>
         </div>
@@ -153,7 +160,11 @@ function KpiCard({ kpi }: { kpi: KpiMetric }) {
           <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
             {trendIcon[kpi.trend]}
             <Badge variant="default" style={{ fontSize: 10 }}>
-              {kpi.period}
+              {kpi.period === 'WEEKLY'
+                ? t('kpi.period.weekly')
+                : kpi.period === 'MONTHLY'
+                  ? t('kpi.period.monthly')
+                  : t('kpi.period.quarterly')}
             </Badge>
           </div>
         </div>
@@ -162,7 +173,7 @@ function KpiCard({ kpi }: { kpi: KpiMetric }) {
       {/* Progress bar */}
       <div style={{ marginBottom: 12 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-          <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-secondary)' }}>Progress</span>
+          <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-secondary)' }}>{t('kpi.progress')}</span>
           <span style={{ fontSize: 'var(--text-xs)', fontWeight: 700, color }}>
             {pct}%
           </span>
@@ -190,15 +201,15 @@ function KpiCard({ kpi }: { kpi: KpiMetric }) {
       {/* Values */}
       <div style={{ display: 'flex', justifyContent: 'space-between' }}>
         <div>
-          <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)' }}>Actual</p>
+          <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)' }}>{t('kpi.actual')}</p>
           <p style={{ fontSize: 'var(--text-lg)', fontWeight: 700, color }}>
-            {kpi.actualValue.toLocaleString()} <span style={{ fontSize: 'var(--text-xs)', fontWeight: 400 }}>{kpi.unit}</span>
+            {kpi.actualValue.toLocaleString()} <span style={{ fontSize: 'var(--text-xs)', fontWeight: 400 }}>{t(kpi.unitKey)}</span>
           </p>
         </div>
         <div style={{ textAlign: 'right' }}>
-          <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)' }}>Target</p>
+          <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)' }}>{t('kpi.target')}</p>
           <p style={{ fontSize: 'var(--text-lg)', fontWeight: 700, color: 'var(--color-text-secondary)' }}>
-            {kpi.targetValue.toLocaleString()} <span style={{ fontSize: 'var(--text-xs)', fontWeight: 400 }}>{kpi.unit}</span>
+            {kpi.targetValue.toLocaleString()} <span style={{ fontSize: 'var(--text-xs)', fontWeight: 400 }}>{t(kpi.unitKey)}</span>
           </p>
         </div>
       </div>

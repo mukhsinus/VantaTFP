@@ -3,6 +3,7 @@ import { authApi } from '@entities/auth/auth.api';
 import { useAuthStore } from '@app/store/auth.store';
 import { ApiError } from '@shared/api/client';
 import type { LoginPayload } from '@entities/auth/auth.types';
+import i18n from '@shared/i18n/i18n';
 
 interface UseLoginResult {
   /** Returns true on success, false on failure. Error message is exposed via `error`. */
@@ -34,14 +35,14 @@ export function useLogin(): UseLoginResult {
     } catch (err: unknown) {
       if (err instanceof ApiError) {
         if (err.statusCode === 401 || err.statusCode === 400) {
-          setError('Invalid email or password. Please try again.');
+          setError(i18n.t('errors.auth.invalidCredentials'));
         } else if (err.errorCode === 'API_NOT_CONFIGURED' || err.statusCode === 404) {
-          setError('Backend API is not reachable. Please contact support.');
+          setError(i18n.t('errors.generic.backendUnavailable'));
         } else {
-          setError('Unable to sign in right now. Please try again later.');
+          setError(i18n.t('errors.auth.unableToSignIn'));
         }
       } else {
-        setError('A network error occurred. Please check your connection.');
+        setError(i18n.t('errors.generic.network'));
       }
       return false;
     } finally {

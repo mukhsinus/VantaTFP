@@ -3,13 +3,14 @@ import { useTranslation } from 'react-i18next';
 import { createPortal } from 'react-dom';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Avatar, Badge } from '@shared/components/ui';
+import { LanguageSwitcher } from '@shared/components/language-switcher/LanguageSwitcher';
 import { useAuthStore } from '@app/store/auth.store';
 import { useSidebarStore } from '@app/store/sidebar.store';
 import { useIsMobile } from '@shared/hooks/useIsMobile';
 import styles from './Topbar.module.css';
 
 const pageTitles: Record<string, string> = {
-  '/dashboard': 'nav.dashboard',
+  '/dashboard': 'nav.overview',
   '/tasks': 'nav.tasks',
   '/employees': 'nav.employees',
   '/kpi': 'nav.kpi',
@@ -35,7 +36,7 @@ export function Topbar() {
   const [isAccountSheetOpen, setIsAccountSheetOpen] = useState(false);
 
   const baseRoute = '/' + location.pathname.split('/')[1];
-  const titleKey = pageTitles[baseRoute] ?? 'nav.dashboard';
+  const titleKey = pageTitles[baseRoute] ?? 'nav.overview';
   const fullName = user ? `${user.firstName} ${user.lastName}` : '';
 
   useEffect(() => {
@@ -79,7 +80,7 @@ export function Topbar() {
       {!isMobile && (
         <button
           onClick={toggleSidebar}
-          title={t('sidebar.toggle') ?? 'Toggle sidebar'}
+          title={t('sidebar.toggle') ?? t('nav.actions.toggleSidebar')}
           className={styles.toggleButton}
         >
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
@@ -110,16 +111,18 @@ export function Topbar() {
               onChange={(e) => setSearch(e.target.value)}
               className={styles.searchInput}
             />
-            <kbd className={styles.searchShortcut}>⌘K</kbd>
+            <kbd className={styles.searchShortcut}>{t('topbar.shortcut')}</kbd>
           </div>
         </div>
       )}
 
       {/* Actions */}
       <div className={`${styles.actions} ${isMobile ? styles.actionsMobile : ''}`}>
+        {!isMobile && <LanguageSwitcher />}
+
         {/* Notifications bell */}
         {!isMobile && (
-          <button className={styles.notificationButton} aria-label="Notifications">
+          <button className={styles.notificationButton} aria-label={t('nav.notifications.title')}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75}>
               <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 01-3.46 0" />
             </svg>
@@ -136,7 +139,7 @@ export function Topbar() {
             {isMobile ? (
               <button
                 onClick={() => setIsAccountSheetOpen(true)}
-                aria-label="Open account menu"
+                aria-label={t('nav.account.openMenu')}
                 className={styles.userButtonMobile}
               >
                 <Avatar name={fullName} size="sm" />
@@ -151,7 +154,11 @@ export function Topbar() {
                 </h2>
                 <div className={styles.userBadge}>
                   <Badge variant={roleVariant[user.role] ?? 'default'}>
-                    {user.role}
+                    {user.role === 'ADMIN'
+                      ? t('profile.roles.admin')
+                      : user.role === 'MANAGER'
+                        ? t('profile.roles.manager')
+                        : t('profile.roles.employee')}
                   </Badge>
                 </div>
               </div>
@@ -165,14 +172,14 @@ export function Topbar() {
           <div className={styles.mobileSheet}>
             <button
               onClick={closeAccountSheet}
-              aria-label="Close account sheet"
+              aria-label={t('nav.account.closeSheet')}
               className={styles.sheetBackdrop}
             />
 
             <div
               role="dialog"
               aria-modal="true"
-              aria-label="Account actions"
+              aria-label={t('nav.account.actionsTitle')}
               className={styles.sheetContent}
               style={{
                 position: 'relative',
@@ -195,21 +202,28 @@ export function Topbar() {
                   <p className={styles.sheetUserName}>{fullName}</p>
                   <div className={styles.sheetUserBadge}>
                     <Badge variant={roleVariant[user.role] ?? 'default'}>
-                      {user.role}
+                      {user.role === 'ADMIN'
+                        ? t('profile.roles.admin')
+                        : user.role === 'MANAGER'
+                          ? t('profile.roles.manager')
+                          : t('profile.roles.employee')}
                     </Badge>
                   </div>
                 </div>
               </div>
 
               <div className={styles.sheetActions}>
+                <div className={styles.sheetLanguage}>
+                  <LanguageSwitcher fullWidth />
+                </div>
                 <button onClick={goToSettings} className={styles.sheetActionButton}>
-                  {t('nav.settings')}
+                  {t('nav.labels.settings')}
                 </button>
                 <button
                   onClick={handleLogout}
                   className={`${styles.sheetActionButton} ${styles.sheetActionButtonDanger}`}
                 >
-                  {t('nav.logout')}
+                  {t('nav.labels.logout')}
                 </button>
               </div>
             </div>

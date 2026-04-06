@@ -1,4 +1,5 @@
 import { useAuthStore } from '@app/store/auth.store';
+import i18n from '@shared/i18n/i18n';
 
 // ─── Error type ───────────────────────────────────────────────────────────────
 
@@ -51,7 +52,7 @@ function resolveApiBaseUrl(): string {
   throw new ApiError(
     503,
     'API_NOT_CONFIGURED',
-    'API base URL is not configured. Set VITE_API_BASE_URL for production.'
+    i18n.t('errors.generic.apiNotConfigured')
   );
 }
 
@@ -90,7 +91,7 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
   // Global 401 handler — clear auth so the router can redirect to login
   if (response.status === 401) {
     useAuthStore.getState().clearAuth();
-    throw new ApiError(401, 'UNAUTHORIZED', 'Session expired. Please sign in again.');
+    throw new ApiError(401, 'UNAUTHORIZED', i18n.t('auth.session.expired'));
   }
 
   // No-content responses
@@ -105,7 +106,7 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
     throw new ApiError(
       response.status,
       errorBody?.errorCode ?? 'UNKNOWN_ERROR',
-      errorBody?.message ?? `Request failed with status ${response.status}`
+      errorBody?.message ?? i18n.t('errors.generic.requestFailed', { statusCode: response.status })
     );
   }
 

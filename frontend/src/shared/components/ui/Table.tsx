@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 
 interface Column<T> {
   key: string;
@@ -121,6 +122,7 @@ export function Table<T>({
 }
 
 function DefaultEmptyState() {
+  const { t } = useTranslation();
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
       <div
@@ -140,10 +142,10 @@ function DefaultEmptyState() {
         </svg>
       </div>
       <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-secondary)', fontWeight: 500 }}>
-        No items yet
+        {t('common.emptyState.title')}
       </p>
       <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)' }}>
-        Items you create will appear here.
+        {t('common.emptyState.description')}
       </p>
     </div>
   );

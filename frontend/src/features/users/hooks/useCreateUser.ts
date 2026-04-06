@@ -4,6 +4,7 @@ import { mapUserDtoToUiModel } from '@entities/user/users.mapper';
 import type { CreateUserPayload, UserUiModel } from '@entities/user/users.types';
 import { toast } from '@app/store/toast.store';
 import { ApiError } from '@shared/api/client';
+import i18n from '@shared/i18n/i18n';
 import { usersKeys } from './users.query-keys';
 
 interface UseCreateUserResult {
@@ -18,13 +19,16 @@ export function useCreateUser(): UseCreateUserResult {
     mutationFn: usersApi.createUser,
     onSuccess: (dto) => {
       queryClient.invalidateQueries({ queryKey: usersKeys.lists() });
-      toast.success('User created', `${dto.firstName} ${dto.lastName} has been added.`);
+      toast.success(
+        i18n.t('errors.user.created'),
+        i18n.t('errors.user.addedDescription', { fullName: `${dto.firstName} ${dto.lastName}` })
+      );
     },
     onError: (error: unknown) => {
       if (error instanceof ApiError) {
-        toast.error('Failed to create user', error.message);
+        toast.error(i18n.t('errors.user.createFailed'), error.message);
       } else {
-        toast.error('Failed to create user', 'An unexpected error occurred.');
+        toast.error(i18n.t('errors.user.createFailed'), i18n.t('errors.generic.unexpected'));
       }
     },
   });

@@ -1,0 +1,209 @@
+{
+  "nav": {
+    "overview": "Boshqaruv",
+    "dashboard": "Boshqaruv",
+    "tasks": "Vazifalar",
+    "employees": "Xodimlar",
+    "kpi": "KPI",
+    "payroll": "Ish haqi",
+    "settings": "Sozlamalar",
+    "logout": "Chiqish",
+    "notifications": {
+      "title": "Bildirishnomalar"
+    },
+    "account": {
+      "openMenu": "Akkaunt menyusini ochish",
+      "closeSheet": "Akkaunt panelini yopish",
+      "actionsTitle": "Akkaunt amallari"
+    }
+  },
+  "common": {
+    "actions": {
+      "save": "Saqlash",
+      "cancel": "Bekor qilish",
+      "retry": "Qayta urinish"
+    },
+    "save": "Saqlash",
+    "cancel": "Bekor qilish",
+    "retry": "Qayta urinish",
+    "search": "Qidirish",
+    "export": "Eksport",
+    "all": "Barchasi",
+    "languages": {
+      "ru": "RU",
+      "uz": "UZ",
+      "en": "EN"
+    },
+    "languageSwitcher": "Til tanlash",
+    "errorTitle": "Xatolik yuz berdi",
+    "errorDescription": "Sahifa yuklanmadi. Qayta urinib ko‘ring.",
+    "brand": {
+      "shortName": "TFP",
+      "fullName": "Team Flow Platform"
+    }
+  },
+  "login": {
+    "form": {
+      "title": "Xush kelibsiz",
+      "subtitle": "Ish maydoniga kiring.",
+      "submit": "Kirish"
+    }
+  },
+  "topbar": {
+    "search": "Qidiruv...",
+    "shortcut": "⌘K"
+  },
+  "tasks": {
+    "title": "Vazifalar",
+    "total": "jami vazifa",
+    "overdue": "muddati o‘tgan",
+    "overdueAlert": "ta vazifa e'tibor talab qiladi",
+    "create": "Yangi vazifa",
+    "moveTo": "Ko‘chirish",
+    "empty": {
+      "title": "Vazifalar hali yo‘q",
+      "subtitle": "Ishni boshlash uchun birinchi vazifani yarating."
+    },
+    "view": {
+      "board": "Doska",
+      "list": "Ro‘yxat"
+    },
+    "col": {
+      "title": "Nomi",
+      "assignee": "Mas'ul",
+      "priority": "Ustuvorlik",
+      "due": "Muddat",
+      "status": "Holat"
+    }
+  },
+  "overview": {
+    "title": "Boshqaruv",
+    "subtitle": "Bugungi holat qisqacha",
+    "stats": {
+      "totalTasks": "Jami vazifalar",
+      "completed": "Bajarilgan",
+      "overdue": "Muddati o‘tgan",
+      "inProgress": "Jarayonda",
+      "delta": {
+        "totalTasksWeek": "Haftada 12%",
+        "completedWeek": "Haftada 8%",
+        "overdueSinceYesterday": "Kechadan beri 2 ta"
+      }
+    },
+    "activity": {
+      "title": "So‘nggi faollik",
+      "subtitle": "So‘nggi 24 soatdagi jamoa yangiliklari",
+      "completedTask": "{{user}} {{task}} vazifasini yakunladi",
+      "createdTask": "{{user}} {{task}} vazifasini yaratdi",
+      "overdueTask": "{{user}}: {{task}} muddati o‘tgan",
+      "updatedKpi": "{{user}} {{task}} KPI ni yangiladi"
+    },
+    "sample": {
+      "users": {
+        "sofiaChen": "Sofia Chen",
+        "jamesPark": "James Park",
+        "amaraDiallo": "Amara Diallo",
+        "lucaFerrari": "Luca Ferrari",
+        "mariaSantos": "Maria Santos"
+      },
+      "tasks": {
+        "q1ReportDraft": "Q1 hisobot qoralamasi",
+        "clientOnboardingFlow": "Mijoz onboarding jarayoni",
+        "invoiceProcessing": "Hisob-faktura qayta ishlash",
+        "monthlySalesTarget": "Oylik savdo rejasi",
+        "teamReviewMeeting": "Jamoa review uchrashuvi"
+      }
+    },
+    "overdue": {
+      "title": "Muddati o‘tgan vazifalar",
+      "items": {
+        "invoiceProcessing": "Hisob-faktura qayta ishlash",
+        "budgetReviewQ4": "Q4 byudjet ko‘rib chiqish",
+        "teamFeedbackSession": "Jamoa fikr-mulohaza sessiyasi"
+      }
+    },
+    "progress": {
+      "title": "Vazifalar progressi"
+    }
+  },
+  "errors": {
+    "loadFailed": {
+      "title": "Xatolik yuz berdi",
+      "description": "Sahifa yuklanmadi. Qayta urinib ko‘ring."
+    }
+  },
+  "status": {
+    "paid": "To‘langan",
+    "approved": "Tasdiqlangan",
+    "draft": "Qoralama",
+    "cancelled": "Bekor qilingan",
+    "success": "Muvaffaqiyat",
+    "warning": "Ogohlantirish",
+    "danger": "Xatolik",
+    "accent": "Ma'lumot",
+    "todo": "Rejada",
+    "inProgress": "Jarayonda",
+    "inReview": "Tekshiruvda",
+    "done": "Bajarildi",
+    "low": "Past",
+    "medium": "O‘rta",
+    "high": "Yuqori",
+    "critical": "Juda yuqori"
+  },
+  "time": {
+    "minutesAgo": "{{count}} daqiqa oldin",
+    "hoursAgo": "{{count}} soat oldin"
+  },
+  "kpi": {
+    "title": "KPI Treker",
+    "subtitle": "Jamoa natijalari va maqsadlarini kuzating",
+    "create": "Yangi KPI",
+    "avgProgress": "Jamoa o'rtachasi",
+    "progress": "Progress",
+    "target": "Maqsad",
+    "actual": "Amaldagi",
+    "metrics": {
+      "salesClosed": "Yopilgan savdolar",
+      "customerSatisfaction": "Mijozlar mamnunligi",
+      "tasksCompleted": "Bajarilgan vazifalar",
+      "responseTime": "Javob vaqti",
+      "revenueTarget": "Daromad rejasi"
+    },
+    "period": {
+      "all": "Barchasi",
+      "weekly": "Haftalik",
+      "monthly": "Oylik",
+      "quarterly": "Choraklik"
+    }
+  },
+  "payroll": {
+    "title": "Ish haqi",
+    "subtitle": "To'lovlar va hisob-kitoblarni boshqarish",
+    "create": "Yangi yozuv",
+    "table": {
+      "employee": "Xodim",
+      "period": "Davr",
+      "baseSalary": "Asosiy maosh",
+      "bonuses": "Bonuslar",
+      "deductions": "Ushlanmalar",
+      "net": "Sof summa",
+      "status": "Holat"
+    }
+  },
+  "settings": {
+    "title": "Sozlamalar",
+    "subtitle": "Akkaunt va ish maydoni sozlamalarini boshqaring",
+    "nav": {
+      "profile": "Profil",
+      "workspace": "Ish maydoni",
+      "notifications": "Bildirishnomalar",
+      "security": "Xavfsizlik"
+    },
+    "profile": {
+      "changeAvatar": "Rasmni o'zgartirish",
+      "firstName": "Ism",
+      "lastName": "Familiya",
+      "email": "Email"
+    }
+  }
+}

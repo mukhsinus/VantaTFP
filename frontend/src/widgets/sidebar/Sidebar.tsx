@@ -15,7 +15,7 @@ interface NavItem {
 const navItems: NavItem[] = [
   {
     to: '/dashboard',
-    labelKey: 'nav.dashboard',
+    labelKey: 'nav.overview',
     icon: (
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75}>
         <rect x="3" y="3" width="7" height="7" rx="1" />
@@ -112,8 +112,8 @@ export function Sidebar() {
           </div>
           {!isCollapsed && (
             <div className={styles.brandingText}>
-              <p className={styles.brandingTitle}>TFP</p>
-              <p className={styles.brandingSubtitle}>{user?.tenantName ?? 'Workspace'}</p>
+              <p className={styles.brandingTitle}>{t('common.brand.shortName')}</p>
+              <p className={styles.brandingSubtitle}>{user?.tenantName ?? t('nav.workspace.fallbackName')}</p>
             </div>
           )}
         </div>
@@ -121,7 +121,11 @@ export function Sidebar() {
         {/* Toggle button */}
         <button
           onClick={toggleCollapsed}
-          title={isCollapsed ? t('sidebar.expand') : t('sidebar.collapse') ?? (isCollapsed ? 'Expand' : 'Collapse')}
+          title={
+            isCollapsed
+              ? t('sidebar.expand') || t('nav.actions.expandSidebar')
+              : t('sidebar.collapse') || t('nav.actions.collapseSidebar')
+          }
           className={styles.toggleButton}
         >
           <svg
@@ -133,7 +137,7 @@ export function Sidebar() {
             strokeWidth={2}
             className={`${styles.toggleIcon} ${isCollapsed ? styles.toggleIconCollapsed : ''}`}
           >
-            <polyline points="15 18l-6-6 6-6" />
+            <polyline points="15 18 9 12 15 6" />
           </svg>
         </button>
       </div>
@@ -163,12 +167,18 @@ export function Sidebar() {
                 <p className={styles.userName}>
                   {user.firstName} {user.lastName}
                 </p>
-                <p className={styles.userRole}>{user.role}</p>
+                <p className={styles.userRole}>
+                  {user.role === 'ADMIN'
+                    ? t('profile.roles.admin')
+                    : user.role === 'MANAGER'
+                      ? t('profile.roles.manager')
+                      : t('profile.roles.employee')}
+                </p>
               </div>
             )}
             <button
               onClick={handleLogout}
-              title={t('nav.logout')}
+              title={t('nav.labels.logout')}
               className={styles.logoutButton}
             >
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
