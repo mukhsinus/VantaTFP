@@ -5,12 +5,13 @@ import { useAuthStore } from '@app/store/auth.store';
  */
 export function useCurrentUser() {
     const user = useAuthStore((s) => s.user);
+    const accessToken = useAuthStore((s) => s.accessToken);
     return {
         user,
         role: user?.role ?? null,
         isAdmin: user?.role === 'ADMIN',
         isManager: user?.role === 'MANAGER',
         isEmployee: user?.role === 'EMPLOYEE',
-        isAuthenticated: user !== null,
+        isAuthenticated: Boolean(user && accessToken),
     };
 }

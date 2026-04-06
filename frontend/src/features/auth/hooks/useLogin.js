@@ -18,13 +18,23 @@ export function useLogin() {
         setIsPending(true);
         try {
             const response = await authApi.login({ email, password });
-            setAuth(response.user, response.accessToken);
+            const accessToken = response.accessToken
+                ?? response.access_token
+                ?? response.token;
+            if (!response.user || !accessToken) {
+                setError(i18n.t('errors.auth.unableToSignIn'));
+                return false;
+            }
+            setAuth(response.user, accessToken);
             return true;
         }
         catch (err) {
             if (err instanceof ApiError) {
                 if (err.statusCode === 401 || err.statusCode === 400) {
                     setError(i18n.t('errors.auth.invalidCredentials'));
+                }
+                else if (err.statusCode === 429) {
+                    setError(i18n.t('errors.auth.tooManyAttempts'));
                 }
                 else if (err.errorCode === 'API_NOT_CONFIGURED' || err.statusCode === 404) {
                     setError(i18n.t('errors.generic.backendUnavailable'));

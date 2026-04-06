@@ -8,6 +8,7 @@ import { CreateUserModal } from '@features/users/components/CreateUserModal';
 import { usePermissions } from '@shared/hooks/useCanPerform';
 import { useCurrentUser } from '@shared/hooks/useCurrentUser';
 import { useIsMobile } from '@shared/hooks/useIsMobile';
+import { ApiError } from '@shared/api/client';
 import type { Role } from '@shared/types/auth.types';
 import type { UserUiModel } from '@entities/user/users.types';
 
@@ -20,7 +21,7 @@ const roleVariant: Record<Role, 'danger' | 'warning' | 'success'> = {
 export function EmployeesPage() {
   const { t } = useTranslation();
   const isMobile = useIsMobile();
-  const { users, isLoading, isError } = useUsers();
+  const { users, isLoading, isError, error } = useUsers();
   const { can } = usePermissions();
   const { role: currentRole, user: currentUser } = useCurrentUser();
 
@@ -39,6 +40,11 @@ export function EmployeesPage() {
   if (isLoading) return <PageSkeleton />;
 
   if (isError) {
+    // 401 is handled globally (clear auth + AuthGuard redirect).
+    if (error instanceof ApiError && error.statusCode === 401) {
+      return <PageSkeleton />;
+    }
+
     return (
       <EmptyState
         title={t('errors.loadFailed.title')}

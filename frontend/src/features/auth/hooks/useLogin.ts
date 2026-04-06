@@ -30,12 +30,24 @@ export function useLogin(): UseLoginResult {
 
     try {
       const response = await authApi.login({ email, password });
-      setAuth(response.user, response.accessToken);
+      const accessToken =
+        (response as { accessToken?: string; access_token?: string; token?: string }).accessToken
+        ?? (response as { access_token?: string }).access_token
+        ?? (response as { token?: string }).token;
+
+      if (!response.user || !accessToken) {
+        setError(i18n.t('errors.auth.unableToSignIn'));
+        return false;
+      }
+
+      setAuth(response.user, accessToken);
       return true;
     } catch (err: unknown) {
       if (err instanceof ApiError) {
         if (err.statusCode === 401 || err.statusCode === 400) {
           setError(i18n.t('errors.auth.invalidCredentials'));
+        } else if (err.statusCode === 429) {
+          setError(i18n.t('errors.auth.tooManyAttempts'));
         } else if (err.errorCode === 'API_NOT_CONFIGURED' || err.statusCode === 404) {
           setError(i18n.t('errors.generic.backendUnavailable'));
         } else {

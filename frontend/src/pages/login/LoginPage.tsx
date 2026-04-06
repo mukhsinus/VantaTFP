@@ -12,7 +12,7 @@ export function LoginPage() {
   const [searchParams] = useSearchParams();
   const redirectTo = searchParams.get('redirect') ?? '/dashboard';
 
-  const isAuthenticated = useAuthStore((s) => s.user !== null && s.accessToken !== null);
+  const isAuthenticated = useAuthStore((s) => Boolean(s.user && s.accessToken));
 
   const navigate = useNavigate();
   const { login, isPending, error, clearError } = useLogin();

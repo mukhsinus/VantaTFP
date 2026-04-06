@@ -336,6 +336,7 @@
     },
     "auth": {
       "invalidCredentials": "Invalid email or password. Please try again.",
+      "tooManyAttempts": "Too many attempts. Please wait a minute and try again.",
       "unableToSignIn": "Unable to sign in right now. Please try again later."
     },
     "user": {

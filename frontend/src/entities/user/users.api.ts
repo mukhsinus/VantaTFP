@@ -2,13 +2,14 @@ import { apiClient } from '@shared/api/client';
 import { API } from '@shared/api/endpoints';
 import type {
   UserApiDto,
+  UserListApiDto,
   CreateUserPayload,
   UpdateUserPayload,
 } from './users.types';
 
 export const usersApi = {
-  getUsers: (): Promise<UserApiDto[]> =>
-    apiClient.get<UserApiDto[]>(API.users.list),
+  getUsers: (): Promise<UserApiDto[] | UserListApiDto> =>
+    apiClient.get<UserApiDto[] | UserListApiDto>(API.users.list),
 
   createUser: (payload: CreateUserPayload): Promise<UserApiDto> =>
     apiClient.post<UserApiDto>(API.users.list, payload),

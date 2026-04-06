@@ -148,6 +148,9 @@
     "loadFailed": {
       "title": "Xatolik yuz berdi",
       "description": "Sahifa yuklanmadi. Qayta urinib ko‘ring."
+    },
+    "auth": {
+      "tooManyAttempts": "Kirish urinishlari juda ko'p. Bir daqiqa kutib, qayta urinib ko'ring."
     }
   },
   "status": {

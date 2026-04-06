@@ -1,6 +1,7 @@
 import fastifyPlugin from 'fastify-plugin';
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import fastifyRateLimit from '@fastify/rate-limit';
+import { env } from '../shared/utils/env.js';
 
 // In-memory store for auth endpoint rate limits
 interface RateLimitEntry {
@@ -54,18 +55,22 @@ async function rateLimitPlugin(app: FastifyInstance): Promise<void> {
 
   // Register strict rate limiters for auth endpoints
   app.addHook('preHandler', async (request: FastifyRequest, reply: FastifyReply) => {
+    const isDevelopment = env.NODE_ENV === 'development';
+    const loginMaxAttempts = isDevelopment ? 30 : 5;
+    const loginWindowMs = isDevelopment ? 60 * 1000 : 15 * 60 * 1000;
+    const loginWindowLabel = isDevelopment ? '1 minute' : '15 minutes';
+
     const isLoginEndpoint = request.url === '/api/v1/auth/login' && request.method === 'POST';
     const isRegisterEndpoint =
       request.url === '/api/v1/auth/register' && request.method === 'POST';
 
     if (isLoginEndpoint) {
-      // 5 attempts per 15 minutes per IP
-      const { allowed } = checkAuthRateLimit(request.ip, 'login', 5, 15 * 60 * 1000);
+      const { allowed } = checkAuthRateLimit(request.ip, 'login', loginMaxAttempts, loginWindowMs);
       if (!allowed) {
         return reply.code(429).send({
           statusCode: 429,
           error: 'Too Many Requests',
-          message: 'Too many login attempts. Please try again in 15 minutes.',
+          message: `Too many login attempts. Please try again in ${loginWindowLabel}.`,
         });
       }
     }

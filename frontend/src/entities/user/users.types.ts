@@ -12,6 +12,17 @@ export interface UserApiDto {
   createdAt: string;
 }
 
+export interface UserListApiDto {
+  data: UserApiDto[];
+  pagination: {
+    total: number;
+    page: number;
+    limit: number;
+    pages: number;
+    hasMore: boolean;
+  };
+}
+
 export interface CreateUserPayload {
   email: string;
   password: string;

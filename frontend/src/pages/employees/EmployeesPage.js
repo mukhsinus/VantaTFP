@@ -9,6 +9,7 @@ import { CreateUserModal } from '@features/users/components/CreateUserModal';
 import { usePermissions } from '@shared/hooks/useCanPerform';
 import { useCurrentUser } from '@shared/hooks/useCurrentUser';
 import { useIsMobile } from '@shared/hooks/useIsMobile';
+import { ApiError } from '@shared/api/client';
 const roleVariant = {
     ADMIN: 'danger',
     MANAGER: 'warning',
@@ -17,7 +18,7 @@ const roleVariant = {
 export function EmployeesPage() {
     const { t } = useTranslation();
     const isMobile = useIsMobile();
-    const { users, isLoading, isError } = useUsers();
+    const { users, isLoading, isError, error } = useUsers();
     const { can } = usePermissions();
     const { role: currentRole, user: currentUser } = useCurrentUser();
     const [search, setSearch] = useState('');
@@ -33,6 +34,10 @@ export function EmployeesPage() {
     if (isLoading)
         return _jsx(PageSkeleton, {});
     if (isError) {
+        // 401 is handled globally (clear auth + AuthGuard redirect).
+        if (error instanceof ApiError && error.statusCode === 401) {
+            return _jsx(PageSkeleton, {});
+        }
         return (_jsx(EmptyState, { title: t('errors.loadFailed.title'), description: t('errors.loadFailed.description'), action: { label: t('common.actions.retry'), onClick: () => window.location.reload() } }));
     }
     return (_jsxs(_Fragment, { children: [_jsxs("div", { style: { display: 'flex', flexDirection: 'column', gap: isMobile ? 14 : 20 }, children: [_jsxs("div", { style: { display: 'flex', justifyContent: 'space-between', alignItems: isMobile ? 'flex-start' : 'center', gap: isMobile ? 10 : 0 }, children: [_jsxs("div", { children: [_jsx("h2", { style: { fontSize: isMobile ? 'var(--text-xl)' : 'var(--text-2xl)', fontWeight: 700, color: 'var(--color-text-primary)' }, children: t('employees.title') }), _jsxs("p", { style: { fontSize: 'var(--text-sm)', color: 'var(--color-text-secondary)', marginTop: 4 }, children: [users.length, " ", t('employees.total')] })] }), can('employee:invite') && (_jsx(Button, { variant: "primary", size: "sm", onClick: () => setShowCreateModal(true), leftIcon: _jsx("svg", { width: "13", height: "13", viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 2.5, children: _jsx("path", { d: "M12 5v14M5 12h14" }) }), children: t('employees.invite') }))] }), _jsxs("div", { style: { display: 'flex', gap: 10, alignItems: 'center', flexDirection: isMobile ? 'column' : 'row' }, children: [_jsx("div", { style: { flex: 1, maxWidth: isMobile ? '100%' : 300, width: '100%' }, children: _jsx(Input, { placeholder: t('common.search'), value: search, onChange: (e) => setSearch(e.target.value), leftIcon: _jsxs("svg", { width: "14", height: "14", viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 2, children: [_jsx("circle", { cx: "11", cy: "11", r: "8" }), _jsx("path", { d: "M21 21l-4.35-4.35" })] }) }) }), _jsx("div", { style: { display: 'flex', gap: 6, width: isMobile ? '100%' : undefined, overflowX: isMobile ? 'auto' : undefined }, children: ['ALL', 'ADMIN', 'MANAGER', 'EMPLOYEE'].map((r) => (_jsx("button", { onClick: () => setRoleFilter(r), style: {

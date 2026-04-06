@@ -16,6 +16,7 @@ interface UseCurrentUserResult {
  */
 export function useCurrentUser(): UseCurrentUserResult {
   const user = useAuthStore((s) => s.user);
+  const accessToken = useAuthStore((s) => s.accessToken);
 
   return {
     user,
@@ -23,6 +24,6 @@ export function useCurrentUser(): UseCurrentUserResult {
     isAdmin:         user?.role === 'ADMIN',
     isManager:       user?.role === 'MANAGER',
     isEmployee:      user?.role === 'EMPLOYEE',
-    isAuthenticated: user !== null,
+    isAuthenticated: Boolean(user && accessToken),
   };
 }
