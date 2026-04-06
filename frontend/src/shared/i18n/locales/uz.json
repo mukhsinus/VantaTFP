@@ -74,6 +74,24 @@
       "priority": "Ustuvorlik",
       "due": "Muddat",
       "status": "Holat"
+    },
+    "modal": {
+      "title": "Yangi vazifa",
+      "description": "Vazifa qo'shing va uni jamoaga biriktiring.",
+      "submit": "Vazifa yaratish",
+      "fields": {
+        "title": "Nomi",
+        "description": "Tavsif",
+        "priority": "Ustuvorlik",
+        "dueDate": "Muddat"
+      },
+      "placeholders": {
+        "title": "Nima qilish kerak?",
+        "description": "Kontekst yoki qabul mezonlarini kiriting..."
+      },
+      "errors": {
+        "titleRequired": "Vazifa nomini kiriting"
+      }
     }
   },
   "overview": {
@@ -188,6 +206,20 @@
       "deductions": "Ushlanmalar",
       "net": "Sof summa",
       "status": "Holat"
+    },
+    "stats": {
+      "totalNet": "Jami sof summa (filtr bo'yicha)",
+      "paid": "To'langan",
+      "pending": "To'lov kutilmoqda",
+      "drafts": "Qoralamalar"
+    },
+    "action": {
+      "approve": "Tasdiqlash",
+      "pay": "To'landi deb belgilash"
+    },
+    "empty": {
+      "title": "Ish haqi yozuvlari yo'q",
+      "description": "Boshlash uchun birinchi ish haqi yozuvini yarating."
     }
   },
   "settings": {
@@ -200,10 +232,37 @@
       "security": "Xavfsizlik"
     },
     "profile": {
+      "title": "Profil",
+      "subtitle": "Shaxsiy ma'lumotlaringizni yangilang",
       "changeAvatar": "Rasmni o'zgartirish",
+      "avatarHint": "JPG, PNG 2 MB gacha",
       "firstName": "Ism",
       "lastName": "Familiya",
       "email": "Email"
+    },
+    "workspace": {
+      "title": "Ish maydoni",
+      "subtitle": "Tashkilot sozlamalarini boshqaring",
+      "name": "Ish maydoni nomi",
+      "plan": "Joriy tarif",
+      "planDescription": "Tarif jamoangiz uchun mavjud imkoniyatlarni belgilaydi.",
+      "proPlan": "PRO"
+    },
+    "notifications": {
+      "title": "Bildirishnomalar",
+      "subtitle": "Qachon va qanday bildirishnoma olishni belgilang",
+      "taskOverdue": "Muddati o'tgan vazifalar haqida ogohlantirish",
+      "taskAssigned": "Menga biriktirilgan yangi vazifa",
+      "kpiUpdate": "KPI yangilanishlari",
+      "payrollApproval": "Ish haqi tasdiqlash so'rovlari"
+    },
+    "security": {
+      "title": "Xavfsizlik",
+      "subtitle": "Parol va akkaunt xavfsizligini boshqaring",
+      "currentPassword": "Joriy parol",
+      "newPassword": "Yangi parol",
+      "confirmPassword": "Yangi parolni tasdiqlang",
+      "update": "Parolni yangilash"
     }
   }
 }
