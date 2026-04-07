@@ -2,9 +2,14 @@ import { z } from 'zod';
 
 const environmentSchema = z.object({
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
+  LOG_LEVEL: z.string().default('info'),
   PORT: z.coerce.number().default(3000),
   HOST: z.string().default('0.0.0.0'),
   DATABASE_URL: z.string().min(1),
+  REDIS_URL: z.string().min(1).default('redis://127.0.0.1:6379'),
+  BULLMQ_PREFIX: z.string().default('tfp'),
+  PAYROLL_DEFAULT_BASE_SALARY: z.coerce.number().nonnegative().default(0),
+  PAYROLL_DEFAULT_TASK_BONUS_RATE: z.coerce.number().nonnegative().default(0),
   JWT_SECRET: z.string().min(32),
   JWT_EXPIRY: z.string().default('15m'),
   JWT_REFRESH_EXPIRY: z.string().default('7d'),

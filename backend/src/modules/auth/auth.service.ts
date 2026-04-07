@@ -25,13 +25,14 @@ export interface AuthSuccessResponse extends TokenPair {
 }
 
 type TokenSigner = (payload: AuthenticatedUser, expiresIn: string) => string;
-type TokenVerifier = (token: string) => AuthenticatedUser;
+type TokenVerifier = (token: string) => AuthenticatedUser & { tokenType?: 'access' | 'refresh' };
 
 export class AuthService {
   constructor(
     private readonly authRepository: AuthRepository,
-    private readonly signToken: TokenSigner,
-    private readonly verifyToken: TokenVerifier
+    private readonly signAccessToken: TokenSigner,
+    private readonly signRefreshToken: TokenSigner,
+    private readonly verifyRefreshToken: TokenVerifier
   ) {}
 
   async login(payload: LoginRequest): Promise<AuthSuccessResponse> {
@@ -120,8 +121,10 @@ export class AuthService {
    */
   async refreshTokens(refreshToken: string): Promise<TokenPair> {
     try {
-      // Decode refresh token (should have long expiry)
-      const decoded = this.verifyToken(refreshToken);
+      const decoded = this.verifyRefreshToken(refreshToken);
+      if (decoded.tokenType && decoded.tokenType !== 'refresh') {
+        throw ApplicationError.unauthorized('Invalid refresh token');
+      }
 
       // Verify user and tenant still exist and are active
       const user = await this.authRepository.findUserByIdAndTenant(
@@ -135,8 +138,24 @@ export class AuthService {
 
       // Create new token pair
       return {
-        accessToken: this.signToken(decoded, '15m'),
-        refreshToken: this.signToken(decoded, '7d'),
+        accessToken: this.signAccessToken(
+          {
+            userId: decoded.userId,
+            tenantId: decoded.tenantId,
+            email: decoded.email,
+            role: decoded.role,
+          },
+          '15m'
+        ),
+        refreshToken: this.signRefreshToken(
+          {
+            userId: decoded.userId,
+            tenantId: decoded.tenantId,
+            email: decoded.email,
+            role: decoded.role,
+          },
+          '7d'
+        ),
       };
     } catch (error) {
       if (error instanceof ApplicationError) {
@@ -155,8 +174,8 @@ export class AuthService {
     };
 
     return {
-      accessToken: this.signToken(jwtPayload, '15m'),
-      refreshToken: this.signToken(jwtPayload, '7d'),
+      accessToken: this.signAccessToken(jwtPayload, '15m'),
+      refreshToken: this.signRefreshToken(jwtPayload, '7d'),
       user: {
         userId: user.id,
         tenantId: user.tenant_id,

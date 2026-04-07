@@ -113,7 +113,15 @@ export class UsersRepository {
     return result.rows[0] ?? null;
   }
 
-  async findByEmail(email: string): Promise<UserRecord | null> {
+  async findByEmail(email: string, tenantId?: string): Promise<UserRecord | null> {
+    const values: string[] = [email];
+    let whereClause = 'LOWER(email) = LOWER($1)';
+
+    if (tenantId) {
+      values.push(tenantId);
+      whereClause += ' AND tenant_id = $2';
+    }
+
     const result = await this.db.query<UserRecord>(
       `
       SELECT
@@ -129,10 +137,10 @@ export class UsersRepository {
         created_at,
         updated_at
       FROM users
-      WHERE LOWER(email) = LOWER($1)
+      WHERE ${whereClause}
       LIMIT 1
       `,
-      [email]
+      values
     );
 
     return result.rows[0] ?? null;

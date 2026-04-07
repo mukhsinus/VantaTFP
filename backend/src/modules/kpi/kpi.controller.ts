@@ -1,20 +1,40 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { KpiService } from './kpi.service.js';
 import { KpiRepository } from './kpi.repository.js';
+import { PayrollRepository } from '../payroll/payroll.repository.js';
+import { PayrollService } from '../payroll/payroll.service.js';
 import { requireRoles } from '../../shared/middleware/role-guard.middleware.js';
+import { sendSuccess } from '../../shared/utils/response.js';
 import {
-  createKpiSchema,
-  updateKpiSchema,
-  recordKpiProgressSchema,
+  kpiCalculationParamsSchema,
+  kpiCalculationQuerySchema,
   kpiIdParamSchema,
   listKpiQuerySchema,
 } from './kpi.schema.js';
 
 export async function kpiRoutes(app: FastifyInstance): Promise<void> {
   const kpiRepository = new KpiRepository(app.db);
-  const kpiService = new KpiService(kpiRepository);
+  const payrollRepository = new PayrollRepository(app.db);
+  const payrollService = new PayrollService(payrollRepository);
+  const kpiService = new KpiService(kpiRepository, payrollService);
 
   const authenticate = app.authenticate;
+
+  app.get(
+    '/calculate/:userId',
+    { preHandler: [authenticate, requireRoles('ADMIN', 'MANAGER', 'EMPLOYEE')] },
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      const { userId } = kpiCalculationParamsSchema.parse(request.params);
+      const { periodStart, periodEnd } = kpiCalculationQuerySchema.parse(request.query);
+      const result = await kpiService.calculateKPI(
+        userId,
+        request.user.tenantId,
+        periodStart,
+        periodEnd
+      );
+      return sendSuccess(reply, result);
+    }
+  );
 
   app.get(
     '/',
@@ -22,7 +42,7 @@ export async function kpiRoutes(app: FastifyInstance): Promise<void> {
     async (request: FastifyRequest, reply: FastifyReply) => {
       const query = listKpiQuerySchema.parse(request.query);
       const result = await kpiService.listKpisPaginated(request.user.tenantId, query.page, query.limit);
-      return reply.send(result);
+      return sendSuccess(reply, result);
     }
   );
 
@@ -32,50 +52,7 @@ export async function kpiRoutes(app: FastifyInstance): Promise<void> {
     async (request: FastifyRequest, reply: FastifyReply) => {
       const { kpiId } = kpiIdParamSchema.parse(request.params);
       const kpi = await kpiService.getKpiById(kpiId, request.user.tenantId);
-      return reply.send(kpi);
-    }
-  );
-
-  app.post(
-    '/',
-    { preHandler: [authenticate, requireRoles('ADMIN', 'MANAGER')] },
-    async (request: FastifyRequest, reply: FastifyReply) => {
-      const body = createKpiSchema.parse(request.body);
-      const kpi = await kpiService.createKpi(request.user.tenantId, request.user.userId, body);
-      return reply.status(201).send(kpi);
-    }
-  );
-
-  app.patch(
-    '/:kpiId',
-    { preHandler: [authenticate, requireRoles('ADMIN', 'MANAGER')] },
-    async (request: FastifyRequest, reply: FastifyReply) => {
-      const { kpiId } = kpiIdParamSchema.parse(request.params);
-      const body = updateKpiSchema.parse(request.body);
-      const kpi = await kpiService.updateKpi(kpiId, request.user.tenantId, body);
-      return reply.send(kpi);
-    }
-  );
-
-  app.delete(
-    '/:kpiId',
-    { preHandler: [authenticate, requireRoles('ADMIN')] },
-    async (request: FastifyRequest, reply: FastifyReply) => {
-      const { kpiId } = kpiIdParamSchema.parse(request.params);
-      await kpiService.deleteKpi(kpiId, request.user.tenantId);
-      return reply.status(204).send();
-    }
-  );
-
-  // Sub-resource: progress entries for a KPI
-  app.post(
-    '/:kpiId/progress',
-    { preHandler: [authenticate, requireRoles('ADMIN', 'MANAGER', 'EMPLOYEE')] },
-    async (request: FastifyRequest, reply: FastifyReply) => {
-      const { kpiId } = kpiIdParamSchema.parse(request.params);
-      const body = recordKpiProgressSchema.parse(request.body);
-      const progress = await kpiService.recordProgress(kpiId, request.user.tenantId, body);
-      return reply.status(201).send(progress);
+      return sendSuccess(reply, kpi);
     }
   );
 
@@ -85,7 +62,7 @@ export async function kpiRoutes(app: FastifyInstance): Promise<void> {
     async (request: FastifyRequest, reply: FastifyReply) => {
       const { kpiId } = kpiIdParamSchema.parse(request.params);
       const progress = await kpiService.getKpiProgress(kpiId, request.user.tenantId);
-      return reply.send(progress);
+      return sendSuccess(reply, progress);
     }
   );
 }

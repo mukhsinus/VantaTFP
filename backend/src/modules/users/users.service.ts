@@ -79,7 +79,7 @@ export class UsersService {
   ): Promise<UserResponse> {
     this.assertCreateRoleAllowed(context.actorRole, data.role);
 
-    const existing = await this.usersRepository.findByEmail(data.email);
+    const existing = await this.usersRepository.findByEmail(data.email, tenantId);
     if (existing) {
       throw ApplicationError.conflict('Email is already in use');
     }
@@ -131,7 +131,7 @@ export class UsersService {
     }
 
     if (data.email && data.email.toLowerCase() !== existing.email.toLowerCase()) {
-      const duplicate = await this.usersRepository.findByEmail(data.email);
+      const duplicate = await this.usersRepository.findByEmail(data.email, tenantId);
       if (duplicate) {
         throw ApplicationError.conflict('Email is already in use');
       }

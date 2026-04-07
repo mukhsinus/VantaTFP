@@ -2,9 +2,10 @@ import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { TasksService } from './tasks.service.js';
 import { TasksRepository } from './tasks.repository.js';
 import { requireRoles } from '../../shared/middleware/role-guard.middleware.js';
+import { sendNoContent, sendSuccess } from '../../shared/utils/response.js';
 import {
-  createTaskSchema,
-  updateTaskSchema,
+  createTaskInputSchema,
+  updateTaskInputSchema,
   taskIdParamSchema,
   listTasksQuerySchema,
 } from './tasks.schema.js';
@@ -31,7 +32,7 @@ export async function tasksRoutes(app: FastifyInstance): Promise<void> {
       );
       const query = listTasksQuerySchema.parse(request.query);
       const result = await tasksService.listTasks(request.user.tenantId, query);
-      return reply.send(result);
+      return sendSuccess(reply, result);
     }
   );
 
@@ -41,7 +42,7 @@ export async function tasksRoutes(app: FastifyInstance): Promise<void> {
     async (request: FastifyRequest, reply: FastifyReply) => {
       const { taskId } = taskIdParamSchema.parse(request.params);
       const task = await tasksService.getTaskById(taskId, request.user.tenantId);
-      return reply.send(task);
+      return sendSuccess(reply, task);
     }
   );
 
@@ -49,13 +50,13 @@ export async function tasksRoutes(app: FastifyInstance): Promise<void> {
     '/',
     { preHandler: [authenticate, requireRoles('ADMIN', 'MANAGER')] },
     async (request: FastifyRequest, reply: FastifyReply) => {
-      const body = createTaskSchema.parse(request.body);
+      const body = createTaskInputSchema.parse(request.body);
       const task = await tasksService.createTask(
         request.user.tenantId,
         request.user.userId,
         body
       );
-      return reply.status(201).send(task);
+      return sendSuccess(reply, task, 201);
     }
   );
 
@@ -64,9 +65,14 @@ export async function tasksRoutes(app: FastifyInstance): Promise<void> {
     { preHandler: [authenticate, requireRoles('ADMIN', 'MANAGER')] },
     async (request: FastifyRequest, reply: FastifyReply) => {
       const { taskId } = taskIdParamSchema.parse(request.params);
-      const body = updateTaskSchema.parse(request.body);
-      const task = await tasksService.updateTask(taskId, request.user.tenantId, body);
-      return reply.send(task);
+      const body = updateTaskInputSchema.parse(request.body);
+      const task = await tasksService.updateTask(
+        taskId,
+        request.user.tenantId,
+        request.user.userId,
+        body
+      );
+      return sendSuccess(reply, task);
     }
   );
 
@@ -75,8 +81,8 @@ export async function tasksRoutes(app: FastifyInstance): Promise<void> {
     { preHandler: [authenticate, requireRoles('ADMIN', 'MANAGER')] },
     async (request: FastifyRequest, reply: FastifyReply) => {
       const { taskId } = taskIdParamSchema.parse(request.params);
-      await tasksService.deleteTask(taskId, request.user.tenantId);
-      return reply.status(204).send();
+      await tasksService.deleteTask(taskId, request.user.tenantId, request.user.userId);
+      return sendNoContent(reply);
     }
   );
 }

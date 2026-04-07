@@ -2,6 +2,7 @@ import fastifyPlugin from 'fastify-plugin';
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import fastifyRateLimit from '@fastify/rate-limit';
 import { env } from '../shared/utils/env.js';
+import { errorEnvelope } from '../shared/utils/response.js';
 
 // In-memory store for auth endpoint rate limits
 interface RateLimitEntry {
@@ -28,6 +29,10 @@ async function rateLimitPlugin(app: FastifyInstance): Promise<void> {
     timeWindow: '15 minutes',
     cache: 10000,
     skipOnError: false,
+    errorResponseBuilder: (_request, context) => {
+      const message = `Rate limit exceeded, retry in ${context.after}.`;
+      return errorEnvelope('RATE_LIMIT_EXCEEDED', message);
+    },
   });
 
   // Helper to check auth endpoint rate limits
@@ -67,11 +72,8 @@ async function rateLimitPlugin(app: FastifyInstance): Promise<void> {
     if (isLoginEndpoint) {
       const { allowed } = checkAuthRateLimit(request.ip, 'login', loginMaxAttempts, loginWindowMs);
       if (!allowed) {
-        return reply.code(429).send({
-          statusCode: 429,
-          error: 'Too Many Requests',
-          message: `Too many login attempts. Please try again in ${loginWindowLabel}.`,
-        });
+        const message = `Too many login attempts. Please try again in ${loginWindowLabel}.`;
+        return reply.code(429).send(errorEnvelope('RATE_LIMIT_EXCEEDED', message));
       }
     }
 
@@ -79,11 +81,8 @@ async function rateLimitPlugin(app: FastifyInstance): Promise<void> {
       // 3 attempts per hour per IP
       const { allowed } = checkAuthRateLimit(request.ip, 'register', 3, 60 * 60 * 1000);
       if (!allowed) {
-        return reply.code(429).send({
-          statusCode: 429,
-          error: 'Too Many Requests',
-          message: 'Too many registration attempts. Please try again in 1 hour.',
-        });
+        const message = 'Too many registration attempts. Please try again in 1 hour.';
+        return reply.code(429).send(errorEnvelope('RATE_LIMIT_EXCEEDED', message));
       }
     }
   });

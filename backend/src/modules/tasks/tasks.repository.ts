@@ -9,11 +9,18 @@ export interface TaskRecord {
   assignee_id: string | null;
   status: string;
   priority: string;
-  due_date: Date | null;
+  deadline: Date | null;
+  completed_at: Date | null;
   created_by: string;
   created_at: Date;
   updated_at: Date;
 }
+
+export type TaskAuditAction =
+  | 'TASK_CREATED'
+  | 'TASK_UPDATED'
+  | 'TASK_STATUS_CHANGED'
+  | 'TASK_DELETED';
 
 export class TasksRepository {
   constructor(private readonly db: Pool) {}
@@ -47,7 +54,8 @@ export class TasksRepository {
         assignee_id,
         status,
         priority,
-        due_date,
+        deadline,
+        completed_at,
         created_by,
         created_at,
         updated_at
@@ -74,7 +82,8 @@ export class TasksRepository {
         assignee_id,
         status,
         priority,
-        due_date,
+        deadline,
+        completed_at,
         created_by,
         created_at,
         updated_at
@@ -100,7 +109,8 @@ export class TasksRepository {
         assignee_id,
         status,
         priority,
-        due_date,
+        deadline,
+        completed_at,
         created_by,
         created_at,
         updated_at
@@ -115,6 +125,7 @@ export class TasksRepository {
         $6,
         $7,
         $8,
+        $9,
         NOW(),
         NOW()
       )
@@ -126,7 +137,8 @@ export class TasksRepository {
         assignee_id,
         status,
         priority,
-        due_date,
+        deadline,
+        completed_at,
         created_by,
         created_at,
         updated_at
@@ -138,7 +150,8 @@ export class TasksRepository {
         data.assignee_id,
         data.status,
         data.priority,
-        data.due_date,
+        data.deadline,
+        data.completed_at,
         data.created_by,
       ]
     );
@@ -149,7 +162,9 @@ export class TasksRepository {
   async update(
     taskId: string,
     tenantId: string,
-    data: Partial<Pick<TaskRecord, 'title' | 'description' | 'assignee_id' | 'status' | 'priority' | 'due_date'>>
+    data: Partial<
+      Pick<TaskRecord, 'title' | 'description' | 'assignee_id' | 'status' | 'priority' | 'deadline' | 'completed_at'>
+    >
   ): Promise<TaskRecord> {
     const fields: string[] = [];
     const values: Array<string | Date | null> = [];
@@ -175,9 +190,13 @@ export class TasksRepository {
       fields.push(`priority = $${paramIndex++}`);
       values.push(data.priority);
     }
-    if (data.due_date !== undefined) {
-      fields.push(`due_date = $${paramIndex++}`);
-      values.push(data.due_date);
+    if (data.deadline !== undefined) {
+      fields.push(`deadline = $${paramIndex++}`);
+      values.push(data.deadline);
+    }
+    if (data.completed_at !== undefined) {
+      fields.push(`completed_at = $${paramIndex++}`);
+      values.push(data.completed_at);
     }
 
     if (fields.length === 0) {
@@ -203,7 +222,8 @@ export class TasksRepository {
         assignee_id,
         status,
         priority,
-        due_date,
+        deadline,
+        completed_at,
         created_by,
         created_at,
         updated_at
@@ -259,5 +279,68 @@ export class TasksRepository {
     );
 
     return Number(result.rows[0]?.total ?? 0);
+  }
+
+  async existsAssigneeInTenant(userId: string, tenantId: string): Promise<boolean> {
+    const result = await this.db.query<{ exists: boolean }>(
+      `
+      SELECT EXISTS(
+        SELECT 1
+        FROM users
+        WHERE id = $1
+          AND tenant_id = $2
+          AND is_active = TRUE
+      ) AS "exists"
+      `,
+      [userId, tenantId]
+    );
+
+    return Boolean(result.rows[0]?.exists);
+  }
+
+  async createAuditLog(params: {
+    tenantId: string;
+    taskId: string;
+    actorUserId: string;
+    action: TaskAuditAction;
+    previousStatus?: string | null;
+    nextStatus?: string | null;
+    payload?: Record<string, unknown>;
+  }): Promise<void> {
+    await this.db.query(
+      `
+      INSERT INTO task_audit_logs (
+        id,
+        tenant_id,
+        task_id,
+        actor_user_id,
+        action,
+        previous_status,
+        next_status,
+        payload,
+        created_at
+      )
+      VALUES (
+        gen_random_uuid(),
+        $1,
+        $2,
+        $3,
+        $4,
+        $5,
+        $6,
+        $7::jsonb,
+        NOW()
+      )
+      `,
+      [
+        params.tenantId,
+        params.taskId,
+        params.actorUserId,
+        params.action,
+        params.previousStatus ?? null,
+        params.nextStatus ?? null,
+        JSON.stringify(params.payload ?? {}),
+      ]
+    );
   }
 }

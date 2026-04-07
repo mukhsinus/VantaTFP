@@ -1,6 +1,7 @@
 import 'dotenv/config';
 import { buildApp } from './app.js';
 import { env } from './shared/utils/env.js';
+import { logger } from './shared/utils/logger.js';
 
 async function start(): Promise<void> {
   const app = await buildApp();
@@ -14,12 +15,12 @@ async function start(): Promise<void> {
 }
 
 process.on('unhandledRejection', (reason) => {
-  console.error('Unhandled rejection:', reason);
+  logger.error({ reason }, 'Unhandled rejection');
   process.exit(1);
 });
 
 process.on('uncaughtException', (error) => {
-  console.error('Uncaught exception:', error);
+  logger.error({ err: error }, 'Uncaught exception');
   process.exit(1);
 });
 

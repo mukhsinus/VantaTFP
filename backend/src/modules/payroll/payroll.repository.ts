@@ -18,6 +18,26 @@ export interface PayrollEntryRecord {
   updated_at: Date;
 }
 
+export interface KpiCacheRecord {
+  tasks_completed: number;
+  tasks_on_time: number;
+  tasks_overdue: number;
+  score: number;
+}
+
+export interface PaymentRecord {
+  id: string;
+  tenant_id: string;
+  user_id: string;
+  period_start: Date;
+  period_end: Date;
+  base: number;
+  bonus: number;
+  total: number;
+  created_at: Date;
+  updated_at: Date;
+}
+
 export class PayrollRepository {
   constructor(private readonly db: Pool) {}
 
@@ -97,41 +117,16 @@ export class PayrollRepository {
     return result.rows[0] ?? null;
   }
 
-  async create(
-    data: Omit<PayrollEntryRecord, 'id' | 'created_at' | 'updated_at'>
-  ): Promise<PayrollEntryRecord> {
+  async approve(payrollId: string, tenantId: string, approvedBy: string): Promise<PayrollEntryRecord> {
     const result = await this.db.query<PayrollEntryRecord>(
       `
-      INSERT INTO payroll (
-        id,
-        tenant_id,
-        employee_id,
-        period_start,
-        period_end,
-        base_salary,
-        bonuses,
-        deductions,
-        net_salary,
-        status,
-        notes,
-        created_at,
-        updated_at
-      )
-      VALUES (
-        gen_random_uuid(),
-        $1,
-        $2,
-        $3,
-        $4,
-        $5,
-        $6,
-        $7,
-        $8,
-        $9,
-        $10,
-        NOW(),
-        NOW()
-      )
+      UPDATE payroll
+      SET
+        status = 'APPROVED',
+        approved_by = $1,
+        updated_at = NOW()
+      WHERE id = $2
+        AND tenant_id = $3
       RETURNING
         id,
         tenant_id,
@@ -148,91 +143,8 @@ export class PayrollRepository {
         created_at,
         updated_at
       `,
-      [
-        data.tenant_id,
-        data.employee_id,
-        data.period_start,
-        data.period_end,
-        data.base_salary,
-        data.bonuses,
-        data.deductions,
-        data.net_salary,
-        data.status,
-        data.notes,
-      ]
+      [approvedBy, payrollId, tenantId]
     );
-    return result.rows[0];
-  }
-
-  async update(
-    payrollId: string,
-    tenantId: string,
-    data: Partial<
-      Pick<
-        PayrollEntryRecord,
-        'base_salary' | 'bonuses' | 'deductions' | 'net_salary' | 'status' | 'notes' | 'approved_by'
-      >
-    >
-  ): Promise<PayrollEntryRecord> {
-    const updates: string[] = [];
-    const values: any[] = [];
-    let paramIndex = 1;
-
-    if (data.base_salary !== undefined) {
-      updates.push(`base_salary = $${paramIndex++}`);
-      values.push(data.base_salary);
-    }
-    if (data.bonuses !== undefined) {
-      updates.push(`bonuses = $${paramIndex++}`);
-      values.push(data.bonuses);
-    }
-    if (data.deductions !== undefined) {
-      updates.push(`deductions = $${paramIndex++}`);
-      values.push(data.deductions);
-    }
-    if (data.net_salary !== undefined) {
-      updates.push(`net_salary = $${paramIndex++}`);
-      values.push(data.net_salary);
-    }
-    if (data.status !== undefined) {
-      updates.push(`status = $${paramIndex++}`);
-      values.push(data.status);
-    }
-    if (data.notes !== undefined) {
-      updates.push(`notes = $${paramIndex++}`);
-      values.push(data.notes);
-    }
-    if (data.approved_by !== undefined) {
-      updates.push(`approved_by = $${paramIndex++}`);
-      values.push(data.approved_by);
-    }
-
-    updates.push(`updated_at = NOW()`);
-    values.push(payrollId);
-    values.push(tenantId);
-
-    const query = `
-      UPDATE payroll
-      SET ${updates.join(', ')}
-      WHERE id = $${paramIndex + 1} AND tenant_id = $${paramIndex + 2}
-      RETURNING
-        id,
-        tenant_id,
-        employee_id,
-        period_start,
-        period_end,
-        base_salary,
-        bonuses,
-        deductions,
-        net_salary,
-        status,
-        notes,
-        approved_by,
-        created_at,
-        updated_at
-    `;
-
-    const result = await this.db.query<PayrollEntryRecord>(query, values);
     return result.rows[0];
   }
 
@@ -254,7 +166,132 @@ export class PayrollRepository {
       params.push(filters.status);
     }
 
-    const result = await this.db.query<{ count: number }>(query, params);
+    const result = await this.db.query<{ count: string }>(query, params);
     return parseInt(result.rows[0]?.count ?? '0', 10);
+  }
+
+  async findKpiCacheForPeriod(
+    tenantId: string,
+    userId: string,
+    periodStart: Date,
+    periodEnd: Date
+  ): Promise<KpiCacheRecord | null> {
+    const result = await this.db.query<KpiCacheRecord>(
+      `
+      SELECT
+        tasks_completed,
+        tasks_on_time,
+        tasks_overdue,
+        score
+      FROM kpi_records
+      WHERE tenant_id = $1
+        AND user_id = $2
+        AND period_start = $3
+        AND period_end = $4
+      LIMIT 1
+      `,
+      [tenantId, userId, periodStart, periodEnd]
+    );
+
+    return result.rows[0] ?? null;
+  }
+
+  async upsertPayment(params: {
+    tenantId: string;
+    userId: string;
+    periodStart: Date;
+    periodEnd: Date;
+    base: number;
+    bonus: number;
+    total: number;
+  }): Promise<PaymentRecord> {
+    const result = await this.db.query<PaymentRecord>(
+      `
+      INSERT INTO payments (
+        id,
+        tenant_id,
+        user_id,
+        period_start,
+        period_end,
+        base,
+        bonus,
+        total,
+        created_at,
+        updated_at
+      )
+      VALUES (
+        gen_random_uuid(),
+        $1,
+        $2,
+        $3,
+        $4,
+        $5,
+        $6,
+        $7,
+        NOW(),
+        NOW()
+      )
+      ON CONFLICT (tenant_id, user_id, period_start, period_end)
+      DO UPDATE SET
+        base = EXCLUDED.base,
+        bonus = EXCLUDED.bonus,
+        total = EXCLUDED.total,
+        updated_at = NOW()
+      RETURNING
+        id,
+        tenant_id,
+        user_id,
+        period_start,
+        period_end,
+        base::double precision AS base,
+        bonus::double precision AS bonus,
+        total::double precision AS total,
+        created_at,
+        updated_at
+      `,
+      [
+        params.tenantId,
+        params.userId,
+        params.periodStart,
+        params.periodEnd,
+        params.base,
+        params.bonus,
+        params.total,
+      ]
+    );
+
+    return result.rows[0];
+  }
+
+  async findPaymentByUserAndPeriod(
+    tenantId: string,
+    userId: string,
+    periodStart: Date,
+    periodEnd: Date
+  ): Promise<PaymentRecord | null> {
+    const result = await this.db.query<PaymentRecord>(
+      `
+      SELECT
+        id,
+        tenant_id,
+        user_id,
+        period_start,
+        period_end,
+        base::double precision AS base,
+        bonus::double precision AS bonus,
+        total::double precision AS total,
+        created_at,
+        updated_at
+      FROM payments
+      WHERE tenant_id = $1
+        AND user_id = $2
+        AND period_start = $3
+        AND period_end = $4
+      LIMIT 1
+      `,
+      [tenantId, userId, periodStart, periodEnd]
+    );
+
+    return result.rows[0] ?? null;
   }
 }

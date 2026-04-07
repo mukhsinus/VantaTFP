@@ -1,29 +1,11 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Button, Badge, Avatar, Card, CardHeader, EmptyState } from '@shared/components/ui';
+import { Button, Badge, Avatar, Card, EmptyState, PageSkeleton } from '@shared/components/ui';
 import { useIsMobile } from '@shared/hooks/useIsMobile';
 import { formatCurrency } from '@shared/utils/currency';
-
-type PayrollStatus = 'DRAFT' | 'APPROVED' | 'PAID' | 'CANCELLED';
-
-interface PayrollEntry {
-  id: string;
-  employeeKey: string;
-  periodKey: string;
-  baseSalary: number;
-  bonuses: number;
-  deductions: number;
-  netSalary: number;
-  status: PayrollStatus;
-}
-
-const mockPayroll: PayrollEntry[] = [
-  { id: '1', employeeKey: 'booking.payroll.sample.users.sofiaChen', periodKey: 'booking.payroll.sample.periods.mar2026', baseSalary: 6000, bonuses: 500, deductions: 300, netSalary: 6200, status: 'PAID' },
-  { id: '2', employeeKey: 'booking.payroll.sample.users.jamesPark', periodKey: 'booking.payroll.sample.periods.mar2026', baseSalary: 4500, bonuses: 200, deductions: 225, netSalary: 4475, status: 'APPROVED' },
-  { id: '3', employeeKey: 'booking.payroll.sample.users.amaraDiallo', periodKey: 'booking.payroll.sample.periods.mar2026', baseSalary: 4200, bonuses: 0, deductions: 210, netSalary: 3990, status: 'DRAFT' },
-  { id: '4', employeeKey: 'booking.payroll.sample.users.lucaFerrari', periodKey: 'booking.payroll.sample.periods.mar2026', baseSalary: 5500, bonuses: 750, deductions: 275, netSalary: 5975, status: 'APPROVED' },
-  { id: '5', employeeKey: 'booking.payroll.sample.users.mariaSantos', periodKey: 'booking.payroll.sample.periods.mar2026', baseSalary: 3800, bonuses: 0, deductions: 0, netSalary: 3800, status: 'CANCELLED' },
-];
+import { usePayroll } from '@features/payroll/hooks/usePayroll';
+import { useApprovePayroll } from '@features/payroll/hooks/useApprovePayroll';
+import type { PayrollStatus, PayrollApiDto } from '@entities/payroll/payroll.types';
 
 const statusVariant: Record<PayrollStatus, 'success' | 'accent' | 'default' | 'danger'> = {
   PAID: 'success',
@@ -35,6 +17,8 @@ const statusVariant: Record<PayrollStatus, 'success' | 'accent' | 'default' | 'd
 export function PayrollPage() {
   const { t, i18n } = useTranslation();
   const isMobile = useIsMobile();
+  const { payroll, isLoading, isError } = usePayroll();
+  const { approvePayroll, isPending } = useApprovePayroll();
   const localeBase = (i18n.resolvedLanguage ?? i18n.language ?? 'ru').split('-')[0];
   const locale: 'ru' | 'uz' | 'en' =
     localeBase === 'ru' || localeBase === 'uz' || localeBase === 'en' ? localeBase : 'en';
@@ -47,8 +31,19 @@ export function PayrollPage() {
     return t('status.cancelled');
   };
 
-  const filtered = statusFilter === 'ALL' ? mockPayroll : mockPayroll.filter((p) => p.status === statusFilter);
+  const filtered = statusFilter === 'ALL' ? payroll : payroll.filter((p) => p.status === statusFilter);
   const totalNet = filtered.reduce((sum, p) => sum + p.netSalary, 0);
+
+  if (isLoading) return <PageSkeleton />;
+
+  if (isError) {
+    return (
+      <EmptyState
+        title={t('errors.loadFailed.title')}
+        description={t('errors.loadFailed.description')}
+      />
+    );
+  }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: isMobile ? 14 : 20, width: '100%', maxWidth: '100%' }}>
@@ -82,9 +77,9 @@ export function PayrollPage() {
       <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(4, 1fr)', gap: 12 }}>
         {[
           { label: t('payroll.stats.totalNet'), value: formatCurrency(totalNet, locale), accent: 'var(--color-accent)' },
-          { label: t('payroll.stats.paid'), value: String(mockPayroll.filter((p) => p.status === 'PAID').length), accent: 'var(--color-success)' },
-          { label: t('payroll.stats.pending'), value: String(mockPayroll.filter((p) => p.status === 'APPROVED').length), accent: 'var(--color-warning)' },
-          { label: t('payroll.stats.drafts'), value: String(mockPayroll.filter((p) => p.status === 'DRAFT').length), accent: 'var(--color-gray-400)' },
+          { label: t('payroll.stats.paid'), value: String(payroll.filter((p) => p.status === 'PAID').length), accent: 'var(--color-success)' },
+          { label: t('payroll.stats.pending'), value: String(payroll.filter((p) => p.status === 'APPROVED').length), accent: 'var(--color-warning)' },
+          { label: t('payroll.stats.drafts'), value: String(payroll.filter((p) => p.status === 'DRAFT').length), accent: 'var(--color-gray-400)' },
         ].map((s) => (
           <Card key={s.label}>
             <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-secondary)', marginBottom: 6 }}>
@@ -154,7 +149,7 @@ export function PayrollPage() {
                         color: 'var(--color-text-secondary)',
                       }}
                     >
-                      {t(entry.periodKey)}
+                      {formatPeriod(entry.periodStart, entry.periodEnd, locale)}
                     </p>
                     <p
                       style={{
@@ -165,7 +160,7 @@ export function PayrollPage() {
                         wordBreak: 'break-word',
                       }}
                     >
-                      {t(entry.employeeKey)}
+                      {entry.employeeId}
                     </p>
                   </div>
                   <Badge variant={statusVariant[entry.status]} dot>{statusLabel(entry.status)}</Badge>
@@ -203,7 +198,12 @@ export function PayrollPage() {
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8, width: '100%' }}>
                   {entry.status === 'DRAFT' && (
-                    <Button variant="secondary" style={{ width: '100%', minHeight: 44 }}>
+                    <Button
+                      variant="secondary"
+                      style={{ width: '100%', minHeight: 44 }}
+                      onClick={() => approvePayroll(entry.id)}
+                      disabled={isPending}
+                    >
                       {t('payroll.action.approve')}
                     </Button>
                   )}
@@ -262,15 +262,15 @@ export function PayrollPage() {
                 >
                   <td style={{ padding: '12px 16px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <Avatar name={t(entry.employeeKey)} size="xs" />
+                      <Avatar name={entry.employeeId} size="xs" />
                       <span style={{ fontSize: 'var(--text-sm)', fontWeight: 500, color: 'var(--color-text-primary)' }}>
-                        {t(entry.employeeKey)}
+                        {entry.employeeId}
                       </span>
                     </div>
                   </td>
                   <td style={{ padding: '12px 16px' }}>
                     <span style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-secondary)' }}>
-                      {t(entry.periodKey)}
+                      {formatPeriod(entry.periodStart, entry.periodEnd, locale)}
                     </span>
                   </td>
                   <td style={{ padding: '12px 16px' }}>
@@ -298,7 +298,12 @@ export function PayrollPage() {
                   </td>
                   <td style={{ padding: '12px 16px' }}>
                     {entry.status === 'DRAFT' && (
-                      <Button variant="secondary" size="sm">
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => approvePayroll(entry.id)}
+                        disabled={isPending}
+                      >
                         {t('payroll.action.approve')}
                       </Button>
                     )}
@@ -317,4 +322,15 @@ export function PayrollPage() {
       )}
     </div>
   );
+}
+
+function formatPeriod(periodStart: string, periodEnd: string, locale: 'ru' | 'uz' | 'en') {
+  const start = new Date(periodStart);
+  const end = new Date(periodEnd);
+
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+    return `${periodStart} - ${periodEnd}`;
+  }
+
+  return `${start.toLocaleDateString(locale)} - ${end.toLocaleDateString(locale)}`;
 }

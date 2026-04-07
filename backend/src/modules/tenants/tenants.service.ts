@@ -50,6 +50,26 @@ export class TenantsService {
     };
   }
 
+  async listCurrentTenant(
+    tenantId: string,
+    page: number = 1,
+    limit: number = 20
+  ): Promise<TenantListResponse> {
+    const tenant = await this.tenantsRepository.findActiveById(tenantId);
+    const data = tenant ? [this.toResponse(tenant)] : [];
+
+    return {
+      data,
+      pagination: {
+        total: data.length,
+        page,
+        limit,
+        pages: data.length > 0 ? 1 : 0,
+        hasMore: false,
+      },
+    };
+  }
+
   async getTenantById(tenantId: string): Promise<TenantResponse> {
     const tenant = await this.tenantsRepository.findById(tenantId);
     if (!tenant) {

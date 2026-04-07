@@ -1,6 +1,7 @@
 import { PayrollRepository, PayrollEntryRecord } from './payroll.repository.js';
-import { CreatePayrollEntryDto, UpdatePayrollEntryDto, ListPayrollQuery } from './payroll.schema.js';
+import { ListPayrollQuery } from './payroll.schema.js';
 import { ApplicationError } from '../../shared/utils/application-error.js';
+import { env } from '../../shared/utils/env.js';
 
 export interface PayrollEntryResponse {
   id: string;
@@ -30,6 +31,19 @@ export interface PaginationMeta {
 export interface PayrollListResponse {
   data: PayrollEntryResponse[];
   pagination: PaginationMeta;
+}
+
+export interface PayrollCalculationResponse {
+  userId: string;
+  periodStart: string;
+  periodEnd: string;
+  base: number;
+  bonus: number;
+  total: number;
+  breakdown: {
+    score: number;
+    source: 'KPI_RECORD' | 'NO_KPI_RECORD';
+  };
 }
 
 export class PayrollService {
@@ -75,77 +89,6 @@ export class PayrollService {
     return this.toResponse(entry);
   }
 
-  async createPayrollEntry(tenantId: string, data: CreatePayrollEntryDto): Promise<PayrollEntryResponse> {
-    if (!tenantId) {
-      throw ApplicationError.badRequest('Missing tenant context');
-    }
-
-    // Calculate net salary
-    const netSalary = data.baseSalary + data.bonuses - data.deductions;
-
-    const entry = await this.payrollRepository.create({
-      tenant_id: tenantId,
-      employee_id: data.employeeId,
-      period_start: new Date(data.periodStart),
-      period_end: new Date(data.periodEnd),
-      base_salary: data.baseSalary,
-      bonuses: data.bonuses ?? 0,
-      deductions: data.deductions ?? 0,
-      net_salary: netSalary,
-      status: 'DRAFT',
-      notes: data.notes ?? null,
-      approved_by: null,
-    });
-
-    return this.toResponse(entry);
-  }
-
-  async updatePayrollEntry(
-    payrollId: string,
-    tenantId: string,
-    data: UpdatePayrollEntryDto
-  ): Promise<PayrollEntryResponse> {
-    if (!tenantId) {
-      throw ApplicationError.badRequest('Missing tenant context');
-    }
-
-    const existing = await this.payrollRepository.findByIdAndTenant(payrollId, tenantId);
-    if (!existing) {
-      throw ApplicationError.notFound('Payroll entry');
-    }
-
-    // Prevent updating approved/paid entries (except by admin - but that's enforced at controller level)
-    if (existing.status !== 'DRAFT' && data.status !== existing.status) {
-      throw ApplicationError.badRequest(
-        `Cannot change status from ${existing.status} to ${data.status}`
-      );
-    }
-
-    // Calculate new net salary if any salary fields changed
-    let newNetSalary = existing.net_salary;
-    if (
-      data.baseSalary !== undefined ||
-      data.bonuses !== undefined ||
-      data.deductions !== undefined
-    ) {
-      newNetSalary =
-        (data.baseSalary ?? existing.base_salary) +
-        (data.bonuses ?? existing.bonuses) -
-        (data.deductions ?? existing.deductions);
-    }
-
-    const updated = await this.payrollRepository.update(payrollId, tenantId, {
-      base_salary: data.baseSalary,
-      bonuses: data.bonuses,
-      deductions: data.deductions,
-      net_salary: newNetSalary,
-      status: data.status,
-      notes: data.notes,
-    });
-
-    return this.toResponse(updated);
-  }
-
   async approvePayrollEntry(
     payrollId: string,
     tenantId: string,
@@ -164,12 +107,83 @@ export class PayrollService {
       throw ApplicationError.badRequest(`Only DRAFT entries can be approved. Current status: ${entry.status}`);
     }
 
-    const updated = await this.payrollRepository.update(payrollId, tenantId, {
-      status: 'APPROVED',
-      approved_by: approvedByUserId,
-    });
+    const updated = await this.payrollRepository.approve(payrollId, tenantId, approvedByUserId);
 
     return this.toResponse(updated);
+  }
+
+  async calculatePayroll(
+    userId: string,
+    tenantId: string,
+    periodStartInput: string,
+    periodEndInput: string
+  ): Promise<PayrollCalculationResponse> {
+    if (!tenantId) {
+      throw ApplicationError.badRequest('Missing tenant context');
+    }
+
+    if (!userId) {
+      throw ApplicationError.badRequest('Missing userId');
+    }
+
+    const periodStart = new Date(periodStartInput);
+    const periodEnd = new Date(periodEndInput);
+    if (Number.isNaN(periodStart.getTime()) || Number.isNaN(periodEnd.getTime())) {
+      throw ApplicationError.badRequest('Invalid period');
+    }
+    if (periodEnd < periodStart) {
+      throw ApplicationError.badRequest('periodEnd must be greater than or equal to periodStart');
+    }
+
+    const kpi = await this.payrollRepository.findKpiCacheForPeriod(
+      tenantId,
+      userId,
+      periodStart,
+      periodEnd
+    );
+
+    let base = 0;
+    let bonus = 0;
+    let total = 0;
+    let score = 0;
+    let source: 'KPI_RECORD' | 'NO_KPI_RECORD' = 'NO_KPI_RECORD';
+
+    if (!kpi) {
+      base = 0;
+      bonus = 0;
+      total = 0;
+      score = 0;
+      source = 'NO_KPI_RECORD';
+    } else {
+      base = this.roundMoney(env.PAYROLL_DEFAULT_BASE_SALARY);
+      score = Number(kpi.score ?? 0);
+      bonus = this.roundMoney((score / 100) * base);
+      total = this.roundMoney(base + bonus);
+      source = 'KPI_RECORD';
+    }
+
+    const payment = await this.payrollRepository.upsertPayment({
+      tenantId,
+      userId,
+      periodStart,
+      periodEnd,
+      base,
+      bonus,
+      total,
+    });
+
+    return {
+      userId,
+      periodStart: periodStart.toISOString(),
+      periodEnd: periodEnd.toISOString(),
+      base: payment.base,
+      bonus: payment.bonus,
+      total: payment.total,
+      breakdown: {
+        score,
+        source,
+      },
+    };
   }
 
   private toResponse(entry: PayrollEntryRecord): PayrollEntryResponse {
@@ -189,5 +203,9 @@ export class PayrollService {
       createdAt: entry.created_at.toISOString(),
       updatedAt: entry.updated_at.toISOString(),
     };
+  }
+
+  private roundMoney(value: number): number {
+    return Math.round(value * 100) / 100;
   }
 }

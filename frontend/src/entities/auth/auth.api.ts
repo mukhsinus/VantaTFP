@@ -1,6 +1,6 @@
 import { apiClient } from '@shared/api/client';
 import { API } from '@shared/api/endpoints';
-import type { LoginPayload, LoginApiResponse } from './auth.types';
+import type { LoginPayload, LoginApiResponse, RefreshApiResponse } from './auth.types';
 
 /**
  * Low-level auth API methods.
@@ -13,6 +13,9 @@ export const authApi = {
    */
   login: (payload: LoginPayload): Promise<LoginApiResponse> =>
     apiClient.post<LoginApiResponse>(API.auth.login, payload),
+
+  refresh: (refreshToken: string): Promise<RefreshApiResponse> =>
+    apiClient.post<RefreshApiResponse>(API.auth.refresh, { refreshToken }),
 
   /**
    * Fetches the authenticated user's profile.

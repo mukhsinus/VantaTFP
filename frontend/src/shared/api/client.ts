@@ -26,6 +26,10 @@ interface ApiErrorBody {
   statusCode: number;
   errorCode: string;
   message: string;
+  error?: {
+    code?: string;
+    message?: string;
+  };
 }
 
 // ─── Request options ──────────────────────────────────────────────────────────
@@ -33,6 +37,12 @@ interface ApiErrorBody {
 interface RequestOptions extends Omit<RequestInit, 'body'> {
   params?: Record<string, string | number | boolean | undefined | null>;
   body?: unknown;
+  retryOnUnauthorized?: boolean;
+}
+
+interface ApiEnvelope<T> {
+  data: T | null;
+  error: { code?: string; message?: string } | null;
 }
 
 function resolveApiBaseUrl(): string {
@@ -59,7 +69,13 @@ function resolveApiBaseUrl(): string {
 // ─── Core request function ────────────────────────────────────────────────────
 
 async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
-  const { params, body, headers: extraHeaders, ...init } = options;
+  const {
+    params,
+    body,
+    headers: extraHeaders,
+    retryOnUnauthorized = true,
+    ...init
+  } = options;
 
   // Build URL with query params
   const baseUrl = resolveApiBaseUrl();
@@ -90,6 +106,14 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
 
   // Global 401 handler — clear auth so the router can redirect to login
   if (response.status === 401) {
+    const refreshed = retryOnUnauthorized
+      ? await tryRefreshToken()
+      : false;
+
+    if (refreshed) {
+      return request<T>(path, { ...options, retryOnUnauthorized: false });
+    }
+
     useAuthStore.getState().clearAuth();
     throw new ApiError(401, 'UNAUTHORIZED', i18n.t('auth.session.expired'));
   }
@@ -105,12 +129,79 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
     const errorBody = data as ApiErrorBody | null;
     throw new ApiError(
       response.status,
-      errorBody?.errorCode ?? 'UNKNOWN_ERROR',
-      errorBody?.message ?? i18n.t('errors.generic.requestFailed', { statusCode: response.status })
+      errorBody?.errorCode ?? errorBody?.error?.code ?? 'UNKNOWN_ERROR',
+      errorBody?.message ?? errorBody?.error?.message ?? i18n.t('errors.generic.requestFailed', { statusCode: response.status })
     );
   }
 
+  if (
+    data &&
+    typeof data === 'object' &&
+    'data' in (data as Record<string, unknown>) &&
+    'error' in (data as Record<string, unknown>)
+  ) {
+    return (data as ApiEnvelope<T>).data as T;
+  }
+
   return data as T;
+}
+
+let refreshInFlight: Promise<boolean> | null = null;
+
+async function tryRefreshToken(): Promise<boolean> {
+  if (refreshInFlight) return refreshInFlight;
+
+  refreshInFlight = (async () => {
+    const { refreshToken, setTokens, clearAuth } = useAuthStore.getState();
+    if (!refreshToken) return false;
+
+    try {
+      const baseUrl = resolveApiBaseUrl();
+      const url = new URL('/api/v1/auth/refresh', baseUrl);
+      const response = await fetch(url.toString(), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ refreshToken }),
+      });
+
+      if (!response.ok) {
+        clearAuth();
+        return false;
+      }
+
+      const raw = (await response.json().catch(() => null)) as
+        | ApiEnvelope<{ accessToken?: string; refreshToken?: string }>
+        | { accessToken?: string; refreshToken?: string }
+        | null;
+
+      const payload =
+        raw && typeof raw === 'object' && 'data' in raw
+          ? (raw as ApiEnvelope<{ accessToken?: string; refreshToken?: string }>).data
+          : (raw as { accessToken?: string; refreshToken?: string } | null);
+
+      const nextAccessToken = payload?.accessToken;
+      const nextRefreshToken = payload?.refreshToken ?? refreshToken;
+
+      if (!nextAccessToken) {
+        clearAuth();
+        return false;
+      }
+
+      setTokens(nextAccessToken, nextRefreshToken);
+      return true;
+    } catch {
+      clearAuth();
+      return false;
+    }
+  })();
+
+  try {
+    return await refreshInFlight;
+  } finally {
+    refreshInFlight = null;
+  }
 }
 
 // ─── Public API client ────────────────────────────────────────────────────────

@@ -8,11 +8,17 @@ import { env } from '../shared/utils/env.js';
  * The pool is gracefully closed on server shutdown.
  */
 async function databasePlugin(app: FastifyInstance): Promise<void> {
+  const databaseUrl = env.DATABASE_URL;
+  const isLocalDatabase =
+    databaseUrl.includes('localhost') || databaseUrl.includes('127.0.0.1');
+
   const pool = new Pool({
-    connectionString: env.DATABASE_URL,
+    connectionString: databaseUrl,
     max: 20,
     idleTimeoutMillis: 30_000,
-    connectionTimeoutMillis: 5_000,
+    connectionTimeoutMillis: 15_000,
+    keepAlive: true,
+    ssl: isLocalDatabase ? undefined : { rejectUnauthorized: false },
   });
 
   // Verify connectivity at startup

@@ -7,16 +7,11 @@ import { ApplicationError } from '../utils/application-error.js';
  */
 export async function authenticateMiddleware(
   request: FastifyRequest,
-  reply: FastifyReply
+  _reply: FastifyReply
 ): Promise<void> {
   try {
     await request.jwtVerify();
   } catch {
-    const error = ApplicationError.unauthorized('Invalid or expired token');
-    reply.status(error.statusCode).send({
-      statusCode: error.statusCode,
-      errorCode: error.errorCode,
-      message: error.message,
-    });
+    throw ApplicationError.unauthorized('Invalid or expired token');
   }
 }

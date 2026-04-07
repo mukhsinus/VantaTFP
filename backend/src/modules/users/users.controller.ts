@@ -2,6 +2,7 @@ import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { UsersService } from './users.service.js';
 import { UsersRepository } from './users.repository.js';
 import { requireRoles } from '../../shared/middleware/role-guard.middleware.js';
+import { sendNoContent, sendSuccess } from '../../shared/utils/response.js';
 import {
   createUserSchema,
   updateUserSchema,
@@ -16,12 +17,21 @@ export async function usersRoutes(app: FastifyInstance): Promise<void> {
   const authenticate = app.authenticate;
 
   app.get(
+    '/me',
+    { preHandler: [authenticate] },
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      const user = await usersService.getUserById(request.user.userId, request.user.tenantId);
+      return sendSuccess(reply, user);
+    }
+  );
+
+  app.get(
     '/',
     { preHandler: [authenticate, requireRoles('ADMIN', 'MANAGER')] },
     async (request: FastifyRequest, reply: FastifyReply) => {
       const query = listUsersQuerySchema.parse(request.query);
       const result = await usersService.listUsers(request.user.tenantId, query.page, query.limit);
-      return reply.send(result);
+      return sendSuccess(reply, result);
     }
   );
 
@@ -31,7 +41,7 @@ export async function usersRoutes(app: FastifyInstance): Promise<void> {
     async (request: FastifyRequest, reply: FastifyReply) => {
       const { id } = userIdParamSchema.parse(request.params);
       const user = await usersService.getUserById(id, request.user.tenantId);
-      return reply.send(user);
+      return sendSuccess(reply, user);
     }
   );
 
@@ -44,7 +54,7 @@ export async function usersRoutes(app: FastifyInstance): Promise<void> {
         actorUserId: request.user.userId,
         actorRole: request.user.role,
       });
-      return reply.status(201).send(user);
+      return sendSuccess(reply, user, 201);
     }
   );
 
@@ -58,7 +68,7 @@ export async function usersRoutes(app: FastifyInstance): Promise<void> {
         actorUserId: request.user.userId,
         actorRole: request.user.role,
       });
-      return reply.send(user);
+      return sendSuccess(reply, user);
     }
   );
 
@@ -71,7 +81,7 @@ export async function usersRoutes(app: FastifyInstance): Promise<void> {
         actorUserId: request.user.userId,
         actorRole: request.user.role,
       });
-      return reply.status(204).send();
+      return sendNoContent(reply);
     }
   );
 }

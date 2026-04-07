@@ -2,6 +2,9 @@ import 'dotenv/config';
 import Fastify, { FastifyInstance } from 'fastify';
 import { env } from './shared/utils/env.js';
 import { registerErrorHandler } from './shared/middleware/error-handler.middleware.js';
+import { registerRequestLogger } from './shared/middleware/request-logger.middleware.js';
+import { successEnvelope } from './shared/utils/response.js';
+import { fastifyLoggerOptions } from './shared/utils/logger.js';
 
 // Plugins
 import databasePlugin from './plugins/database.plugin.js';
@@ -10,6 +13,7 @@ import helmetPlugin from './plugins/helmet.plugin.js';
 import sensiblePlugin from './plugins/sensible.plugin.js';
 import jwtPlugin from './plugins/jwt.plugin.js';
 import rateLimitPlugin from './plugins/rate-limit.plugin.js';
+import { registerDomainEventDispatchers } from './shared/queues/event-dispatcher.js';
 
 // Module routes
 import { authRoutes } from './modules/auth/auth.controller.js';
@@ -22,13 +26,8 @@ import { payrollRoutes } from './modules/payroll/payroll.controller.js';
 export async function buildApp(): Promise<FastifyInstance> {
   const app = Fastify({
     bodyLimit: 1_048_576, // 1MB max request body size to prevent DoS attacks
-    logger: {
-      level: env.NODE_ENV === 'production' ? 'info' : 'debug',
-      transport:
-        env.NODE_ENV !== 'production'
-          ? { target: 'pino-pretty', options: { colorize: true, translateTime: 'SYS:standard' } }
-          : undefined,
-    },
+    logger: fastifyLoggerOptions,
+    disableRequestLogging: true,
   });
 
   // ── Infrastructure plugins ────────────────────────────────────────────────
@@ -38,12 +37,16 @@ export async function buildApp(): Promise<FastifyInstance> {
   await app.register(databasePlugin);
   await app.register(jwtPlugin);
   await app.register(rateLimitPlugin);
+  registerDomainEventDispatchers();
+  registerRequestLogger(app);
 
   // ── Centralized error handler ─────────────────────────────────────────────
   registerErrorHandler(app);
 
   // ── Health check ──────────────────────────────────────────────────────────
-  app.get('/health', async () => ({ status: 'ok', timestamp: new Date().toISOString() }));
+  app.get('/health', async () =>
+    successEnvelope({ status: 'ok', timestamp: new Date().toISOString() })
+  );
 
   // ── Module routes (all prefixed under /api/v1) ────────────────────────────
   await app.register(authRoutes, { prefix: '/api/v1/auth' });

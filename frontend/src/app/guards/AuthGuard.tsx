@@ -17,17 +17,19 @@ import { AppLoadingScreen } from './AppLoadingScreen';
  */
 export function AuthGuard() {
   const isHydrated  = useAuthStore((s) => s.isHydrated);
+  const isSessionLoading = useAuthStore((s) => s.isSessionLoading);
   const user        = useAuthStore((s) => s.user);
   const accessToken = useAuthStore((s) => s.accessToken);
+  const refreshToken = useAuthStore((s) => s.refreshToken);
   const location    = useLocation();
 
   // ① Wait for Zustand to finish reading localStorage — no redirect yet
-  if (!isHydrated) {
+  if (!isHydrated || isSessionLoading || ((accessToken || refreshToken) && !user)) {
     return <AppLoadingScreen />;
   }
 
   // ② Not authenticated — send to /login with a redirect hint
-  if (!user || !accessToken) {
+  if (!user || (!accessToken && !refreshToken)) {
     return (
       <Navigate
         to={`/login?redirect=${encodeURIComponent(location.pathname)}`}

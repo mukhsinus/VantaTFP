@@ -1,6 +1,7 @@
 import { KpiRepository, KpiRecord, KpiProgressRecord } from './kpi.repository.js';
-import { CreateKpiDto, UpdateKpiDto, RecordKpiProgressDto } from './kpi.schema.js';
+import { PayrollService } from '../payroll/payroll.service.js';
 import { ApplicationError } from '../../shared/utils/application-error.js';
+import { logger } from '../../shared/utils/logger.js';
 
 export interface KpiResponse {
   id: string;
@@ -39,8 +40,21 @@ export interface KpiListResponse {
   pagination: PaginationMeta;
 }
 
+export interface KpiCalculationResponse {
+  userId: string;
+  periodStart: string;
+  periodEnd: string;
+  tasksCompleted: number;
+  tasksOnTime: number;
+  tasksOverdue: number;
+  score: number;
+}
+
 export class KpiService {
-  constructor(private readonly kpiRepository: KpiRepository) {}
+  constructor(
+    private readonly kpiRepository: KpiRepository,
+    private readonly payrollService?: PayrollService
+  ) {}
 
   async listKpis(tenantId: string): Promise<KpiResponse[]> {
     if (!tenantId) {
@@ -89,92 +103,6 @@ export class KpiService {
     return this.toResponse(kpi);
   }
 
-  async createKpi(
-    tenantId: string,
-    createdByUserId: string,
-    data: CreateKpiDto
-  ): Promise<KpiResponse> {
-    if (!tenantId) {
-      throw ApplicationError.badRequest('Missing tenant context');
-    }
-
-    const kpi = await this.kpiRepository.create({
-      tenant_id: tenantId,
-      name: data.name,
-      description: data.description ?? null,
-      target_value: data.targetValue,
-      unit: data.unit,
-      period: data.period,
-      assignee_id: data.assigneeId,
-      created_by: createdByUserId,
-    });
-
-    return this.toResponse(kpi);
-  }
-
-  async updateKpi(
-    kpiId: string,
-    tenantId: string,
-    data: UpdateKpiDto
-  ): Promise<KpiResponse> {
-    if (!tenantId) {
-      throw ApplicationError.badRequest('Missing tenant context');
-    }
-
-    const existing = await this.kpiRepository.findByIdAndTenant(kpiId, tenantId);
-    if (!existing) {
-      throw ApplicationError.notFound('KPI');
-    }
-
-    const updateData: Partial<KpiRecord> = {};
-    if (data.name !== undefined) updateData.name = data.name;
-    if (data.description !== undefined) updateData.description = data.description ?? null;
-    if (data.targetValue !== undefined) updateData.target_value = data.targetValue;
-    if (data.unit !== undefined) updateData.unit = data.unit;
-    if (data.period !== undefined) updateData.period = data.period;
-
-    const updated = await this.kpiRepository.update(kpiId, tenantId, updateData as any);
-    return this.toResponse(updated);
-  }
-
-  async deleteKpi(kpiId: string, tenantId: string): Promise<void> {
-    if (!tenantId) {
-      throw ApplicationError.badRequest('Missing tenant context');
-    }
-
-    const kpi = await this.kpiRepository.findByIdAndTenant(kpiId, tenantId);
-    if (!kpi) {
-      throw ApplicationError.notFound('KPI');
-    }
-
-    await this.kpiRepository.delete(kpiId, tenantId);
-  }
-
-  async recordProgress(
-    kpiId: string,
-    tenantId: string,
-    data: RecordKpiProgressDto
-  ): Promise<KpiProgressResponse> {
-    if (!tenantId) {
-      throw ApplicationError.badRequest('Missing tenant context');
-    }
-
-    const kpi = await this.kpiRepository.findByIdAndTenant(kpiId, tenantId);
-    if (!kpi) {
-      throw ApplicationError.notFound('KPI');
-    }
-
-    const progress = await this.kpiRepository.recordProgress({
-      kpi_id: kpiId,
-      tenant_id: tenantId,
-      actual_value: data.actualValue,
-      recorded_at: data.recordedAt ? new Date(data.recordedAt) : new Date(),
-      notes: data.notes ?? null,
-    });
-
-    return this.progressToResponse(progress);
-  }
-
   async getKpiProgress(kpiId: string, tenantId: string): Promise<KpiProgressResponse[]> {
     if (!tenantId) {
       throw ApplicationError.badRequest('Missing tenant context');
@@ -187,6 +115,77 @@ export class KpiService {
 
     const progress = await this.kpiRepository.findProgressByKpi(kpiId, tenantId);
     return progress.map(this.progressToResponse);
+  }
+
+  async calculateKPI(
+    userId: string,
+    tenantId: string,
+    periodStartInput: string,
+    periodEndInput: string
+  ): Promise<KpiCalculationResponse> {
+    if (!tenantId) {
+      throw ApplicationError.badRequest('Missing tenant context');
+    }
+
+    const periodStart = new Date(periodStartInput);
+    const periodEnd = new Date(periodEndInput);
+
+    if (Number.isNaN(periodStart.getTime()) || Number.isNaN(periodEnd.getTime())) {
+      throw ApplicationError.badRequest('Invalid period');
+    }
+
+    if (periodEnd < periodStart) {
+      throw ApplicationError.badRequest('periodEnd must be greater than or equal to periodStart');
+    }
+
+    const calculated = await this.kpiRepository.calculateKpiFromTasks(
+      tenantId,
+      userId,
+      periodStart,
+      periodEnd
+    );
+
+    const cachedRecord = await this.kpiRepository.upsertKpiRecordCache({
+      tenantId,
+      userId,
+      periodStart,
+      periodEnd,
+      calculated,
+    });
+
+    if (this.payrollService) {
+      try {
+        await this.payrollService.calculatePayroll(
+          userId,
+          tenantId,
+          periodStart.toISOString(),
+          periodEnd.toISOString()
+        );
+      } catch (error) {
+        logger.error(
+          {
+            err: error,
+            tenantId,
+            userId,
+            period: {
+              periodStart: periodStart.toISOString(),
+              periodEnd: periodEnd.toISOString(),
+            },
+          },
+          'Payroll recalculation failed after KPI recalculation'
+        );
+      }
+    }
+
+    return {
+      userId,
+      periodStart: periodStart.toISOString(),
+      periodEnd: periodEnd.toISOString(),
+      tasksCompleted: cachedRecord.tasks_completed,
+      tasksOnTime: cachedRecord.tasks_on_time,
+      tasksOverdue: cachedRecord.tasks_overdue,
+      score: Number(cachedRecord.score),
+    };
   }
 
   private toResponse(kpi: KpiRecord): KpiResponse {

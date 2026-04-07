@@ -1,42 +1,14 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Button, Badge, Avatar, Card, CardHeader, EmptyState } from '@shared/components/ui';
+import { Badge, Card, EmptyState, PageSkeleton } from '@shared/components/ui';
 import { useIsMobile } from '@shared/hooks/useIsMobile';
-
-type KpiPeriod = 'WEEKLY' | 'MONTHLY' | 'QUARTERLY';
-
-interface KpiMetric {
-  id: string;
-  nameKey: string;
-  assigneeKey: string;
-  targetValue: number;
-  actualValue: number;
-  unitKey: string;
-  period: KpiPeriod;
-  trend: 'up' | 'down' | 'stable';
-}
-
-const mockKpis: KpiMetric[] = [
-  { id: '1', nameKey: 'kpi.metrics.salesClosed', assigneeKey: 'booking.kpi.sample.users.lucaFerrari', targetValue: 20, actualValue: 17, unitKey: 'booking.kpi.sample.units.deals', period: 'MONTHLY', trend: 'up' },
-  { id: '2', nameKey: 'kpi.metrics.customerSatisfaction', assigneeKey: 'booking.kpi.sample.users.sofiaChen', targetValue: 90, actualValue: 86, unitKey: 'booking.kpi.sample.units.percent', period: 'MONTHLY', trend: 'stable' },
-  { id: '3', nameKey: 'kpi.metrics.tasksCompleted', assigneeKey: 'booking.kpi.sample.users.amaraDiallo', targetValue: 50, actualValue: 31, unitKey: 'booking.kpi.sample.units.tasks', period: 'MONTHLY', trend: 'up' },
-  { id: '4', nameKey: 'kpi.metrics.responseTime', assigneeKey: 'booking.kpi.sample.users.jamesPark', targetValue: 2, actualValue: 3.2, unitKey: 'booking.kpi.sample.units.hours', period: 'WEEKLY', trend: 'down' },
-  { id: '5', nameKey: 'kpi.metrics.revenueTarget', assigneeKey: 'booking.kpi.sample.users.mariaSantos', targetValue: 100000, actualValue: 78000, unitKey: 'booking.kpi.sample.units.currency', period: 'QUARTERLY', trend: 'up' },
-];
-
-function getProgress(actual: number, target: number): number {
-  return Math.min(100, Math.round((actual / target) * 100));
-}
-
-function progressColor(pct: number): string {
-  if (pct >= 90) return 'var(--color-success)';
-  if (pct >= 60) return 'var(--color-warning)';
-  return 'var(--color-danger)';
-}
+import { useKpis } from '@features/kpi/hooks/useKpis';
+import type { KpiApiDto, KpiPeriod } from '@entities/kpi/kpi.types';
 
 export function KpiPage() {
   const { t } = useTranslation();
   const isMobile = useIsMobile();
+  const { kpis, isLoading, isError } = useKpis();
   const [period, setPeriod] = useState<KpiPeriod | 'ALL'>('ALL');
   const periodLabel = (value: KpiPeriod | 'ALL') => {
     if (value === 'ALL') return t('kpi.period.all');
@@ -45,8 +17,21 @@ export function KpiPage() {
     return t('kpi.period.quarterly');
   };
 
-  const filtered = period === 'ALL' ? mockKpis : mockKpis.filter((k) => k.period === period);
-  const avgProgress = Math.round(filtered.reduce((sum, k) => sum + getProgress(k.actualValue, k.targetValue), 0) / (filtered.length || 1));
+  const filtered = useMemo(
+    () => (period === 'ALL' ? kpis : kpis.filter((kpi) => kpi.period === period)),
+    [period, kpis]
+  );
+
+  if (isLoading) return <PageSkeleton />;
+
+  if (isError) {
+    return (
+      <EmptyState
+        title={t('errors.loadFailed.title')}
+        description={t('errors.loadFailed.description')}
+      />
+    );
+  }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: isMobile ? 14 : 20, width: '100%', maxWidth: '100%' }}>
@@ -60,15 +45,7 @@ export function KpiPage() {
             {t('kpi.subtitle')}
           </p>
         </div>
-        <Button variant="primary" size="sm"
-          leftIcon={
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
-              <path d="M12 5v14M5 12h14" />
-            </svg>
-          }
-        >
-          {t('kpi.create')}
-        </Button>
+        <Badge variant="default">{filtered.length}</Badge>
       </div>
 
       {/* Summary + filter row */}
@@ -95,121 +72,61 @@ export function KpiPage() {
             </button>
           ))}
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-secondary)' }}>
-            {t('kpi.avgProgress')}
-          </span>
-          <span
-            style={{
-              fontSize: 'var(--text-lg)',
-              fontWeight: 700,
-              color: progressColor(avgProgress),
-            }}
-          >
-            {avgProgress}%
-          </span>
-        </div>
+        <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-secondary)' }}>
+          {t('kpi.subtitle')}
+        </p>
       </div>
 
       {/* KPI cards grid */}
       <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fill, minmax(300px, 1fr))', gap: 12 }}>
-        {filtered.map((kpi) => <KpiCard key={kpi.id} kpi={kpi} />)}
+        {filtered.length === 0 ? (
+          <EmptyState title={t('kpi.title')} description={t('kpi.subtitle')} />
+        ) : (
+          filtered.map((kpi) => <KpiCard key={kpi.id} kpi={kpi} />)
+        )}
       </div>
     </div>
   );
 }
 
-const trendIcon = {
-  up: (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--color-success)" strokeWidth={2.5}>
-      <polyline points="23 6 13.5 15.5 8.5 10.5 1 18" /><polyline points="17 6 23 6 23 12" />
-    </svg>
-  ),
-  down: (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--color-danger)" strokeWidth={2.5}>
-      <polyline points="23 18 13.5 8.5 8.5 13.5 1 6" /><polyline points="17 18 23 18 23 12" />
-    </svg>
-  ),
-  stable: (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--color-warning)" strokeWidth={2.5}>
-      <path d="M5 12h14" />
-    </svg>
-  ),
-};
-
-function KpiCard({ kpi }: { kpi: KpiMetric }) {
+function KpiCard({ kpi }: { kpi: KpiApiDto }) {
   const { t } = useTranslation();
-  const pct = getProgress(kpi.actualValue, kpi.targetValue);
-  const color = progressColor(pct);
 
   return (
     <Card>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
         <div>
           <p style={{ fontSize: 'var(--text-md)', fontWeight: 600, color: 'var(--color-text-primary)' }}>
-            {t(kpi.nameKey)}
+            {kpi.name}
           </p>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
-            <Avatar name={t(kpi.assigneeKey)} size="xs" />
-            <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-secondary)' }}>
-              {t(kpi.assigneeKey)}
-            </span>
-          </div>
+          <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-secondary)', marginTop: 4 }}>
+            {kpi.description ?? '-'}
+          </p>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-            {trendIcon[kpi.trend]}
-            <Badge variant="default" style={{ fontSize: 10 }}>
-              {kpi.period === 'WEEKLY'
-                ? t('kpi.period.weekly')
-                : kpi.period === 'MONTHLY'
-                  ? t('kpi.period.monthly')
-                  : t('kpi.period.quarterly')}
-            </Badge>
-          </div>
+          <Badge variant="default" style={{ fontSize: 10 }}>
+            {kpi.period === 'WEEKLY'
+              ? t('kpi.period.weekly')
+              : kpi.period === 'MONTHLY'
+                ? t('kpi.period.monthly')
+                : kpi.period === 'QUARTERLY'
+                  ? t('kpi.period.quarterly')
+                  : 'Yearly'}
+          </Badge>
         </div>
       </div>
 
-      {/* Progress bar */}
-      <div style={{ marginBottom: 12 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-          <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-secondary)' }}>{t('kpi.progress')}</span>
-          <span style={{ fontSize: 'var(--text-xs)', fontWeight: 700, color }}>
-            {pct}%
-          </span>
-        </div>
-        <div
-          style={{
-            height: 8,
-            borderRadius: 'var(--radius-full)',
-            background: 'var(--color-bg-muted)',
-            overflow: 'hidden',
-          }}
-        >
-          <div
-            style={{
-              height: '100%',
-              width: `${pct}%`,
-              background: color,
-              borderRadius: 'var(--radius-full)',
-              transition: 'width 0.8s ease',
-            }}
-          />
-        </div>
-      </div>
-
-      {/* Values */}
       <div style={{ display: 'flex', justifyContent: 'space-between' }}>
         <div>
-          <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)' }}>{t('kpi.actual')}</p>
-          <p style={{ fontSize: 'var(--text-lg)', fontWeight: 700, color }}>
-            {kpi.actualValue.toLocaleString()} <span style={{ fontSize: 'var(--text-xs)', fontWeight: 400 }}>{t(kpi.unitKey)}</span>
+          <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)' }}>{t('kpi.target')}</p>
+          <p style={{ fontSize: 'var(--text-lg)', fontWeight: 700, color: 'var(--color-text-primary)' }}>
+            {kpi.targetValue.toLocaleString()} <span style={{ fontSize: 'var(--text-xs)', fontWeight: 400 }}>{kpi.unit}</span>
           </p>
         </div>
         <div style={{ textAlign: 'right' }}>
-          <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)' }}>{t('kpi.target')}</p>
-          <p style={{ fontSize: 'var(--text-lg)', fontWeight: 700, color: 'var(--color-text-secondary)' }}>
-            {kpi.targetValue.toLocaleString()} <span style={{ fontSize: 'var(--text-xs)', fontWeight: 400 }}>{t(kpi.unitKey)}</span>
+          <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)' }}>Assignee</p>
+          <p style={{ fontSize: 'var(--text-sm)', fontWeight: 600, color: 'var(--color-text-secondary)' }}>
+            {kpi.assigneeId}
           </p>
         </div>
       </div>

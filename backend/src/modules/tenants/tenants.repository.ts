@@ -13,6 +13,20 @@ export interface TenantRecord {
 export class TenantsRepository {
   constructor(private readonly db: Pool) {}
 
+  async findActiveById(tenantId: string): Promise<TenantRecord | null> {
+    const result = await this.db.query<TenantRecord>(
+      `
+      SELECT id, name, slug, plan, is_active, created_at, updated_at
+      FROM tenants
+      WHERE id = $1
+        AND is_active = TRUE
+      LIMIT 1
+      `,
+      [tenantId]
+    );
+    return result.rows[0] ?? null;
+  }
+
   async findAll(): Promise<TenantRecord[]> {
     const result = await this.db.query<TenantRecord>(
       `

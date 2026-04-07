@@ -2,6 +2,8 @@ import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { TenantsService } from './tenants.service.js';
 import { TenantsRepository } from './tenants.repository.js';
 import { requireRoles } from '../../shared/middleware/role-guard.middleware.js';
+import { ApplicationError } from '../../shared/utils/application-error.js';
+import { sendNoContent, sendSuccess } from '../../shared/utils/response.js';
 import {
   createTenantSchema,
   updateTenantSchema,
@@ -21,8 +23,12 @@ export async function tenantsRoutes(app: FastifyInstance): Promise<void> {
     { preHandler: [authenticate, requireRoles('ADMIN')] },
     async (request: FastifyRequest, reply: FastifyReply) => {
       const query = listTenantsQuerySchema.parse(request.query);
-      const result = await tenantsService.listTenants(query.page, query.limit);
-      return reply.send(result);
+      const result = await tenantsService.listCurrentTenant(
+        request.user.tenantId,
+        query.page,
+        query.limit
+      );
+      return sendSuccess(reply, result);
     }
   );
 
@@ -31,8 +37,11 @@ export async function tenantsRoutes(app: FastifyInstance): Promise<void> {
     { preHandler: [authenticate, requireRoles('ADMIN')] },
     async (request: FastifyRequest, reply: FastifyReply) => {
       const { tenantId } = tenantIdParamSchema.parse(request.params);
+      if (tenantId !== request.user.tenantId) {
+        throw ApplicationError.forbidden('Cross-tenant access denied');
+      }
       const tenant = await tenantsService.getTenantById(tenantId);
-      return reply.send(tenant);
+      return sendSuccess(reply, tenant);
     }
   );
 
@@ -42,7 +51,7 @@ export async function tenantsRoutes(app: FastifyInstance): Promise<void> {
     async (request: FastifyRequest, reply: FastifyReply) => {
       const body = createTenantSchema.parse(request.body);
       const tenant = await tenantsService.createTenant(body);
-      return reply.status(201).send(tenant);
+      return sendSuccess(reply, tenant, 201);
     }
   );
 
@@ -51,9 +60,12 @@ export async function tenantsRoutes(app: FastifyInstance): Promise<void> {
     { preHandler: [authenticate, requireRoles('ADMIN')] },
     async (request: FastifyRequest, reply: FastifyReply) => {
       const { tenantId } = tenantIdParamSchema.parse(request.params);
+      if (tenantId !== request.user.tenantId) {
+        throw ApplicationError.forbidden('Cross-tenant access denied');
+      }
       const body = updateTenantSchema.parse(request.body);
       const tenant = await tenantsService.updateTenant(tenantId, body);
-      return reply.send(tenant);
+      return sendSuccess(reply, tenant);
     }
   );
 
@@ -62,8 +74,11 @@ export async function tenantsRoutes(app: FastifyInstance): Promise<void> {
     { preHandler: [authenticate, requireRoles('ADMIN')] },
     async (request: FastifyRequest, reply: FastifyReply) => {
       const { tenantId } = tenantIdParamSchema.parse(request.params);
+      if (tenantId !== request.user.tenantId) {
+        throw ApplicationError.forbidden('Cross-tenant access denied');
+      }
       await tenantsService.deactivateTenant(tenantId);
-      return reply.status(204).send();
+      return sendNoContent(reply);
     }
   );
 }

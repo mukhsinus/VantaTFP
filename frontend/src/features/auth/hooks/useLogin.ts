@@ -34,13 +34,16 @@ export function useLogin(): UseLoginResult {
         (response as { accessToken?: string; access_token?: string; token?: string }).accessToken
         ?? (response as { access_token?: string }).access_token
         ?? (response as { token?: string }).token;
+      const refreshToken =
+        (response as { refreshToken?: string; refresh_token?: string }).refreshToken
+        ?? (response as { refresh_token?: string }).refresh_token;
 
       if (!response.user || !accessToken) {
         setError(i18n.t('errors.auth.unableToSignIn'));
         return false;
       }
 
-      setAuth(response.user, accessToken);
+      setAuth(response.user, accessToken, refreshToken ?? null);
       return true;
     } catch (err: unknown) {
       if (err instanceof ApiError) {

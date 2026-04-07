@@ -2,9 +2,8 @@ import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { PayrollService } from './payroll.service.js';
 import { PayrollRepository } from './payroll.repository.js';
 import { requireRoles } from '../../shared/middleware/role-guard.middleware.js';
+import { sendSuccess } from '../../shared/utils/response.js';
 import {
-  createPayrollEntrySchema,
-  updatePayrollEntrySchema,
   payrollIdParamSchema,
   listPayrollQuerySchema,
 } from './payroll.schema.js';
@@ -21,7 +20,7 @@ export async function payrollRoutes(app: FastifyInstance): Promise<void> {
     async (request: FastifyRequest, reply: FastifyReply) => {
       const query = listPayrollQuerySchema.parse(request.query);
       const result = await payrollService.listPayrollEntries(request.user.tenantId, query);
-      return reply.send(result);
+      return sendSuccess(reply, result);
     }
   );
 
@@ -31,32 +30,7 @@ export async function payrollRoutes(app: FastifyInstance): Promise<void> {
     async (request: FastifyRequest, reply: FastifyReply) => {
       const { payrollId } = payrollIdParamSchema.parse(request.params);
       const entry = await payrollService.getPayrollEntryById(payrollId, request.user.tenantId);
-      return reply.send(entry);
-    }
-  );
-
-  app.post(
-    '/',
-    { preHandler: [authenticate, requireRoles('ADMIN', 'MANAGER')] },
-    async (request: FastifyRequest, reply: FastifyReply) => {
-      const body = createPayrollEntrySchema.parse(request.body);
-      const entry = await payrollService.createPayrollEntry(request.user.tenantId, body);
-      return reply.status(201).send(entry);
-    }
-  );
-
-  app.patch(
-    '/:payrollId',
-    { preHandler: [authenticate, requireRoles('ADMIN', 'MANAGER')] },
-    async (request: FastifyRequest, reply: FastifyReply) => {
-      const { payrollId } = payrollIdParamSchema.parse(request.params);
-      const body = updatePayrollEntrySchema.parse(request.body);
-      const entry = await payrollService.updatePayrollEntry(
-        payrollId,
-        request.user.tenantId,
-        body
-      );
-      return reply.send(entry);
+      return sendSuccess(reply, entry);
     }
   );
 
@@ -71,7 +45,7 @@ export async function payrollRoutes(app: FastifyInstance): Promise<void> {
         request.user.tenantId,
         request.user.userId
       );
-      return reply.send(entry);
+      return sendSuccess(reply, entry);
     }
   );
 }
