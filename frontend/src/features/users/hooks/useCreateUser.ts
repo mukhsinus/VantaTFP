@@ -6,6 +6,7 @@ import { toast } from '@app/store/toast.store';
 import { ApiError } from '@shared/api/client';
 import i18n from '@shared/i18n/i18n';
 import { usersKeys } from './users.query-keys';
+import { employeesKeys } from '@features/employees/hooks/employees.query-keys';
 
 interface UseCreateUserResult {
   createUser: (payload: CreateUserPayload) => Promise<UserUiModel>;
@@ -19,6 +20,7 @@ export function useCreateUser(): UseCreateUserResult {
     mutationFn: usersApi.createUser,
     onSuccess: (dto) => {
       queryClient.invalidateQueries({ queryKey: usersKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: employeesKeys.lists() });
       toast.success(
         i18n.t('errors.user.created'),
         i18n.t('errors.user.addedDescription', { fullName: `${dto.firstName} ${dto.lastName}` })

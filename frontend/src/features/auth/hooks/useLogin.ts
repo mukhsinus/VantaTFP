@@ -43,7 +43,14 @@ export function useLogin(): UseLoginResult {
         return false;
       }
 
-      setAuth(response.user, accessToken, refreshToken ?? null);
+      setAuth(
+        {
+          ...response.user,
+          systemRole: response.user.systemRole ?? 'user',
+        },
+        accessToken,
+        refreshToken ?? null
+      );
       return true;
     } catch (err: unknown) {
       if (err instanceof ApiError) {

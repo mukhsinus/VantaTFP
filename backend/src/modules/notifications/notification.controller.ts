@@ -43,7 +43,7 @@ export async function notificationRoutes(app: FastifyInstance): Promise<void> {
         if (!token) {
           app.log.warn({ url: request.url }, 'WS AUTH FAILED: missing token');
           console.log('WS AUTH FAILED', 'missing token');
-          socket.close(4401, 'Unauthorized');
+          socket?.close(4401, 'Unauthorized');
           return;
         }
 
@@ -53,7 +53,7 @@ export async function notificationRoutes(app: FastifyInstance): Promise<void> {
         } catch (err) {
           app.log.warn({ url: request.url }, 'WS AUTH FAILED: invalid token');
           console.log('WS AUTH FAILED', err);
-          socket.close(4401, 'Unauthorized');
+          socket?.close(4401, 'Unauthorized');
           return;
         }
 
@@ -62,7 +62,7 @@ export async function notificationRoutes(app: FastifyInstance): Promise<void> {
         if (!tenantId || !userId) {
           app.log.warn({ url: request.url }, 'WS AUTH FAILED: token missing tenant/user');
           console.log('WS AUTH FAILED', 'token missing tenant/user');
-          socket.close(4401, 'Unauthorized');
+          socket?.close(4401, 'Unauthorized');
           return;
         }
 
@@ -74,7 +74,7 @@ export async function notificationRoutes(app: FastifyInstance): Promise<void> {
         } catch (hubErr) {
           app.log.error({ err: hubErr, tenantId, userId }, 'WS hub connect failed');
           try {
-            socket.close(1011, 'Internal error');
+            socket?.close(1011, 'Internal error');
           } catch {
             /* ignore */
           }
@@ -109,7 +109,7 @@ export async function notificationRoutes(app: FastifyInstance): Promise<void> {
         app.log.error({ err, url: request.url }, 'WS handler error');
         console.log('WS AUTH FAILED', err);
         try {
-          socket.close(4401, 'Unauthorized');
+          socket?.close(4401, 'Unauthorized');
         } catch {
           /* ignore */
         }

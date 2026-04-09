@@ -7,6 +7,8 @@ import { useUpdateTaskStatus } from '@features/tasks/hooks/useUpdateTaskStatus';
 import { CreateTaskModal } from '@features/tasks/components/CreateTaskModal';
 import { usePermissions } from '@shared/hooks/useCanPerform';
 import { useIsMobile } from '@shared/hooks/useIsMobile';
+import { useBillingSnapshot } from '@features/billing/hooks/useBilling';
+import { useCurrentUser } from '@shared/hooks/useCurrentUser';
 // ─── Constants ────────────────────────────────────────────────────────────────
 const STATUS_COLUMNS = [
     { id: 'TODO', labelKey: 'status.todo', color: 'var(--color-gray-400)' },
@@ -33,15 +35,22 @@ export function TasksPage() {
     const isMobile = useIsMobile();
     const [view, setView] = useState('board');
     const [showCreateModal, setShowCreateModal] = useState(false);
-    const { tasks, total, isLoading, isError } = useTasks();
+    const { role } = useCurrentUser();
+    const taskTitle = role === 'EMPLOYEE' ? 'My Tasks' : role === 'MANAGER' ? 'Team Tasks' : t('tasks.title');
+    const canSwitchView = role !== 'EMPLOYEE';
+    const { tasks, total, isLoading, isError, refetch } = useTasks();
+    const { data: billing } = useBillingSnapshot();
     const { can } = usePermissions();
     const overdueTasks = tasks.filter((task) => task.overdue);
+    const taskLimitReached = billing?.limits.tasks !== null && billing?.limits.tasks !== undefined
+        ? total >= billing.limits.tasks
+        : false;
     if (isLoading)
         return _jsx(PageSkeleton, {});
     if (isError) {
-        return (_jsx(EmptyState, { title: t('errors.loadFailed.title'), description: t('errors.loadFailed.description'), action: { label: t('common.actions.retry'), onClick: () => window.location.reload() }, icon: _jsxs("svg", { width: "24", height: "24", viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 1.5, children: [_jsx("circle", { cx: "12", cy: "12", r: "10" }), _jsx("path", { d: "M12 8v4M12 16h.01" })] }) }));
+        return (_jsx(EmptyState, { title: t('errors.loadFailed.title'), description: t('errors.loadFailed.description'), action: { label: t('common.actions.retry'), onClick: () => void refetch() }, icon: _jsxs("svg", { width: "24", height: "24", viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 1.5, children: [_jsx("circle", { cx: "12", cy: "12", r: "10" }), _jsx("path", { d: "M12 8v4M12 16h.01" })] }) }));
     }
-    return (_jsxs(_Fragment, { children: [_jsxs("div", { style: { display: 'flex', flexDirection: 'column', gap: isMobile ? 14 : 20 }, children: [_jsxs("div", { style: { display: 'flex', justifyContent: 'space-between', alignItems: isMobile ? 'flex-start' : 'center', gap: isMobile ? 10 : 0 }, children: [_jsxs("div", { children: [_jsx("h2", { style: { fontSize: isMobile ? 'var(--text-xl)' : 'var(--text-2xl)', fontWeight: 700, color: 'var(--color-text-primary)' }, children: t('tasks.title') }), _jsxs("p", { style: { fontSize: 'var(--text-sm)', color: 'var(--color-text-secondary)', marginTop: 4 }, children: [total, " ", t('tasks.total'), overdueTasks.length > 0 && (_jsxs(_Fragment, { children: [' · ', _jsxs("span", { style: { color: 'var(--color-danger)', fontWeight: 500 }, children: [overdueTasks.length, " ", t('tasks.overdue')] })] }))] })] }), !isMobile && _jsxs("div", { style: { display: 'flex', alignItems: 'center', gap: 10 }, children: [_jsx("div", { style: {
+    return (_jsxs(_Fragment, { children: [_jsxs("div", { className: "page-container", style: { display: 'flex', flexDirection: 'column', gap: isMobile ? 14 : 20 }, children: [_jsxs("div", { style: { display: 'flex', justifyContent: 'space-between', alignItems: isMobile ? 'flex-start' : 'center', gap: isMobile ? 10 : 0 }, children: [_jsxs("div", { children: [_jsx("h2", { style: { fontSize: isMobile ? 'var(--text-xl)' : 'var(--text-2xl)', fontWeight: 700, color: 'var(--color-text-primary)' }, children: taskTitle }), _jsxs("p", { style: { fontSize: 'var(--text-sm)', color: 'var(--color-text-secondary)', marginTop: 4 }, children: [total, " ", t('tasks.total'), overdueTasks.length > 0 && (_jsxs(_Fragment, { children: [' · ', _jsxs("span", { style: { color: 'var(--color-danger)', fontWeight: 500 }, children: [overdueTasks.length, " ", t('tasks.overdue')] })] }))] })] }), !isMobile && _jsxs("div", { style: { display: 'flex', alignItems: 'center', gap: 10 }, children: [canSwitchView && _jsx("div", { style: {
                                             display: 'flex',
                                             background: 'var(--color-bg-muted)',
                                             borderRadius: 'var(--radius)',
@@ -58,7 +67,7 @@ export function TasksPage() {
                                                 background: view === v ? 'var(--color-bg)' : 'transparent',
                                                 color: view === v ? 'var(--color-text-primary)' : 'var(--color-text-secondary)',
                                                 boxShadow: view === v ? 'var(--shadow-xs)' : 'none',
-                                            }, children: v === 'board' ? t('tasks.view.board') : t('tasks.view.list') }, v))) }), can('task:create') && (_jsx(Button, { variant: "primary", size: "sm", onClick: () => setShowCreateModal(true), leftIcon: _jsx("svg", { width: "13", height: "13", viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 2.5, children: _jsx("path", { d: "M12 5v14M5 12h14" }) }), children: t('tasks.create') }))] })] }), overdueTasks.length > 0 && (_jsxs("div", { style: {
+                                            }, children: v === 'board' ? t('tasks.view.board') : t('tasks.view.list') }, v))) }), can('task:create') && (_jsx(Button, { variant: "primary", size: "sm", onClick: () => setShowCreateModal(true), disabled: taskLimitReached, leftIcon: _jsx("svg", { width: "13", height: "13", viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 2.5, children: _jsx("path", { d: "M12 5v14M5 12h14" }) }), children: t('tasks.create') }))] })] }), taskLimitReached && (_jsx(Card, { style: { borderColor: 'var(--color-warning-border)', background: 'var(--color-warning-subtle)' }, children: _jsx("p", { style: { margin: 0, color: 'var(--color-warning)', fontSize: 'var(--text-sm)', fontWeight: 600 }, children: t('billing.limitReached', { defaultValue: 'Task limit reached for your current plan.' }) }) })), overdueTasks.length > 0 && (_jsxs("div", { style: {
                             display: 'flex',
                             alignItems: 'center',
                             gap: 10,
@@ -69,7 +78,7 @@ export function TasksPage() {
                             fontSize: 'var(--text-sm)',
                         }, children: [_jsxs("svg", { width: "14", height: "14", viewBox: "0 0 24 24", fill: "none", stroke: "var(--color-danger)", strokeWidth: 2, children: [_jsx("circle", { cx: "12", cy: "12", r: "10" }), _jsx("path", { d: "M12 8v4M12 16h.01" })] }), _jsxs("span", { style: { color: 'var(--color-danger)', fontWeight: 500 }, children: [overdueTasks.length, " ", t('tasks.overdueAlert')] })] })), tasks.length === 0 ? (_jsx(EmptyState, { title: t('tasks.empty.title'), description: t('tasks.empty.subtitle'), action: can('task:create')
                             ? { label: t('tasks.create'), onClick: () => setShowCreateModal(true) }
-                            : undefined, icon: _jsxs("svg", { width: "24", height: "24", viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 1.5, children: [_jsx("path", { d: "M9 11l3 3L22 4" }), _jsx("path", { d: "M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11" })] }) })) : isMobile ? (_jsx(MobileTasksList, { tasks: tasks })) : view === 'board' ? (_jsx(BoardView, { tasks: tasks })) : (_jsx(ListView, { tasks: tasks }))] }), isMobile && can('task:create') && (_jsxs("button", { onClick: () => setShowCreateModal(true), style: {
+                            : undefined, icon: _jsxs("svg", { width: "24", height: "24", viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 1.5, children: [_jsx("path", { d: "M9 11l3 3L22 4" }), _jsx("path", { d: "M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11" })] }) })) : isMobile || role === 'EMPLOYEE' ? (_jsx(MobileTasksList, { tasks: tasks })) : view === 'board' ? (_jsx(BoardView, { tasks: tasks })) : (_jsx(ListView, { tasks: tasks }))] }), isMobile && can('task:create') && (_jsxs("button", { onClick: () => setShowCreateModal(true), disabled: taskLimitReached, style: {
                     position: 'fixed',
                     left: 12,
                     right: 12,
@@ -84,6 +93,7 @@ export function TasksPage() {
                     fontWeight: 600,
                     boxShadow: 'var(--shadow-lg)',
                     cursor: 'pointer',
+                    opacity: taskLimitReached ? 0.6 : 1,
                 }, children: ["+ ", t('tasks.create')] })), _jsx(CreateTaskModal, { isOpen: showCreateModal, onClose: () => setShowCreateModal(false) })] }));
 }
 function MobileTasksList({ tasks }) {
@@ -206,74 +216,7 @@ function TaskCard({ task, canChangeStatus }) {
 }
 // ─── List view ────────────────────────────────────────────────────────────────
 function ListView({ tasks }) {
-    const { t } = useTranslation();
-    const { updateStatus } = useUpdateTaskStatus();
-    const { can } = usePermissions();
-    const canChangeStatus = can('task:changeStatus');
-    return (_jsx(Card, { padding: "none", children: _jsxs("table", { style: { width: '100%', borderCollapse: 'collapse' }, children: [_jsx("thead", { children: _jsx("tr", { style: { background: 'var(--color-bg-subtle)', borderBottom: '1px solid var(--color-border)' }, children: [
-                            t('tasks.col.title'),
-                            t('tasks.col.assignee'),
-                            t('tasks.col.priority'),
-                            t('tasks.col.due'),
-                            t('tasks.col.status'),
-                        ].map((h) => (_jsx("th", { style: {
-                                padding: '10px 16px',
-                                fontSize: 'var(--text-xs)',
-                                fontWeight: 600,
-                                color: 'var(--color-text-secondary)',
-                                textAlign: 'left',
-                                textTransform: 'uppercase',
-                                letterSpacing: '0.04em',
-                            }, children: h }, h))) }) }), _jsx("tbody", { children: tasks.map((task) => (_jsx(ListRow, { task: task, canChangeStatus: canChangeStatus, onStatusChange: (status) => updateStatus({ taskId: task.id, status, taskTitle: task.title }) }, task.id))) })] }) }));
-}
-function ListRow({ task, canChangeStatus, onStatusChange, }) {
-    const { t } = useTranslation();
-    const [statusMenuOpen, setStatusMenuOpen] = useState(false);
-    return (_jsxs("tr", { style: {
-            borderBottom: '1px solid var(--color-border)',
-            background: task.overdue ? 'var(--color-danger-subtle)' : 'transparent',
-            transition: 'background var(--transition-fast)',
-        }, onMouseEnter: (e) => {
-            if (!task.overdue)
-                e.currentTarget.style.background = 'var(--color-bg-subtle)';
-        }, onMouseLeave: (e) => {
-            e.currentTarget.style.background =
-                task.overdue ? 'var(--color-danger-subtle)' : 'transparent';
-        }, children: [_jsxs("td", { style: { padding: '12px 16px' }, children: [_jsx("p", { style: { fontSize: 'var(--text-sm)', fontWeight: 500, color: 'var(--color-text-primary)' }, children: task.title }), task.description && (_jsx("p", { style: { fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 280 }, children: task.description }))] }), _jsx("td", { style: { padding: '12px 16px' }, children: _jsxs("div", { style: { display: 'flex', alignItems: 'center', gap: 8 }, children: [_jsx(Avatar, { name: task.assignee, size: "xs" }), _jsx("span", { style: { fontSize: 'var(--text-sm)', color: 'var(--color-text-secondary)' }, children: task.assignee })] }) }), _jsx("td", { style: { padding: '12px 16px' }, children: _jsx(Badge, { variant: PRIORITY_VARIANT[task.priority], children: t(PRIORITY_LABEL_KEY[task.priority]) }) }), _jsx("td", { style: { padding: '12px 16px' }, children: _jsxs("span", { style: {
-                        fontSize: 'var(--text-sm)',
-                        color: task.overdue ? 'var(--color-danger)' : 'var(--color-text-secondary)',
-                        fontWeight: task.overdue ? 600 : 400,
-                    }, children: [task.overdue ? '⚠ ' : '', task.dueDate] }) }), _jsx("td", { style: { padding: '12px 16px' }, children: _jsxs("div", { style: { position: 'relative', display: 'inline-block' }, children: [_jsx("button", { onClick: () => canChangeStatus && setStatusMenuOpen((o) => !o), style: {
-                                background: 'none',
-                                border: 'none',
-                                cursor: canChangeStatus ? 'pointer' : 'default',
-                                padding: 0,
-                            }, children: _jsx(StatusBadge, { status: task.status }) }), statusMenuOpen && (_jsx("div", { style: {
-                                position: 'absolute',
-                                top: '100%',
-                                left: 0,
-                                marginTop: 4,
-                                background: 'var(--color-bg)',
-                                border: '1px solid var(--color-border)',
-                                borderRadius: 'var(--radius-lg)',
-                                boxShadow: 'var(--shadow-lg)',
-                                zIndex: 'var(--z-dropdown)',
-                                overflow: 'hidden',
-                                minWidth: 160,
-                            }, children: STATUS_COLUMNS.filter((col) => col.id !== task.status).map((col) => (_jsxs("button", { onClick: () => { onStatusChange(col.id); setStatusMenuOpen(false); }, style: {
-                                    width: '100%',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: 8,
-                                    padding: '8px 12px',
-                                    border: 'none',
-                                    background: 'transparent',
-                                    cursor: 'pointer',
-                                    fontSize: 'var(--text-sm)',
-                                    color: 'var(--color-text-primary)',
-                                    textAlign: 'left',
-                                    transition: 'background var(--transition-fast)',
-                                }, onMouseEnter: (e) => (e.currentTarget.style.background = 'var(--color-bg-subtle)'), onMouseLeave: (e) => (e.currentTarget.style.background = 'transparent'), children: [_jsx("span", { style: { width: 7, height: 7, borderRadius: '50%', background: col.color, flexShrink: 0 } }), t(col.labelKey)] }, col.id))) }))] }) })] }));
+    return _jsx(MobileTasksList, { tasks: tasks });
 }
 function StatusBadge({ status }) {
     const { t } = useTranslation();

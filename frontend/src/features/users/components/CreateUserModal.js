@@ -19,12 +19,11 @@ export function CreateUserModal({ isOpen, onClose, creatorRole }) {
     const [error, setError] = useState(null);
     const roleOptions = useMemo(() => {
         if (creatorRole === 'MANAGER') {
-            return [{ value: 'EMPLOYEE', label: t('profile.roles.employee') }];
+            return [{ value: 'EMPLOYEE', label: t('employees.roles.employee') }];
         }
         return [
-            { value: 'ADMIN', label: t('profile.roles.admin') },
-            { value: 'MANAGER', label: t('profile.roles.manager') },
-            { value: 'EMPLOYEE', label: t('profile.roles.employee') },
+            { value: 'MANAGER', label: t('employees.roles.manager') },
+            { value: 'EMPLOYEE', label: t('employees.roles.employee') },
         ];
     }, [creatorRole, t]);
     const setField = (key, value) => {

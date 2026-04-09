@@ -13,6 +13,11 @@ export const API = {
         list: '/api/v1/users',
         detail: (userId) => `/api/v1/users/${userId}`,
     },
+    employees: {
+        list: '/api/v1/employees',
+        detail: (userId) => `/api/v1/employees/${userId}`,
+        patchRole: (userId) => `/api/v1/employees/${userId}/role`,
+    },
     tenants: {
         list: '/api/v1/tenants',
         detail: (tenantId) => `/api/v1/tenants/${tenantId}`,
@@ -27,10 +32,34 @@ export const API = {
         list: '/api/v1/kpi',
         detail: (kpiId) => `/api/v1/kpi/${kpiId}`,
         progress: (kpiId) => `/api/v1/kpi/${kpiId}/progress`,
+        analyticsByEmployee: '/api/v1/kpi/analytics/by-employee',
+        analyticsAggregated: '/api/v1/kpi/analytics/aggregated',
     },
     payroll: {
         list: '/api/v1/payroll',
         detail: (payrollId) => `/api/v1/payroll/${payrollId}`,
         approve: (payrollId) => `/api/v1/payroll/${payrollId}/approve`,
+        rules: '/api/v1/payroll/rules',
+        ruleDetail: (ruleId) => `/api/v1/payroll/rules/${ruleId}`,
+        applyRule: (ruleId) => `/api/v1/payroll/rules/${ruleId}/apply`,
+        records: '/api/v1/payroll/records',
+    },
+    reports: {
+        generate: '/api/v1/reports/generate',
+        export: '/api/v1/reports/export',
+        history: '/api/v1/reports/history',
+    },
+    notifications: {
+        unread: '/api/v1/notifications/unread',
+        ws: '/api/v1/notifications/ws',
+    },
+    billing: {
+        snapshot: '/api/v1/billing/snapshot',
+    },
+    /** Platform operator API (`requireSystemRole('super_admin')`). */
+    platform: {
+        tenants: '/api/v1/platform/tenants',
+        users: '/api/v1/platform/users',
+        subscriptions: '/api/v1/platform/subscriptions',
     },
 };

@@ -1,0 +1,101 @@
+import type { AuthenticatedUser, Role, SystemRole, TenantRole } from '../types/common.types.js';
+import { ApplicationError } from '../utils/application-error.js';
+
+/** Row from `AuthRepository.findAuthContextById` */
+export type AuthContextRow = {
+  id: string;
+  email: string;
+  system_role: string;
+  legacy_role: string;
+  user_primary_tenant_id: string | null;
+  effective_tenant_id: string | null;
+  membership_role: string | null;
+};
+
+const TENANT_ROLES: TenantRole[] = ['owner', 'manager', 'employee'];
+
+function isTenantRole(value: string | null): value is TenantRole {
+  return value !== null && TENANT_ROLES.includes(value as TenantRole);
+}
+
+export function tenantRoleFromLegacyUserRole(legacy: string): TenantRole {
+  switch (legacy) {
+    case 'ADMIN':
+      return 'owner';
+    case 'MANAGER':
+      return 'manager';
+    default:
+      return 'employee';
+  }
+}
+
+export function legacyRoleFromTenantRole(tenantRole: TenantRole | null): Role {
+  switch (tenantRole) {
+    case 'owner':
+      return 'ADMIN';
+    case 'manager':
+      return 'MANAGER';
+    case 'employee':
+    default:
+      return 'EMPLOYEE';
+  }
+}
+
+function asSystemRole(value: string): SystemRole {
+  return value === 'super_admin' ? 'super_admin' : 'user';
+}
+
+/**
+ * Builds the canonical `AuthenticatedUser` after JWT verify + DB lookup.
+ * `jwtTenantId` is the tenant id from the token (if any).
+ */
+export function buildAuthenticatedUser(
+  row: AuthContextRow,
+  jwtTenantId: string | null | undefined
+): AuthenticatedUser {
+  const system_role = asSystemRole(row.system_role);
+
+  if (system_role === 'super_admin') {
+    const actingTenant = jwtTenantId ?? row.user_primary_tenant_id ?? null;
+    return {
+      id: row.id,
+      userId: row.id,
+      system_role,
+      tenant_role: null,
+      tenant_id: actingTenant,
+      tenantId: actingTenant ?? '',
+      email: row.email,
+      role: 'ADMIN',
+    };
+  }
+
+  const effective = row.effective_tenant_id;
+  if (!effective) {
+    throw ApplicationError.unauthorized('Missing tenant context');
+  }
+
+  let tenant_role: TenantRole | null = isTenantRole(row.membership_role)
+    ? row.membership_role
+    : null;
+
+  if (!tenant_role) {
+    if (row.user_primary_tenant_id === effective) {
+      tenant_role = tenantRoleFromLegacyUserRole(row.legacy_role);
+    } else {
+      throw ApplicationError.forbidden('Not a member of this tenant');
+    }
+  }
+
+  const role = legacyRoleFromTenantRole(tenant_role);
+
+  return {
+    id: row.id,
+    userId: row.id,
+    system_role,
+    tenant_role,
+    tenant_id: effective,
+    tenantId: effective,
+    email: row.email,
+    role,
+  };
+}

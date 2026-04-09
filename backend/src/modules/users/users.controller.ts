@@ -1,6 +1,7 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { UsersService } from './users.service.js';
 import { UsersRepository } from './users.repository.js';
+import { EmployeesRepository } from '../employees/employees.repository.js';
 import { requireRoles } from '../../shared/middleware/role-guard.middleware.js';
 import { sendNoContent, sendSuccess, successEnvelope } from '../../shared/utils/response.js';
 import { attachIdempotencyKey } from '../../shared/middleware/idempotency.middleware.js';
@@ -14,7 +15,8 @@ import {
 
 export async function usersRoutes(app: FastifyInstance): Promise<void> {
   const usersRepository = new UsersRepository(app.db);
-  const usersService = new UsersService(usersRepository, app.billing);
+  const employeesRepository = new EmployeesRepository(app.db);
+  const usersService = new UsersService(usersRepository, employeesRepository, app.billing);
   const idempotency = new IdempotencyService(app.db);
 
   const authenticate = app.authenticate;
@@ -23,8 +25,8 @@ export async function usersRoutes(app: FastifyInstance): Promise<void> {
     '/me',
     { preHandler: [authenticate] },
     async (request: FastifyRequest, reply: FastifyReply) => {
-      const user = await usersService.getUserById(request.user.userId, request.user.tenantId);
-      return sendSuccess(reply, user);
+      const me = await usersService.getMe(request.user);
+      return sendSuccess(reply, me);
     }
   );
 

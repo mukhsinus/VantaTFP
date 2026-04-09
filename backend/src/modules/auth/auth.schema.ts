@@ -8,7 +8,7 @@ import { z } from 'zod';
  * - At least one number
  * - At least one special character
  */
-const passwordSchema = z
+export const passwordSchema = z
   .string()
   .min(12, 'Password must be at least 12 characters')
   .regex(/[A-Z]/, 'Password must contain uppercase letter')
@@ -27,6 +27,7 @@ export const loginRequestSchema = z.object({
 export const registerRequestSchema = z.object({
   email: z.string().email(),
   password: passwordSchema,
+  /** Legacy email-bound invite (tenant_invites). Prefer POST /api/v1/invites/accept-invite with UUID token. */
   inviteToken: z.string().min(1, 'Invite token required (registration requires valid invite)'),
 });
 
@@ -34,12 +35,6 @@ export const refreshTokenRequestSchema = z.object({
   refreshToken: z.string().min(1),
 });
 
-export const createTenantInviteSchema = z.object({
-  email: z.string().email(),
-  role: z.enum(['ADMIN', 'MANAGER', 'EMPLOYEE']).default('EMPLOYEE'),
-});
-
 export type LoginRequest = z.infer<typeof loginRequestSchema>;
 export type RegisterRequest = z.infer<typeof registerRequestSchema>;
 export type RefreshTokenRequest = z.infer<typeof refreshTokenRequestSchema>;
-export type CreateTenantInviteDto = z.infer<typeof createTenantInviteSchema>;

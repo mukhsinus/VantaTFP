@@ -76,6 +76,7 @@ const NAV_BY_ROLE: Record<Role, NavItemConfig[]> = {
   ],
   MANAGER: [
     { to: '/dashboard', label: 'Dashboard', icon: icon.dashboard },
+    { to: '/employees', label: 'Employees', icon: icon.employees },
     { to: '/tasks', label: 'Team Tasks', icon: icon.tasks },
     { to: '/kpi', label: 'Team KPI', icon: icon.kpi },
     { to: '/reports', label: 'Reports', icon: icon.reports },
@@ -91,7 +92,7 @@ const NAV_BY_ROLE: Record<Role, NavItemConfig[]> = {
 
 const ALLOWED_ROLES_BY_ROUTE: Record<string, Role[]> = {
   '/dashboard': ['ADMIN', 'MANAGER'],
-  '/employees': ['ADMIN'],
+  '/employees': ['ADMIN', 'MANAGER'],
   '/tasks': ['ADMIN', 'MANAGER', 'EMPLOYEE'],
   '/kpi': ['ADMIN', 'MANAGER', 'EMPLOYEE'],
   '/payroll': ['ADMIN', 'EMPLOYEE'],

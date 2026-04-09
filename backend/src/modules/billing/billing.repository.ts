@@ -1,11 +1,17 @@
 import { Pool, PoolClient } from 'pg';
 import type { PlanLimits } from './billing.types.js';
 import { getAdvisoryLockKey } from '../../shared/utils/advisory-lock.js';
+import { getBillingSubscriptionCaps } from './billing-schema-caps.js';
+import { getAuthSchemaCaps } from '../auth/auth-schema-caps.js';
 
 export interface SubscriptionPlanRow {
   plan_id: string;
   plan_name: string;
   limits: PlanLimits;
+  /** From `subscriptions.max_users` when present */
+  subscription_max_users: number | null;
+  /** From `subscriptions.plan` enum or fallback to `plans.name` */
+  subscription_plan_tier: string;
 }
 
 type Queryable = Pick<Pool, 'query'> | Pick<PoolClient, 'query'>;
@@ -43,6 +49,30 @@ export class BillingRepository {
   }
 
   async ensureDefaultSubscription(tenantId: string, executor: Queryable = this.db): Promise<void> {
+    const caps = await getBillingSubscriptionCaps(this.db);
+    if (caps.planColumn && caps.maxUsersColumn) {
+      await executor.query(
+        `
+        INSERT INTO subscriptions (tenant_id, plan_id, plan, max_users, status)
+        SELECT
+          $1,
+          p.id,
+          'basic'::subscription_plan_tier,
+          CASE
+            WHEN (p.limits->>'users') IS NULL OR (p.limits->>'users') = 'null' THEN NULL
+            ELSE (p.limits->>'users')::integer
+          END,
+          'active'
+        FROM plans p
+        WHERE p.name = 'basic'
+        LIMIT 1
+        ON CONFLICT (tenant_id) DO NOTHING
+        `,
+        [tenantId]
+      );
+      return;
+    }
+
     await executor.query(
       `
       INSERT INTO subscriptions (tenant_id, plan_id, status)
@@ -60,13 +90,20 @@ export class BillingRepository {
     tenantId: string,
     executor: Queryable = this.db
   ): Promise<SubscriptionPlanRow | null> {
-    const result = await executor.query<{
-      plan_id: string;
-      plan_name: string;
-      limits: PlanLimits;
-    }>(
+    const caps = await getBillingSubscriptionCaps(this.db);
+    const maxUsersSql = caps.maxUsersColumn ? 's.max_users' : 'NULL::integer';
+    const tierSql = caps.planColumn
+      ? `COALESCE(NULLIF(trim(s.plan::text), ''), lower(p.name))`
+      : `lower(p.name)`;
+
+    const result = await executor.query<SubscriptionPlanRow>(
       `
-      SELECT p.id AS plan_id, p.name AS plan_name, p.limits
+      SELECT
+        p.id AS plan_id,
+        p.name AS plan_name,
+        p.limits,
+        ${maxUsersSql} AS subscription_max_users,
+        ${tierSql} AS subscription_plan_tier
       FROM subscriptions s
       INNER JOIN plans p ON p.id = s.plan_id
       WHERE s.tenant_id = $1
@@ -79,13 +116,14 @@ export class BillingRepository {
   }
 
   async getBasicPlanFallback(executor: Queryable = this.db): Promise<SubscriptionPlanRow> {
-    const result = await executor.query<{
-      plan_id: string;
-      plan_name: string;
-      limits: PlanLimits;
-    }>(
+    const result = await executor.query<SubscriptionPlanRow>(
       `
-      SELECT id AS plan_id, name AS plan_name, limits
+      SELECT
+        id AS plan_id,
+        name AS plan_name,
+        limits,
+        NULL::integer AS subscription_max_users,
+        lower(name) AS subscription_plan_tier
       FROM plans
       WHERE name = 'basic'
       LIMIT 1
@@ -107,6 +145,48 @@ export class BillingRepository {
       `,
       [tenantId]
     );
+    return Number(result.rows[0]?.total ?? 0);
+  }
+
+  /**
+   * Active manager + employee seats (owner excluded). Uses `tenant_users` with legacy `users.role` fallback.
+   */
+  async countBillableTenantMembers(tenantId: string, executor: Queryable = this.db): Promise<number> {
+    const caps = await getAuthSchemaCaps(this.db);
+    const sql = caps.tenantUsersTable
+      ? `
+      SELECT COUNT(*)::text AS total
+      FROM users u
+      LEFT JOIN tenant_users tu
+        ON tu.user_id = u.id AND tu.tenant_id = u.tenant_id
+      WHERE u.tenant_id = $1
+        AND u.is_active = TRUE
+        AND (
+          COALESCE(
+            tu.role::text,
+            CASE UPPER(TRIM(u.role::text))
+              WHEN 'ADMIN' THEN 'owner'
+              WHEN 'MANAGER' THEN 'manager'
+              ELSE 'employee'
+            END
+          )
+        ) <> 'owner'
+      `
+      : `
+      SELECT COUNT(*)::text AS total
+      FROM users u
+      WHERE u.tenant_id = $1
+        AND u.is_active = TRUE
+        AND (
+          CASE UPPER(TRIM(u.role::text))
+            WHEN 'ADMIN' THEN 'owner'
+            WHEN 'MANAGER' THEN 'manager'
+            ELSE 'employee'
+          END
+        ) <> 'owner'
+      `;
+
+    const result = await executor.query<{ total: string }>(sql, [tenantId]);
     return Number(result.rows[0]?.total ?? 0);
   }
 

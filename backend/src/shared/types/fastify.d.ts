@@ -27,15 +27,15 @@ declare module 'fastify' {
   }
 
   interface FastifyRequest {
-    /** Present after `authenticate` — same as `request.user.tenantId`. */
+    /** Present after `authenticate` when tenant-scoped; omitted for `super_admin` without acting tenant. */
     tenantId?: string;
     idempotencyKey?: string;
   }
 }
 
 /**
- * Narrows the @fastify/jwt payload type so request.user is AuthenticatedUser
- * everywhere in the codebase without manual casts.
+ * After `authenticate`, `request.user` is a DB-hydrated `AuthenticatedUser`
+ * (`id`, `system_role`, `tenant_role`, `tenant_id`, plus legacy fields).
  */
 declare module '@fastify/jwt' {
   interface FastifyJWT {

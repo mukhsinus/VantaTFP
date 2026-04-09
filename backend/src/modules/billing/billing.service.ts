@@ -8,6 +8,22 @@ import type {
   PlanLimits,
   TenantPlanContext,
 } from './billing.types.js';
+import type { SubscriptionPlanRow } from './billing.repository.js';
+
+/** Seat cap for manager+employee (owner excluded). `null` = unlimited. */
+export function effectiveBillableSeatLimit(
+  subscriptionPlanTier: string,
+  subscriptionMaxUsers: number | null | undefined
+): number | null {
+  const tier = subscriptionPlanTier.toLowerCase();
+  if (tier === 'unlimited') return null;
+  if (subscriptionMaxUsers !== null && subscriptionMaxUsers !== undefined) {
+    return subscriptionMaxUsers;
+  }
+  if (tier === 'basic') return 5;
+  if (tier === 'pro') return 15;
+  return null;
+}
 
 function utcHourStart(d = new Date()): Date {
   return new Date(
@@ -70,18 +86,40 @@ function shouldApplyTenantApiRate(url: string): boolean {
 export class BillingService {
   constructor(private readonly repo: BillingRepository) {}
 
+  private rowToTenantContext(row: SubscriptionPlanRow): TenantPlanContext {
+    const limits = parseLimits(row.limits);
+    const billableSeatLimit = effectiveBillableSeatLimit(
+      row.subscription_plan_tier,
+      row.subscription_max_users
+    );
+    return {
+      planId: row.plan_id,
+      planName: row.plan_name,
+      limits,
+      billableSeatLimit,
+    };
+  }
+
   async getTenantPlan(tenantId: string): Promise<TenantPlanContext> {
     await this.repo.ensureDefaultSubscription(tenantId);
     let row = await this.repo.getSubscriptionPlan(tenantId);
     if (!row) {
-      const basic = await this.repo.getBasicPlanFallback();
-      row = basic;
+      row = await this.repo.getBasicPlanFallback();
     }
-    return {
-      planId: row.plan_id,
-      planName: row.plan_name,
-      limits: parseLimits(row.limits),
-    };
+    return this.rowToTenantContext(row);
+  }
+
+  /**
+   * Whether the tenant may add another manager/employee (owner does not consume a seat).
+   */
+  async canAddUser(
+    tenantId: string
+  ): Promise<{ allowed: boolean; current: number; max: number | null }> {
+    const plan = await this.getTenantPlan(tenantId);
+    const max = plan.billableSeatLimit;
+    const current = await this.repo.countBillableTenantMembers(tenantId);
+    const allowed = max === null || current < max;
+    return { allowed, current, max };
   }
 
   async checkLimit(
@@ -90,8 +128,8 @@ export class BillingService {
   ): Promise<LimitCheckResult> {
     const plan = await this.getTenantPlan(tenantId);
     if (metric === 'users') {
-      const max = plan.limits.users;
-      const current = await this.repo.countActiveUsers(tenantId);
+      const max = plan.billableSeatLimit;
+      const current = await this.repo.countBillableTenantMembers(tenantId);
       const allowed = max === null || current < max;
       return { allowed, current, max };
     }
@@ -109,11 +147,9 @@ export class BillingService {
   }
 
   async assertCanAddUser(tenantId: string): Promise<void> {
-    const { allowed } = await this.checkLimit(tenantId, 'users');
+    const { allowed } = await this.canAddUser(tenantId);
     if (!allowed) {
-      throw ApplicationError.planLimitExceeded(
-        'User limit reached for your subscription plan'
-      );
+      throw ApplicationError.planLimitExceeded('User limit reached');
     }
   }
 
@@ -154,23 +190,29 @@ export class BillingService {
 
   async runAtomicUserCreation<T>(
     tenantId: string,
+    options: { occupiesBillableSeat: boolean },
     insertEntity: (tx: PoolClient) => Promise<T>
   ): Promise<T> {
     return this.repo.withTransaction(async (tx) => {
       await this.repo.lockTenantMetric(tenantId, 'users', tx);
       const plan = await this.getTenantPlanInTx(tenantId, tx);
-      const max = plan.limits.users;
-      const current = await this.repo.countActiveUsers(tenantId, tx);
-      if (max !== null && current >= max) {
-        throw ApplicationError.planLimitExceeded('User limit reached for your subscription plan');
+      const max = plan.billableSeatLimit;
+
+      if (options.occupiesBillableSeat && max !== null) {
+        const before = await this.repo.countBillableTenantMembers(tenantId, tx);
+        if (before >= max) {
+          throw ApplicationError.planLimitExceeded('User limit reached');
+        }
       }
 
       const created = await insertEntity(tx);
-      const tracked = await this.repo.incrementUsage(tenantId, utcHourStart(), 'users', tx);
-      const finalCount = await this.repo.countActiveUsers(tenantId, tx);
+      await this.repo.incrementUsage(tenantId, utcHourStart(), 'users', tx);
 
-      if ((max !== null && finalCount > max) || (max !== null && tracked > max)) {
-        throw ApplicationError.planLimitExceeded('User limit reached for your subscription plan');
+      if (options.occupiesBillableSeat && max !== null) {
+        const after = await this.repo.countBillableTenantMembers(tenantId, tx);
+        if (after > max) {
+          throw ApplicationError.planLimitExceeded('User limit reached');
+        }
       }
 
       return created;
@@ -215,10 +257,6 @@ export class BillingService {
     if (!row) {
       row = await this.repo.getBasicPlanFallback(tx);
     }
-    return {
-      planId: row.plan_id,
-      planName: row.plan_name,
-      limits: parseLimits(row.limits),
-    };
+    return this.rowToTenantContext(row);
   }
 }

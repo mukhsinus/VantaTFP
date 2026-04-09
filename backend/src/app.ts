@@ -32,6 +32,9 @@ import { billingRoutes } from './modules/billing/billing.controller.js';
 import { rbacRoutes } from './modules/rbac/rbac.controller.js';
 import { notificationRoutes } from './modules/notifications/notification.controller.js';
 import { adminRoutes } from './modules/admin/admin.controller.js';
+import { platformRoutes } from './modules/platform/platform.controller.js';
+import { employeesRoutes } from './modules/employees/employees.controller.js';
+import { invitesRoutes } from './modules/invites/invites.controller.js';
 
 export async function buildApp(): Promise<FastifyInstance> {
   initSentry();
@@ -79,6 +82,8 @@ export async function buildApp(): Promise<FastifyInstance> {
   // ── Module routes (all prefixed under /api/v1) ────────────────────────────
   await app.register(authRoutes, { prefix: '/api/v1/auth' });
   await app.register(usersRoutes, { prefix: '/api/v1/users' });
+  await app.register(employeesRoutes, { prefix: '/api/v1/employees' });
+  await app.register(invitesRoutes, { prefix: '/api/v1/invites' });
   await app.register(tenantsRoutes, { prefix: '/api/v1/tenants' });
   await app.register(tasksRoutes, { prefix: '/api/v1/tasks' });
   await app.register(kpiRoutes, { prefix: '/api/v1/kpi' });
@@ -88,6 +93,7 @@ export async function buildApp(): Promise<FastifyInstance> {
   await app.register(rbacRoutes, { prefix: '/api/v1/rbac' });
   await app.register(notificationRoutes, { prefix: '/api/v1/notifications' });
   await app.register(adminRoutes, { prefix: '/api/v1/admin' });
+  await app.register(platformRoutes, { prefix: '/api/v1/platform' });
 
   return app;
 }

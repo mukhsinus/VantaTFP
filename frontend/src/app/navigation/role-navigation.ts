@@ -17,6 +17,7 @@ const ADMIN_NAV: RoleNavItem[] = [
 
 const MANAGER_NAV: RoleNavItem[] = [
   { to: '/dashboard', labelKey: 'nav.overview' },
+  { to: '/employees', labelKey: 'nav.employees' },
   { to: '/tasks', labelKey: 'nav.tasks' },
   { to: '/kpi', labelKey: 'nav.kpi' },
   { to: '/reports', labelKey: 'nav.reports' },

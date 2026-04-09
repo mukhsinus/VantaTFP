@@ -1,9 +1,10 @@
 import { UsersRepository } from './users.repository.js';
 import { CreateUserDto, UpdateUserDto } from './users.schema.js';
 import { ApplicationError } from '../../shared/utils/application-error.js';
-import { Role } from '../../shared/types/common.types.js';
+import type { AuthenticatedUser, Role } from '../../shared/types/common.types.js';
 import bcrypt from 'bcrypt';
 import type { BillingService } from '../billing/billing.service.js';
+import type { EmployeesRepository } from '../employees/employees.repository.js';
 
 interface ActorContext {
   actorUserId: string;
@@ -35,9 +36,35 @@ export interface UserListResponse {
   pagination: PaginationMeta;
 }
 
+/** Normalized session user for GET /users/me and login envelope. */
+export interface MeResponse {
+  userId: string;
+  tenantId: string;
+  tenantName: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  role: Role;
+  systemRole: 'super_admin' | 'user';
+}
+
+function legacyInviteRoleToTenantMembership(
+  role: Role
+): 'owner' | 'manager' | 'employee' {
+  switch (role) {
+    case 'ADMIN':
+      return 'owner';
+    case 'MANAGER':
+      return 'manager';
+    default:
+      return 'employee';
+  }
+}
+
 export class UsersService {
   constructor(
     private readonly usersRepository: UsersRepository,
+    private readonly employeesRepository: EmployeesRepository,
     private readonly billing: BillingService
   ) {}
 
@@ -76,6 +103,31 @@ export class UsersService {
     return this.toUserResponse(user);
   }
 
+  async getMe(principal: AuthenticatedUser): Promise<MeResponse> {
+    const row = await this.usersRepository.findMeProfile(principal.userId);
+    if (!row) {
+      throw ApplicationError.notFound('User');
+    }
+
+    const systemRole: 'super_admin' | 'user' =
+      row.system_role === 'super_admin' ? 'super_admin' : 'user';
+    const tenantId = row.tenant_id ?? '';
+    const tenantName =
+      row.tenant_name?.trim() ||
+      (systemRole === 'super_admin' ? 'Platform' : 'Workspace');
+
+    return {
+      userId: row.id,
+      tenantId,
+      tenantName,
+      email: row.email,
+      firstName: row.first_name,
+      lastName: row.last_name,
+      role: principal.role,
+      systemRole,
+    };
+  }
+
   async createUser(
     tenantId: string,
     data: CreateUserDto,
@@ -104,20 +156,31 @@ export class UsersService {
     }
 
     const passwordHash = await bcrypt.hash(data.password, 12);
-    const created = await this.billing.runAtomicUserCreation(tenantId, (tx) =>
-      this.usersRepository.create(
-        {
-          tenant_id: tenantId,
-          email: data.email.toLowerCase(),
-          password_hash: passwordHash,
-          first_name: data.firstName,
-          last_name: data.lastName,
-          role: data.role,
-          manager_id: data.managerId ?? null,
-          is_active: true,
-        },
-        tx
-      )
+    const created = await this.billing.runAtomicUserCreation(
+      tenantId,
+      { occupiesBillableSeat: true },
+      async (tx) => {
+        const user = await this.usersRepository.create(
+          {
+            tenant_id: tenantId,
+            email: data.email.toLowerCase(),
+            password_hash: passwordHash,
+            first_name: data.firstName,
+            last_name: data.lastName,
+            role: data.role,
+            manager_id: data.managerId ?? null,
+            is_active: true,
+          },
+          tx
+        );
+        await this.employeesRepository.upsertTenantMembership(
+          user.id,
+          tenantId,
+          legacyInviteRoleToTenantMembership(data.role),
+          tx
+        );
+        return user;
+      }
     );
 
     return this.toUserResponse(created);
@@ -167,6 +230,14 @@ export class UsersService {
       role: data.role,
       manager_id: data.managerId,
     });
+
+    if (data.role) {
+      await this.employeesRepository.upsertTenantMembership(
+        userId,
+        tenantId,
+        legacyInviteRoleToTenantMembership(data.role)
+      );
+    }
 
     return this.toUserResponse(updated);
   }

@@ -12,6 +12,11 @@ export interface TenantPlanContext {
   planId: string;
   planName: string;
   limits: PlanLimits;
+  /**
+   * Max manager+employee seats (owner excluded). `null` = unlimited.
+   * Derived from subscription tier + `subscriptions.max_users`.
+   */
+  billableSeatLimit: number | null;
 }
 
 export interface LimitCheckResult {

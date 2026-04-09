@@ -1,22 +1,16 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Navigate, useSearchParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Button, Input } from '@shared/components/ui';
 import { useLogin } from '@features/auth/hooks/useLogin';
 import { useAuthStore } from '@app/store/auth.store';
 import { useIsMobile } from '@shared/hooks/useIsMobile';
+import { resolvePostLoginRedirect } from '@shared/config/auth-routing';
 
 export function LoginPage() {
   const { t } = useTranslation();
   const isMobile = useIsMobile();
   const [searchParams] = useSearchParams();
-  const redirectTo = useMemo(() => {
-    const raw = searchParams.get('redirect');
-    if (!raw || !raw.startsWith('/')) return '/dashboard';
-    // Prevent redirect loops like /login?redirect=/login
-    if (raw === '/login' || raw.startsWith('/login?')) return '/dashboard';
-    return raw;
-  }, [searchParams]);
 
   const isAuthenticated = useAuthStore((s) => Boolean(s.user && s.accessToken));
 
@@ -33,14 +27,19 @@ export function LoginPage() {
 
   // Already signed in — skip the login page entirely
   if (isAuthenticated) {
-    return <Navigate to={redirectTo} replace />;
+    const u = useAuthStore.getState().user;
+    if (!u) return null;
+    return <Navigate to={resolvePostLoginRedirect(u, searchParams.get('redirect'))} replace />;
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email.trim() || !password) return;
     const success = await login({ email: email.trim(), password });
-    if (success) navigate(redirectTo, { replace: true });
+    if (success) {
+      const u = useAuthStore.getState().user;
+      if (u) navigate(resolvePostLoginRedirect(u, searchParams.get('redirect')), { replace: true });
+    }
   };
 
   if (isMobile) {

@@ -2,12 +2,23 @@ import { FastifyRequest, FastifyReply } from 'fastify';
 import { ApplicationError } from '../utils/application-error.js';
 
 /**
- * Copies tenant_id from the verified JWT user onto the request for consistent access.
- * Must run only after `authenticate` (JWT verified and `request.user` set).
+ * Copies tenant id onto `request.tenantId` for billing and repositories.
+ * `super_admin` may omit a tenant (skips validation); optional tenant still attaches for scoped routes.
  */
 export function attachTenantContext(request: FastifyRequest): void {
-  const tenantId = request.user?.tenantId;
-  if (!tenantId || typeof tenantId !== 'string') {
+  const user = request.user;
+  if (!user) {
+    throw ApplicationError.unauthorized('Missing user');
+  }
+
+  if (user.system_role === 'super_admin') {
+    const tid = user.tenant_id;
+    request.tenantId = tid && tid.length > 0 ? tid : undefined;
+    return;
+  }
+
+  const tenantId = user.tenant_id ?? user.tenantId;
+  if (!tenantId || typeof tenantId !== 'string' || tenantId.length === 0) {
     throw ApplicationError.unauthorized('Missing tenant context');
   }
   request.tenantId = tenantId;

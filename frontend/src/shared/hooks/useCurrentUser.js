@@ -12,6 +12,7 @@ export function useCurrentUser() {
         isAdmin: user?.role === 'ADMIN',
         isManager: user?.role === 'MANAGER',
         isEmployee: user?.role === 'EMPLOYEE',
+        isSuperAdmin: (user?.systemRole ?? 'user') === 'super_admin',
         isAuthenticated: Boolean(user && accessToken),
     };
 }

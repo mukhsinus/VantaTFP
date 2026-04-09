@@ -402,6 +402,28 @@
   },
   "employees": {
     "title": "Employees",
+    "filters": {
+      "all": "All"
+    },
+    "sheet": {
+      "actionsTitle": "Actions",
+      "changeRoleTitle": "Change role"
+    },
+    "confirm": {
+      "deactivateTitle": "Deactivate member?",
+      "deactivateBody": "They will lose access to this workspace. You can invite them again later if needed.",
+      "removeTitle": "Remove from workspace?",
+      "removeBody": "They will be removed from the team and will no longer have access to this workspace."
+    },
+    "ownerLockedHint": "The workspace owner cannot be deactivated or reassigned.",
+    "roles": {
+      "owner": "Owner",
+      "manager": "Manager",
+      "employee": "Employee"
+    },
+    "toast": {
+      "roleUpdated": "Role updated for {{email}}"
+    },
     "active": "active",
     "total": "total",
     "invite": "Invite Employee",
@@ -412,7 +434,10 @@
       "description": "Try adjusting your filters or invite your first team member."
     },
     "actions": {
+      "openMenu": "Open actions",
+      "changeRole": "Change role",
       "deactivate": "Deactivate",
+      "remove": "Remove",
       "readonly": "You don't have permission to manage this user.",
       "self": "You cannot update your own role here."
     },
@@ -431,7 +456,7 @@
         "nameRequired": "First name and last name are required.",
         "emailRequired": "Email is required.",
         "passwordShort": "Password must be at least 8 characters.",
-        "managerRole": "Managers can only create EMPLOYEE users."
+        "managerRole": "Managers can only invite employees."
       }
     },
     "card": {

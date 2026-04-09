@@ -1,10 +1,12 @@
 import bcrypt from 'bcrypt';
-import { AuthRepository, UserWithTenantRecord, TenantInviteRecord } from './auth.repository.js';
+import { AuthRepository, UserWithTenantRecord } from './auth.repository.js';
 import { LoginRequest, RegisterRequest } from './auth.schema.js';
 import { ApplicationError } from '../../shared/utils/application-error.js';
 import { AuthenticatedUser, Role } from '../../shared/types/common.types.js';
 import { validatePassword } from '../../shared/utils/password-validator.js';
 import type { BillingService } from '../billing/billing.service.js';
+import { buildAuthenticatedUser } from '../../shared/auth/principal.js';
+import type { EmployeesRepository } from '../employees/employees.repository.js';
 
 export interface TokenPair {
   accessToken: string;
@@ -19,14 +21,17 @@ export interface AuthUserResponse {
   firstName: string;
   lastName: string;
   role: Role;
+  systemRole: 'super_admin' | 'user';
 }
 
 export interface AuthSuccessResponse extends TokenPair {
   user: AuthUserResponse;
 }
 
-type TokenSigner = (payload: AuthenticatedUser, expiresIn: string) => string;
-type TokenVerifier = (token: string) => AuthenticatedUser & { tokenType?: 'access' | 'refresh' };
+type JwtPrincipalPayload = AuthenticatedUser & { tokenType?: 'access' | 'refresh' };
+
+type TokenSigner = (payload: JwtPrincipalPayload, expiresIn: string) => string;
+type TokenVerifier = (token: string) => JwtPrincipalPayload;
 
 export class AuthService {
   constructor(
@@ -34,7 +39,8 @@ export class AuthService {
     private readonly signAccessToken: TokenSigner,
     private readonly signRefreshToken: TokenSigner,
     private readonly verifyRefreshToken: TokenVerifier,
-    private readonly billing: BillingService
+    private readonly billing: BillingService,
+    private readonly employeesRepository: EmployeesRepository
   ) {}
 
   async login(payload: LoginRequest): Promise<AuthSuccessResponse> {
@@ -54,6 +60,15 @@ export class AuthService {
     }
 
     return this.buildAuthResponse(user);
+  }
+
+  /** Issue tokens after user row exists (e.g. link-invite acceptance). */
+  async issueSessionAfterRegistration(email: string): Promise<AuthSuccessResponse> {
+    const full = await this.authRepository.findUserByEmail(email.toLowerCase());
+    if (!full) {
+      throw ApplicationError.internal('Failed to load user after registration');
+    }
+    return this.buildAuthResponse(full);
   }
 
   /**
@@ -97,8 +112,13 @@ export class AuthService {
     const passwordHash = await bcrypt.hash(payload.password, 12);
     const [firstName, lastName] = this.extractNamesFromEmail(payload.email);
 
-    const createdUser = await this.billing.runAtomicUserCreation(invite.tenant_id, async (tx) => {
-      const user = await this.authRepository.createUser(
+    const occupiesBillableSeat = invite.role !== 'ADMIN';
+
+    await this.billing.runAtomicUserCreation(
+      invite.tenant_id,
+      { occupiesBillableSeat },
+      async (tx) => {
+        const user = await this.authRepository.createUser(
         {
           tenant_id: invite.tenant_id,
           email: payload.email.toLowerCase(),
@@ -109,18 +129,28 @@ export class AuthService {
           is_active: true,
         },
         tx
-      );
+        );
 
-      // Step 6: Mark invite as used
-      await this.authRepository.markInviteAsUsed(invite.id, user.id, tx);
-      return user;
-    });
+        await this.authRepository.markInviteAsUsed(invite.id, user.id, tx);
 
-    // Step 7: Return auth response (need tenant name)
-    return this.buildAuthResponse({
-      ...createdUser,
-      tenant_name: invite.tenant_id, // Will be replaced by fetching tenant in a real scenario
-    });
+        const tenantRole =
+          invite.role === 'ADMIN' ? 'owner' : invite.role === 'MANAGER' ? 'manager' : 'employee';
+        await this.employeesRepository.upsertTenantMembership(
+          user.id,
+          invite.tenant_id,
+          tenantRole,
+          tx
+        );
+
+        return user;
+      }
+    );
+
+    const full = await this.authRepository.findUserByEmail(payload.email.toLowerCase());
+    if (!full) {
+      throw ApplicationError.internal('Failed to load user after registration');
+    }
+    return this.buildAuthResponse(full);
   }
 
   /**
@@ -134,36 +164,31 @@ export class AuthService {
         throw ApplicationError.unauthorized('Invalid refresh token');
       }
 
-      // Verify user and tenant still exist and are active
-      const user = await this.authRepository.findUserByIdAndTenant(
-        decoded.userId,
-        decoded.tenantId
-      );
+      const userId = decoded.userId ?? decoded.id;
+      if (!userId) {
+        throw ApplicationError.unauthorized('Invalid refresh token');
+      }
 
-      if (!user) {
+      const jwtTenant =
+        decoded.tenantId ||
+        (typeof decoded.tenant_id === 'string' ? decoded.tenant_id : null) ||
+        null;
+
+      const active = await this.authRepository.findActiveUserById(userId);
+      if (!active) {
+        throw ApplicationError.unauthorized('User no longer exists');
+      }
+
+      const ctx = await this.authRepository.findAuthContextById(userId, jwtTenant);
+      if (!ctx) {
         throw ApplicationError.unauthorized('User or tenant no longer exists');
       }
 
-      // Create new token pair
+      const principal = buildAuthenticatedUser(ctx, jwtTenant);
+
       return {
-        accessToken: this.signAccessToken(
-          {
-            userId: decoded.userId,
-            tenantId: decoded.tenantId,
-            email: decoded.email,
-            role: decoded.role,
-          },
-          '15m'
-        ),
-        refreshToken: this.signRefreshToken(
-          {
-            userId: decoded.userId,
-            tenantId: decoded.tenantId,
-            email: decoded.email,
-            role: decoded.role,
-          },
-          '7d'
-        ),
+        accessToken: this.signAccessToken({ ...principal, tokenType: 'access' }, '15m'),
+        refreshToken: this.signRefreshToken({ ...principal, tokenType: 'refresh' }, '7d'),
       };
     } catch (error) {
       if (error instanceof ApplicationError) {
@@ -174,11 +199,21 @@ export class AuthService {
   }
 
   private buildAuthResponse(user: UserWithTenantRecord): AuthSuccessResponse {
-    const jwtPayload: AuthenticatedUser = {
-      userId: user.id,
-      tenantId: user.tenant_id,
-      email: user.email,
-      role: user.role as Role,
+    const principal = buildAuthenticatedUser(
+      {
+        id: user.id,
+        email: user.email,
+        system_role: user.system_role,
+        legacy_role: user.role,
+        user_primary_tenant_id: user.tenant_id,
+        effective_tenant_id: user.tenant_id,
+        membership_role: user.tenant_membership_role,
+      },
+      user.tenant_id
+    );
+
+    const jwtPayload: JwtPrincipalPayload = {
+      ...principal,
     };
 
     return {
@@ -186,12 +221,13 @@ export class AuthService {
       refreshToken: this.signRefreshToken(jwtPayload, '7d'),
       user: {
         userId: user.id,
-        tenantId: user.tenant_id,
-        tenantName: user.tenant_name,
+        tenantId: principal.tenant_id ?? '',
+        tenantName: user.tenant_name ?? '',
         email: user.email,
         firstName: user.first_name,
         lastName: user.last_name,
-        role: user.role as Role,
+        role: principal.role as Role,
+        systemRole: principal.system_role === 'super_admin' ? 'super_admin' : 'user',
       },
     };
   }

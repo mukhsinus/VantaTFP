@@ -15,16 +15,9 @@ import { AppLoadingScreen } from './AppLoadingScreen';
 export function AuthGuard() {
   const isHydrated = useAuthStore((s) => s.isHydrated);
   const isSessionLoading = useAuthStore((s) => s.isSessionLoading);
-  const user = useAuthStore((s) => s.user);
   const accessToken = useAuthStore((s) => s.accessToken);
   const refreshToken = useAuthStore((s) => s.refreshToken);
   const location = useLocation();
-
-  console.log('AUTH STATE', {
-    tokens: { accessToken: Boolean(accessToken), refreshToken: Boolean(refreshToken) },
-    user,
-    isSessionLoading,
-  });
 
   if (!isHydrated) {
     return <AppLoadingScreen />;

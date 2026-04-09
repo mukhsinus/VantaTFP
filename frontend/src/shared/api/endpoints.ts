@@ -15,6 +15,12 @@ export const API = {
     detail: (userId: string) => `/api/v1/users/${userId}`,
   },
 
+  employees: {
+    list: '/api/v1/employees',
+    detail: (userId: string) => `/api/v1/employees/${userId}`,
+    patchRole: (userId: string) => `/api/v1/employees/${userId}/role`,
+  },
+
   tenants: {
     list:   '/api/v1/tenants',
     detail: (tenantId: string) => `/api/v1/tenants/${tenantId}`,
@@ -58,5 +64,12 @@ export const API = {
 
   billing: {
     snapshot: '/api/v1/billing/snapshot',
+  },
+
+  /** Platform operator API (`requireSystemRole('super_admin')`). */
+  platform: {
+    tenants: '/api/v1/platform/tenants',
+    users: '/api/v1/platform/users',
+    subscriptions: '/api/v1/platform/subscriptions',
   },
 } as const;

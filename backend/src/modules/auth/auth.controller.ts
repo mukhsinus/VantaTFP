@@ -1,6 +1,7 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { AuthService } from './auth.service.js';
 import { AuthRepository } from './auth.repository.js';
+import { EmployeesRepository } from '../employees/employees.repository.js';
 import { env } from '../../shared/utils/env.js';
 import { sendSuccess } from '../../shared/utils/response.js';
 import {
@@ -11,6 +12,7 @@ import {
 
 export async function authRoutes(app: FastifyInstance): Promise<void> {
   const authRepository = new AuthRepository(app.db);
+  const employeesRepository = new EmployeesRepository(app.db);
   const authService = new AuthService(
     authRepository,
     (payload, expiresIn) =>
@@ -22,7 +24,8 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
         expiresIn: expiresIn ?? env.JWT_REFRESH_EXPIRY,
       }),
     (token) => app.jwt.verify(token) as any,
-    app.billing
+    app.billing,
+    employeesRepository
   );
 
   app.post('/login', async (request: FastifyRequest, reply: FastifyReply) => {

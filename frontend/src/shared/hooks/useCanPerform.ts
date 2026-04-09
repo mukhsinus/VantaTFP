@@ -11,6 +11,8 @@ type Permission =
   | 'task:assign'
   | 'task:changeStatus'
   | 'employee:invite'
+  | 'employee:changeRole'
+  | 'employee:deactivate'
   | 'employee:manage'
   | 'kpi:create'
   | 'kpi:delete'
@@ -26,6 +28,10 @@ const PERMISSION_MAP: Record<Permission, Role[]> = {
   'task:changeStatus': ['ADMIN', 'MANAGER', 'EMPLOYEE'],
 
   'employee:invite':   ['ADMIN'],
+  /** Owner only (JWT role ADMIN = tenant owner). */
+  'employee:changeRole': ['ADMIN'],
+  'employee:deactivate': ['ADMIN', 'MANAGER'],
+  /** Legacy: prefer `employee:changeRole` / `employee:deactivate`. */
   'employee:manage':   ['ADMIN'],
 
   'kpi:create':        ['ADMIN', 'MANAGER'],

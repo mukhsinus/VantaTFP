@@ -79,7 +79,7 @@ DROP TRIGGER IF EXISTS trg_tenant_users_reject_super_admin ON tenant_users;
 CREATE TRIGGER trg_tenant_users_reject_super_admin
   BEFORE INSERT OR UPDATE OF user_id ON tenant_users
   FOR EACH ROW
-  EXECUTE FUNCTION trg_tenant_users_reject_super_admin();
+  EXECUTE PROCEDURE trg_tenant_users_reject_super_admin();
 
 -- Backfill from legacy users (tenant_id + role). First ADMIN per tenant → owner; other ADMINs → manager.
 INSERT INTO tenant_users (user_id, tenant_id, role)
@@ -155,3 +155,6 @@ WHERE s.plan_id = p.id
 UPDATE subscriptions
 SET plan = COALESCE(plan, 'basic'::subscription_plan_tier)
 WHERE plan IS NULL;
+
+ALTER TABLE subscriptions
+  ALTER COLUMN plan SET NOT NULL;

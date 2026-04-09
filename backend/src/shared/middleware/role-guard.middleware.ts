@@ -22,7 +22,15 @@ export function requireRoles(...allowedRoles: Role[]) {
         throw ApplicationError.unauthorized();
       }
 
+      if (user.system_role === 'super_admin') {
+        return;
+      }
+
       const tenantId = request.tenantId ?? user.tenantId;
+      if (!tenantId) {
+        throw ApplicationError.forbidden('Tenant context required');
+      }
+
       const allowed = await request.server.policy.hasAnyRole(
         tenantId,
         user.role,
@@ -55,7 +63,15 @@ export function requirePermission(action: string, resource: string) {
         throw ApplicationError.unauthorized();
       }
 
+      if (user.system_role === 'super_admin') {
+        return;
+      }
+
       const tenantId = request.tenantId ?? user.tenantId;
+      if (!tenantId) {
+        throw ApplicationError.forbidden('Tenant context required');
+      }
+
       const allowed = await request.server.policy.checkPermission(
         tenantId,
         user.role,
@@ -95,8 +111,13 @@ export function validateTenantContext() {
         throw ApplicationError.unauthorized();
       }
 
+      if (user.system_role === 'super_admin') {
+        return;
+      }
+
       // Strict isolation: all protected tenant context must match JWT tenant.
-      if (requestedTenantId && requestedTenantId !== user.tenantId) {
+      const userTenant = user.tenant_id ?? user.tenantId;
+      if (requestedTenantId && requestedTenantId !== userTenant) {
         throw ApplicationError.forbidden(
           'You cannot access data from another tenant'
         );

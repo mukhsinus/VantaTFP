@@ -23,10 +23,13 @@ export interface UserListApiDto {
   };
 }
 
+/** Invite / create — tenant roles are manager or employee only (never owner via API). */
+export type CreatableTenantInviteRole = 'MANAGER' | 'EMPLOYEE';
+
 export interface CreateUserPayload {
   email: string;
   password: string;
-  role: Role;
+  role: CreatableTenantInviteRole;
   firstName: string;
   lastName: string;
   managerId?: string;

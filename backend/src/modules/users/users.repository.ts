@@ -1,4 +1,5 @@
 import { Pool, PoolClient } from 'pg';
+import { getAuthSchemaCaps } from '../auth/auth-schema-caps.js';
 
 export interface UserRecord {
   id: string;
@@ -296,5 +297,53 @@ export class UsersRepository {
     );
 
     return (result.rowCount ?? 0) > 0;
+  }
+
+  /** Session profile for GET /users/me (any active user, including platform super_admin). */
+  async findMeProfile(userId: string): Promise<{
+    id: string;
+    tenant_id: string | null;
+    email: string;
+    first_name: string;
+    last_name: string;
+    role: 'ADMIN' | 'MANAGER' | 'EMPLOYEE';
+    system_role: string;
+    tenant_name: string | null;
+  } | null> {
+    const caps = await getAuthSchemaCaps(this.db);
+    const systemRoleSql = caps.usersSystemRoleColumn
+      ? `COALESCE(u.system_role::text, 'user')`
+      : `'user'::text`;
+
+    const result = await this.db.query<{
+      id: string;
+      tenant_id: string | null;
+      email: string;
+      first_name: string;
+      last_name: string;
+      role: 'ADMIN' | 'MANAGER' | 'EMPLOYEE';
+      system_role: string;
+      tenant_name: string | null;
+    }>(
+      `
+      SELECT
+        u.id,
+        u.tenant_id,
+        u.email,
+        u.first_name,
+        u.last_name,
+        u.role,
+        ${systemRoleSql} AS system_role,
+        t.name AS tenant_name
+      FROM users u
+      LEFT JOIN tenants t ON t.id = u.tenant_id
+      WHERE u.id = $1::uuid
+        AND u.is_active = TRUE
+      LIMIT 1
+      `,
+      [userId]
+    );
+
+    return result.rows[0] ?? null;
   }
 }
