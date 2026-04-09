@@ -40,7 +40,11 @@ export const useAuthStore = create<AuthState>()(
           refreshToken: refreshToken ?? state.refreshToken,
         })),
 
-      setUser: (user) => set({ user }),
+      setUser: (user) =>
+        set((state) => {
+          if (state.user?.userId === user.userId) return state;
+          return { user };
+        }),
 
       setTokens: (accessToken, refreshToken) =>
         set((state) => ({

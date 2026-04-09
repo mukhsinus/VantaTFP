@@ -7,29 +7,34 @@ import { AppLoadingScreen } from './AppLoadingScreen';
  * Route-level authentication guard.
  *
  * Render order:
- *  1. isHydrated = false  → full-screen loader (prevents flicker)
- *  2. no token / no user  → redirect to /login, preserving the current path
- *     so the user is returned to their destination after sign-in
- *  3. authenticated       → render child routes via <Outlet />
- *
- * Usage in router:
- *   { element: <AuthGuard />, children: [ ... protected routes ... ] }
+ *  1. isHydrated = false     → full-screen loader (prevents flicker)
+ *  2. isSessionLoading       → full-screen loader (bootstrap / session work)
+ *  3. no tokens              → redirect to /login
+ *  4. tokens (user may lag)  → render child routes; AppLayout shows skeleton until user is set
  */
 export function AuthGuard() {
-  const isHydrated  = useAuthStore((s) => s.isHydrated);
+  const isHydrated = useAuthStore((s) => s.isHydrated);
   const isSessionLoading = useAuthStore((s) => s.isSessionLoading);
-  const user        = useAuthStore((s) => s.user);
+  const user = useAuthStore((s) => s.user);
   const accessToken = useAuthStore((s) => s.accessToken);
   const refreshToken = useAuthStore((s) => s.refreshToken);
-  const location    = useLocation();
+  const location = useLocation();
 
-  // ① Wait for Zustand to finish reading localStorage — no redirect yet
-  if (!isHydrated || isSessionLoading || ((accessToken || refreshToken) && !user)) {
+  console.log('AUTH STATE', {
+    tokens: { accessToken: Boolean(accessToken), refreshToken: Boolean(refreshToken) },
+    user,
+    isSessionLoading,
+  });
+
+  if (!isHydrated) {
     return <AppLoadingScreen />;
   }
 
-  // ② Not authenticated — send to /login with a redirect hint
-  if (!user || (!accessToken && !refreshToken)) {
+  if (isSessionLoading) {
+    return <AppLoadingScreen />;
+  }
+
+  if (!accessToken && !refreshToken) {
     return (
       <Navigate
         to={`/login?redirect=${encodeURIComponent(location.pathname)}`}
@@ -38,6 +43,5 @@ export function AuthGuard() {
     );
   }
 
-  // ③ Authenticated — render nested routes
   return <Outlet />;
 }

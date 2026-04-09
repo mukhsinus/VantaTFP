@@ -6,6 +6,8 @@
     "employees": "Xodimlar",
     "kpi": "KPI",
     "payroll": "Ish haqi",
+    "reports": "Hisobotlar",
+    "billing": "Billing",
     "settings": "Sozlamalar",
     "logout": "Chiqish",
     "notifications": {
@@ -224,6 +226,14 @@
       "title": "Ish haqi yozuvlari yo'q",
       "description": "Boshlash uchun birinchi ish haqi yozuvini yarating."
     }
+  },
+  "reports": {
+    "title": "Hisobotlar",
+    "subtitle": "KPI, ish haqi va vazifalar bo'yicha hisobotlarni yaratish va eksport qilish"
+  },
+  "billing": {
+    "title": "Billing",
+    "subtitle": "Joriy tarif va obuna limitlari"
   },
   "settings": {
     "title": "Sozlamalar",

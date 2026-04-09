@@ -6,6 +6,8 @@ import { formatCurrency } from '@shared/utils/currency';
 import { usePayroll } from '@features/payroll/hooks/usePayroll';
 import { useApprovePayroll } from '@features/payroll/hooks/useApprovePayroll';
 import type { PayrollStatus, PayrollApiDto } from '@entities/payroll/payroll.types';
+import { PayrollRulesPanel } from '@features/payroll/components/PayrollRulesPanel';
+import { useCurrentUser } from '@shared/hooks/useCurrentUser';
 
 const statusVariant: Record<PayrollStatus, 'success' | 'accent' | 'default' | 'danger'> = {
   PAID: 'success',
@@ -17,6 +19,11 @@ const statusVariant: Record<PayrollStatus, 'success' | 'accent' | 'default' | 'd
 export function PayrollPage() {
   const { t, i18n } = useTranslation();
   const isMobile = useIsMobile();
+  const { role } = useCurrentUser();
+  const isAdmin = role === 'ADMIN';
+  const title = role === 'EMPLOYEE' ? 'My Payroll' : t('payroll.title');
+  const subtitle = role === 'EMPLOYEE' ? 'Your payroll statements and status.' : t('payroll.subtitle');
+
   const { payroll, isLoading, isError } = usePayroll();
   const { approvePayroll, isPending } = useApprovePayroll();
   const localeBase = (i18n.resolvedLanguage ?? i18n.language ?? 'ru').split('-')[0];
@@ -51,25 +58,11 @@ export function PayrollPage() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: isMobile ? 'flex-start' : 'center', flexDirection: isMobile ? 'column' : 'row', gap: 10 }}>
         <div>
           <h2 style={{ fontSize: 'var(--text-2xl)', fontWeight: 700, color: 'var(--color-text-primary)' }}>
-            {t('payroll.title')}
+            {title}
           </h2>
           <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-secondary)', marginTop: 4 }}>
-            {t('payroll.subtitle')}
+            {subtitle}
           </p>
-        </div>
-        <div style={{ display: 'flex', gap: 8 }}>
-          <Button variant="secondary" size="sm">
-            {t('common.export')}
-          </Button>
-          <Button variant="primary" size="sm"
-            leftIcon={
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
-                <path d="M12 5v14M5 12h14" />
-              </svg>
-            }
-          >
-            {t('payroll.create')}
-          </Button>
         </div>
       </div>
 
@@ -91,6 +84,8 @@ export function PayrollPage() {
           </Card>
         ))}
       </div>
+
+      {isAdmin && <PayrollRulesPanel />}
 
       {/* Filters */}
       <div
@@ -197,7 +192,7 @@ export function PayrollPage() {
                 </div>
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8, width: '100%' }}>
-                  {entry.status === 'DRAFT' && (
+                  {isAdmin && entry.status === 'DRAFT' && (
                     <Button
                       variant="secondary"
                       style={{ width: '100%', minHeight: 44 }}
@@ -207,117 +202,56 @@ export function PayrollPage() {
                       {t('payroll.action.approve')}
                     </Button>
                   )}
-                  {entry.status === 'APPROVED' && (
-                    <Button variant="primary" style={{ width: '100%', minHeight: 44 }}>
-                      {t('payroll.action.pay')}
-                    </Button>
-                  )}
                 </div>
               </div>
             </Card>
           ))}
         </div>
       ) : (
-        <div style={{ width: '100%', maxWidth: '100%' }}>
-          <div
-            style={{
-              background: 'var(--color-bg)',
-              border: '1px solid var(--color-border)',
-              borderRadius: 'var(--radius-lg)',
-              overflow: 'hidden',
-            }}
-          >
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead>
-              <tr style={{ background: 'var(--color-bg-subtle)', borderBottom: '1px solid var(--color-border)' }}>
-                {[t('payroll.table.employee'), t('payroll.table.period'), t('payroll.table.baseSalary'), t('payroll.table.bonuses'), t('payroll.table.deductions'), t('payroll.table.net'), t('payroll.table.status'), ''].map((h) => (
-                  <th
-                    key={h}
-                    style={{
-                      padding: '10px 16px',
-                      fontSize: 'var(--text-xs)',
-                      fontWeight: 600,
-                      color: 'var(--color-text-secondary)',
-                      textAlign: 'left',
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.04em',
-                      whiteSpace: 'nowrap',
-                    }}
+        <div className="responsive-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))' }}>
+          {filtered.map((entry) => (
+            <Card key={entry.id}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+                    <Avatar name={entry.employeeId} size="xs" />
+                    <span style={{ fontSize: 'var(--text-sm)', fontWeight: 600, color: 'var(--color-text-primary)' }}>
+                      {entry.employeeId}
+                    </span>
+                  </div>
+                  <Badge variant={statusVariant[entry.status]} dot>{statusLabel(entry.status)}</Badge>
+                </div>
+                <p style={{ margin: 0, fontSize: 'var(--text-sm)', color: 'var(--color-text-secondary)' }}>
+                  {formatPeriod(entry.periodStart, entry.periodEnd, locale)}
+                </p>
+                <p style={{ margin: 0, fontSize: 'var(--text-xl)', fontWeight: 700, fontFamily: 'var(--font-mono)' }}>
+                  {formatCurrency(entry.netSalary, locale)}
+                </p>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+                  <p style={{ margin: 0, fontSize: 'var(--text-sm)', color: 'var(--color-text-secondary)' }}>
+                    {t('payroll.table.baseSalary')}: {formatCurrency(entry.baseSalary, locale)}
+                  </p>
+                  <p style={{ margin: 0, fontSize: 'var(--text-sm)', color: entry.bonuses > 0 ? 'var(--color-success)' : 'var(--color-text-secondary)' }}>
+                    {t('payroll.table.bonuses')}: {entry.bonuses > 0 ? '+' : ''}{formatCurrency(entry.bonuses, locale)}
+                  </p>
+                  <p style={{ margin: 0, fontSize: 'var(--text-sm)', color: 'var(--color-danger)' }}>
+                    {t('payroll.table.deductions')}: -{formatCurrency(entry.deductions, locale)}
+                  </p>
+                </div>
+                {isAdmin && entry.status === 'DRAFT' && (
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => approvePayroll(entry.id)}
+                    disabled={isPending}
+                    loading={isPending}
                   >
-                    {h}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map((entry) => (
-                <tr
-                  key={entry.id}
-                  style={{
-                    borderBottom: '1px solid var(--color-border)',
-                    transition: 'background var(--transition-fast)',
-                  }}
-                  onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.background = 'var(--color-bg-subtle)')}
-                  onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.background = 'transparent')}
-                >
-                  <td style={{ padding: '12px 16px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <Avatar name={entry.employeeId} size="xs" />
-                      <span style={{ fontSize: 'var(--text-sm)', fontWeight: 500, color: 'var(--color-text-primary)' }}>
-                        {entry.employeeId}
-                      </span>
-                    </div>
-                  </td>
-                  <td style={{ padding: '12px 16px' }}>
-                    <span style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-secondary)' }}>
-                      {formatPeriod(entry.periodStart, entry.periodEnd, locale)}
-                    </span>
-                  </td>
-                  <td style={{ padding: '12px 16px' }}>
-                    <span style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-primary)', fontFamily: 'var(--font-mono)' }}>
-                      {formatCurrency(entry.baseSalary, locale)}
-                    </span>
-                  </td>
-                  <td style={{ padding: '12px 16px' }}>
-                    <span style={{ fontSize: 'var(--text-sm)', color: entry.bonuses > 0 ? 'var(--color-success)' : 'var(--color-text-muted)', fontFamily: 'var(--font-mono)' }}>
-                      {entry.bonuses > 0 ? '+' : ''}{formatCurrency(entry.bonuses, locale)}
-                    </span>
-                  </td>
-                  <td style={{ padding: '12px 16px' }}>
-                    <span style={{ fontSize: 'var(--text-sm)', color: 'var(--color-danger)', fontFamily: 'var(--font-mono)' }}>
-                      -{formatCurrency(entry.deductions, locale)}
-                    </span>
-                  </td>
-                  <td style={{ padding: '12px 16px' }}>
-                    <span style={{ fontSize: 'var(--text-sm)', fontWeight: 700, color: 'var(--color-text-primary)', fontFamily: 'var(--font-mono)' }}>
-                      {formatCurrency(entry.netSalary, locale)}
-                    </span>
-                  </td>
-                  <td style={{ padding: '12px 16px' }}>
-                    <Badge variant={statusVariant[entry.status]} dot>{statusLabel(entry.status)}</Badge>
-                  </td>
-                  <td style={{ padding: '12px 16px' }}>
-                    {entry.status === 'DRAFT' && (
-                      <Button
-                        variant="secondary"
-                        size="sm"
-                        onClick={() => approvePayroll(entry.id)}
-                        disabled={isPending}
-                      >
-                        {t('payroll.action.approve')}
-                      </Button>
-                    )}
-                    {entry.status === 'APPROVED' && (
-                      <Button variant="primary" size="sm">
-                        {t('payroll.action.pay')}
-                      </Button>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          </div>
+                    {t('payroll.action.approve')}
+                  </Button>
+                )}
+              </div>
+            </Card>
+          ))}
         </div>
       )}
     </div>

@@ -1,4 +1,4 @@
-import { Pool } from 'pg';
+import { Pool, PoolClient } from 'pg';
 
 export interface UserRecord {
   id: string;
@@ -146,8 +146,11 @@ export class UsersRepository {
     return result.rows[0] ?? null;
   }
 
-  async create(data: Omit<UserRecord, 'id' | 'created_at' | 'updated_at'>): Promise<UserRecord> {
-    const result = await this.db.query<UserRecord>(
+  async create(
+    data: Omit<UserRecord, 'id' | 'created_at' | 'updated_at'>,
+    executor: Pick<Pool, 'query'> | Pick<PoolClient, 'query'> = this.db
+  ): Promise<UserRecord> {
+    const result = await executor.query<UserRecord>(
       `
       INSERT INTO users (
         id,

@@ -1,6 +1,7 @@
 import { TenantsRepository, TenantRecord } from './tenants.repository.js';
 import { CreateTenantDto, UpdateTenantDto } from './tenants.schema.js';
 import { ApplicationError } from '../../shared/utils/application-error.js';
+import type { BillingService } from '../billing/billing.service.js';
 
 export interface TenantResponse {
   id: string;
@@ -26,17 +27,24 @@ export interface TenantListResponse {
 }
 
 export class TenantsService {
-  constructor(private readonly tenantsRepository: TenantsRepository) {}
+  constructor(
+    private readonly tenantsRepository: TenantsRepository,
+    private readonly billing: BillingService
+  ) {}
 
-  async getAllTenants(): Promise<TenantResponse[]> {
-    const tenants = await this.tenantsRepository.findAll();
+  async getAllTenants(tenantId: string): Promise<TenantResponse[]> {
+    const tenants = await this.tenantsRepository.findAllForTenant(tenantId);
     return tenants.map(this.toResponse);
   }
 
-  async listTenants(page: number = 1, limit: number = 20): Promise<TenantListResponse> {
-    const tenants = await this.tenantsRepository.findAllPaginated(page, limit);
-    const total = await this.tenantsRepository.count();
-    const pages = Math.ceil(total / limit);
+  async listTenants(
+    tenantId: string,
+    page: number = 1,
+    limit: number = 20
+  ): Promise<TenantListResponse> {
+    const tenants = await this.tenantsRepository.findPaginatedForTenant(tenantId, page, limit);
+    const total = await this.tenantsRepository.countForTenant(tenantId);
+    const pages = Math.ceil(total / limit) || (total === 0 ? 0 : 1);
 
     return {
       data: tenants.map(this.toResponse),
@@ -70,10 +78,13 @@ export class TenantsService {
     };
   }
 
-  async getTenantById(tenantId: string): Promise<TenantResponse> {
+  async getTenantById(tenantId: string, requestTenantId: string): Promise<TenantResponse> {
     const tenant = await this.tenantsRepository.findById(tenantId);
     if (!tenant) {
       throw ApplicationError.notFound('Tenant');
+    }
+    if (tenant.id !== requestTenantId) {
+      throw ApplicationError.forbidden('Cross-tenant access denied');
     }
     return this.toResponse(tenant);
   }
@@ -92,10 +103,19 @@ export class TenantsService {
       is_active: true,
     });
 
+    await this.billing.ensureSubscriptionForNewTenant(tenant.id);
+
     return this.toResponse(tenant);
   }
 
-  async updateTenant(tenantId: string, data: UpdateTenantDto): Promise<TenantResponse> {
+  async updateTenant(
+    tenantId: string,
+    requestTenantId: string,
+    data: UpdateTenantDto
+  ): Promise<TenantResponse> {
+    if (tenantId !== requestTenantId) {
+      throw ApplicationError.forbidden('Cross-tenant access denied');
+    }
     const tenant = await this.tenantsRepository.findById(tenantId);
     if (!tenant) {
       throw ApplicationError.notFound('Tenant');
@@ -105,7 +125,10 @@ export class TenantsService {
     return this.toResponse(updated);
   }
 
-  async deactivateTenant(tenantId: string): Promise<void> {
+  async deactivateTenant(tenantId: string, requestTenantId: string): Promise<void> {
+    if (tenantId !== requestTenantId) {
+      throw ApplicationError.forbidden('Cross-tenant access denied');
+    }
     const tenant = await this.tenantsRepository.findById(tenantId);
     if (!tenant) {
       throw ApplicationError.notFound('Tenant');

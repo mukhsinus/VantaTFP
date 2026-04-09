@@ -31,11 +31,32 @@ export const API = {
     list:     '/api/v1/kpi',
     detail:   (kpiId: string) => `/api/v1/kpi/${kpiId}`,
     progress: (kpiId: string) => `/api/v1/kpi/${kpiId}/progress`,
+    analyticsByEmployee: '/api/v1/kpi/analytics/by-employee',
+    analyticsAggregated: '/api/v1/kpi/analytics/aggregated',
   },
 
   payroll: {
     list:    '/api/v1/payroll',
     detail:  (payrollId: string) => `/api/v1/payroll/${payrollId}`,
     approve: (payrollId: string) => `/api/v1/payroll/${payrollId}/approve`,
+    rules: '/api/v1/payroll/rules',
+    ruleDetail: (ruleId: string) => `/api/v1/payroll/rules/${ruleId}`,
+    applyRule: (ruleId: string) => `/api/v1/payroll/rules/${ruleId}/apply`,
+    records: '/api/v1/payroll/records',
+  },
+
+  reports: {
+    generate: '/api/v1/reports/generate',
+    export: '/api/v1/reports/export',
+    history: '/api/v1/reports/history',
+  },
+
+  notifications: {
+    unread: '/api/v1/notifications/unread',
+    ws: '/api/v1/notifications/ws',
+  },
+
+  billing: {
+    snapshot: '/api/v1/billing/snapshot',
   },
 } as const;

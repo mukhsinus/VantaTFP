@@ -1,6 +1,11 @@
 import { apiClient } from '@shared/api/client';
 import { API } from '@shared/api/endpoints';
-import type { PayrollApiDto, PayrollListApiDto } from './payroll.types';
+import type {
+  PayrollApiDto,
+  PayrollListApiDto,
+  PayrollRuleDto,
+  ApplyPayrollRuleResponseDto,
+} from './payroll.types';
 
 export const payrollApi = {
   list: (): Promise<PayrollListApiDto> =>
@@ -11,4 +16,13 @@ export const payrollApi = {
 
   approve: (payrollId: string): Promise<PayrollApiDto> =>
     apiClient.post<PayrollApiDto>(API.payroll.approve(payrollId)),
+
+  listRules: (): Promise<PayrollRuleDto[]> =>
+    apiClient.get<PayrollRuleDto[]>(API.payroll.rules),
+
+  applyRule: (
+    ruleId: string,
+    payload: { userId: string; periodStart: string; periodEnd: string }
+  ): Promise<ApplyPayrollRuleResponseDto> =>
+    apiClient.post<ApplyPayrollRuleResponseDto>(API.payroll.applyRule(ruleId), payload),
 };

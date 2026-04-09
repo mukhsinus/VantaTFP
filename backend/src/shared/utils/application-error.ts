@@ -5,7 +5,8 @@ export type ErrorCode =
   | 'CONFLICT'
   | 'VALIDATION_ERROR'
   | 'INTERNAL_ERROR'
-  | 'BAD_REQUEST';
+  | 'BAD_REQUEST'
+  | 'PLAN_LIMIT_EXCEEDED';
 
 export class ApplicationError extends Error {
   public readonly statusCode: number;
@@ -45,5 +46,9 @@ export class ApplicationError extends Error {
 
   static internal(message = 'Internal server error'): ApplicationError {
     return new ApplicationError(message, 'INTERNAL_ERROR', 500);
+  }
+
+  static planLimitExceeded(message: string): ApplicationError {
+    return new ApplicationError(message, 'PLAN_LIMIT_EXCEEDED', 403);
   }
 }

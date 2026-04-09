@@ -29,6 +29,7 @@ async function rateLimitPlugin(app: FastifyInstance): Promise<void> {
     timeWindow: '15 minutes',
     cache: 10000,
     skipOnError: false,
+    allowList: (request) => request.url === '/health' || request.url.startsWith('/health?'),
     errorResponseBuilder: (_request, context) => {
       const message = `Rate limit exceeded, retry in ${context.after}.`;
       return errorEnvelope('RATE_LIMIT_EXCEEDED', message);
@@ -60,30 +61,39 @@ async function rateLimitPlugin(app: FastifyInstance): Promise<void> {
 
   // Register strict rate limiters for auth endpoints
   app.addHook('preHandler', async (request: FastifyRequest, reply: FastifyReply) => {
-    const isDevelopment = env.NODE_ENV === 'development';
-    const loginMaxAttempts = isDevelopment ? 30 : 5;
-    const loginWindowMs = isDevelopment ? 60 * 1000 : 15 * 60 * 1000;
-    const loginWindowLabel = isDevelopment ? '1 minute' : '15 minutes';
-
-    const isLoginEndpoint = request.url === '/api/v1/auth/login' && request.method === 'POST';
-    const isRegisterEndpoint =
-      request.url === '/api/v1/auth/register' && request.method === 'POST';
-
-    if (isLoginEndpoint) {
-      const { allowed } = checkAuthRateLimit(request.ip, 'login', loginMaxAttempts, loginWindowMs);
-      if (!allowed) {
-        const message = `Too many login attempts. Please try again in ${loginWindowLabel}.`;
-        return reply.code(429).send(errorEnvelope('RATE_LIMIT_EXCEEDED', message));
+    try {
+      if (request.url === '/health' || request.url.startsWith('/health?')) {
+        return;
       }
-    }
 
-    if (isRegisterEndpoint) {
-      // 3 attempts per hour per IP
-      const { allowed } = checkAuthRateLimit(request.ip, 'register', 3, 60 * 60 * 1000);
-      if (!allowed) {
-        const message = 'Too many registration attempts. Please try again in 1 hour.';
-        return reply.code(429).send(errorEnvelope('RATE_LIMIT_EXCEEDED', message));
+      const isDevelopment = env.NODE_ENV === 'development';
+      const loginMaxAttempts = isDevelopment ? 30 : 5;
+      const loginWindowMs = isDevelopment ? 60 * 1000 : 15 * 60 * 1000;
+      const loginWindowLabel = isDevelopment ? '1 minute' : '15 minutes';
+
+      const isLoginEndpoint = request.url === '/api/v1/auth/login' && request.method === 'POST';
+      const isRegisterEndpoint =
+        request.url === '/api/v1/auth/register' && request.method === 'POST';
+
+      if (isLoginEndpoint) {
+        const { allowed } = checkAuthRateLimit(request.ip, 'login', loginMaxAttempts, loginWindowMs);
+        if (!allowed) {
+          const message = `Too many login attempts. Please try again in ${loginWindowLabel}.`;
+          return reply.code(429).send(errorEnvelope('RATE_LIMIT_EXCEEDED', message));
+        }
       }
+
+      if (isRegisterEndpoint) {
+        // 3 attempts per hour per IP
+        const { allowed } = checkAuthRateLimit(request.ip, 'register', 3, 60 * 60 * 1000);
+        if (!allowed) {
+          const message = 'Too many registration attempts. Please try again in 1 hour.';
+          return reply.code(429).send(errorEnvelope('RATE_LIMIT_EXCEEDED', message));
+        }
+      }
+    } catch (err) {
+      console.error('MIDDLEWARE ERROR:', err);
+      throw err;
     }
   });
 }

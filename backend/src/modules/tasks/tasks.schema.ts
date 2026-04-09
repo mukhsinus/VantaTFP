@@ -1,6 +1,44 @@
 import { z } from 'zod';
 
-export const taskStatusSchema = z.enum(['TODO', 'IN_PROGRESS', 'IN_REVIEW', 'DONE', 'CANCELLED']);
+/** Stored in DB / API responses (frontend-compatible). */
+export const TASK_STATUS_VALUES = [
+  'TODO',
+  'IN_PROGRESS',
+  'IN_REVIEW',
+  'DONE',
+  'CANCELLED',
+] as const;
+
+export type TaskStatusValue = (typeof TASK_STATUS_VALUES)[number];
+
+/** Canonical lowercase aliases (todo, in_progress, review, done) normalize to DB values. */
+const TASK_STATUS_ALIASES: Record<string, TaskStatusValue> = {
+  todo: 'TODO',
+  in_progress: 'IN_PROGRESS',
+  review: 'IN_REVIEW',
+  done: 'DONE',
+  cancelled: 'CANCELLED',
+};
+
+export function tryNormalizeTaskStatus(raw: string): TaskStatusValue | null {
+  const trimmed = raw.trim();
+  if ((TASK_STATUS_VALUES as readonly string[]).includes(trimmed)) {
+    return trimmed as TaskStatusValue;
+  }
+  return TASK_STATUS_ALIASES[trimmed.toLowerCase()] ?? null;
+}
+
+export const taskStatusSchema = z
+  .string()
+  .superRefine((val, ctx) => {
+    if (!tryNormalizeTaskStatus(val)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Invalid task status',
+      });
+    }
+  })
+  .transform((val) => tryNormalizeTaskStatus(val)!);
 export const taskPrioritySchema = z.enum(['LOW', 'MEDIUM', 'HIGH', 'CRITICAL']);
 
 const createTaskRawSchema = z.object({

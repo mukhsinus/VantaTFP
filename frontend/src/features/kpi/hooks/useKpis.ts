@@ -10,10 +10,11 @@ interface UseKpisResult {
   error: Error | null;
 }
 
-export function useKpis(): UseKpisResult {
+export function useKpis(options?: { enabled?: boolean }): UseKpisResult {
   const { data, isLoading, isError, error } = useQuery({
     queryKey: kpiKeys.list(),
     queryFn: kpiApi.list,
+    enabled: options?.enabled ?? true,
     select: (response) => response.data ?? [],
   });
 

@@ -1,3 +1,9 @@
+CREATE UNIQUE INDEX IF NOT EXISTS idx_tasks_tenant_id_id_unique
+  ON tasks (tenant_id, id);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_users_tenant_id_id_unique
+  ON users (tenant_id, id);
+
 CREATE TABLE IF NOT EXISTS task_audit_logs (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,

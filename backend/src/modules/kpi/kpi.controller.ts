@@ -6,6 +6,7 @@ import { PayrollService } from '../payroll/payroll.service.js';
 import { requireRoles } from '../../shared/middleware/role-guard.middleware.js';
 import { sendSuccess } from '../../shared/utils/response.js';
 import {
+  kpiAnalyticsQuerySchema,
   kpiCalculationParamsSchema,
   kpiCalculationQuerySchema,
   kpiIdParamSchema,
@@ -19,6 +20,34 @@ export async function kpiRoutes(app: FastifyInstance): Promise<void> {
   const kpiService = new KpiService(kpiRepository, payrollService);
 
   const authenticate = app.authenticate;
+
+  app.get(
+    '/analytics/by-employee',
+    { preHandler: [authenticate, requireRoles('ADMIN', 'MANAGER', 'EMPLOYEE')] },
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      const query = kpiAnalyticsQuerySchema.parse(request.query);
+      const result = await kpiService.getAnalyticsByEmployee(
+        request.user.tenantId,
+        query,
+        { userId: request.user.userId, role: request.user.role }
+      );
+      return sendSuccess(reply, result);
+    }
+  );
+
+  app.get(
+    '/analytics/aggregated',
+    { preHandler: [authenticate, requireRoles('ADMIN', 'MANAGER', 'EMPLOYEE')] },
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      const query = kpiAnalyticsQuerySchema.parse(request.query);
+      const result = await kpiService.getAnalyticsAggregated(
+        request.user.tenantId,
+        query,
+        { userId: request.user.userId, role: request.user.role }
+      );
+      return sendSuccess(reply, result);
+    }
+  );
 
   app.get(
     '/calculate/:userId',

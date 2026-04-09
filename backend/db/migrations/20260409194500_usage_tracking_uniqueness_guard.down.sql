@@ -1,0 +1,1 @@
+DROP INDEX IF EXISTS idx_usage_tracking_unique_tenant_metric_period;

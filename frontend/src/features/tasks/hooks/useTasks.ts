@@ -13,10 +13,15 @@ interface UseTasksResult {
   refetch: () => void;
 }
 
-export function useTasks(params: ListTasksParams = {}): UseTasksResult {
+interface UseTasksOptions {
+  enabled?: boolean;
+}
+
+export function useTasks(params: ListTasksParams = {}, options?: UseTasksOptions): UseTasksResult {
   const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: taskKeys.list(params),
     queryFn:  () => taskApi.list(params),
+    enabled: options?.enabled ?? true,
     select:   (response) => ({
       tasks: mapTaskListDtoToUiModels(response.data),
       total: response.total,

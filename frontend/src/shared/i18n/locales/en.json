@@ -68,6 +68,8 @@
       "employees": "Employees",
       "kpi": "KPI",
       "payroll": "Payroll",
+      "reports": "Reports",
+      "billing": "Billing",
       "settings": "Settings",
       "logout": "Sign out"
     },
@@ -93,6 +95,8 @@
     "employees": "Employees",
     "kpi": "KPI",
     "payroll": "Payroll",
+    "reports": "Reports",
+    "billing": "Billing",
     "settings": "Settings",
     "logout": "Sign out"
   },
@@ -502,6 +506,14 @@
       "title": "No payroll entries",
       "description": "Create your first payroll entry to get started."
     }
+  },
+  "reports": {
+    "title": "Reports",
+    "subtitle": "Generate and export KPI, payroll, and task reports"
+  },
+  "billing": {
+    "title": "Billing",
+    "subtitle": "Current plan and subscription limits"
   },
   "settings": {
     "title": "Settings",

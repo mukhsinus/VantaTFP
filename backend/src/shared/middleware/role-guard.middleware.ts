@@ -15,16 +15,62 @@ export function requireRoles(...allowedRoles: Role[]) {
     request: FastifyRequest,
     _reply: FastifyReply
   ): Promise<void> {
-    const user = request.user;
+    try {
+      const user = request.user;
 
-    if (!user) {
-      throw ApplicationError.unauthorized();
-    }
+      if (!user) {
+        throw ApplicationError.unauthorized();
+      }
 
-    if (!allowedRoles.includes(user.role)) {
-      throw ApplicationError.forbidden(
-        `Role '${user.role}' is not permitted to access this resource`
+      const tenantId = request.tenantId ?? user.tenantId;
+      const allowed = await request.server.policy.hasAnyRole(
+        tenantId,
+        user.role,
+        allowedRoles
       );
+      if (!allowed) {
+        throw ApplicationError.forbidden(
+          `Role '${user.role}' is not permitted to access this resource`
+        );
+      }
+    } catch (err) {
+      console.error('MIDDLEWARE ERROR:', err);
+      throw err;
+    }
+  };
+}
+
+/**
+ * Policy-based guard for permission checks.
+ * Uses tenant-aware role permission mappings.
+ */
+export function requirePermission(action: string, resource: string) {
+  return async function permissionGuard(
+    request: FastifyRequest,
+    _reply: FastifyReply
+  ): Promise<void> {
+    try {
+      const user = request.user;
+      if (!user) {
+        throw ApplicationError.unauthorized();
+      }
+
+      const tenantId = request.tenantId ?? user.tenantId;
+      const allowed = await request.server.policy.checkPermission(
+        tenantId,
+        user.role,
+        action,
+        resource
+      );
+
+      if (!allowed) {
+        throw ApplicationError.forbidden(
+          `Permission denied: ${action}:${resource}`
+        );
+      }
+    } catch (err) {
+      console.error('MIDDLEWARE ERROR:', err);
+      throw err;
     }
   };
 }
@@ -40,19 +86,24 @@ export function validateTenantContext() {
     request: FastifyRequest,
     _reply: FastifyReply
   ): Promise<void> {
-    const user = request.user;
-    const params = (request.params ?? {}) as { tenantId?: string };
-    const requestedTenantId = params.tenantId ?? user?.tenantId;
+    try {
+      const user = request.user;
+      const params = (request.params ?? {}) as { tenantId?: string };
+      const requestedTenantId = params.tenantId ?? user?.tenantId;
 
-    if (!user) {
-      throw ApplicationError.unauthorized();
-    }
+      if (!user) {
+        throw ApplicationError.unauthorized();
+      }
 
-    // Strict isolation: all protected tenant context must match JWT tenant.
-    if (requestedTenantId && requestedTenantId !== user.tenantId) {
-      throw ApplicationError.forbidden(
-        'You cannot access data from another tenant'
-      );
+      // Strict isolation: all protected tenant context must match JWT tenant.
+      if (requestedTenantId && requestedTenantId !== user.tenantId) {
+        throw ApplicationError.forbidden(
+          'You cannot access data from another tenant'
+        );
+      }
+    } catch (err) {
+      console.error('MIDDLEWARE ERROR:', err);
+      throw err;
     }
   };
 }

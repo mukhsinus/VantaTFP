@@ -2,7 +2,9 @@ import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { UsersService } from './users.service.js';
 import { UsersRepository } from './users.repository.js';
 import { requireRoles } from '../../shared/middleware/role-guard.middleware.js';
-import { sendNoContent, sendSuccess } from '../../shared/utils/response.js';
+import { sendNoContent, sendSuccess, successEnvelope } from '../../shared/utils/response.js';
+import { attachIdempotencyKey } from '../../shared/middleware/idempotency.middleware.js';
+import { IdempotencyService } from '../../shared/idempotency/idempotency.service.js';
 import {
   createUserSchema,
   updateUserSchema,
@@ -12,7 +14,8 @@ import {
 
 export async function usersRoutes(app: FastifyInstance): Promise<void> {
   const usersRepository = new UsersRepository(app.db);
-  const usersService = new UsersService(usersRepository);
+  const usersService = new UsersService(usersRepository, app.billing);
+  const idempotency = new IdempotencyService(app.db);
 
   const authenticate = app.authenticate;
 
@@ -47,14 +50,24 @@ export async function usersRoutes(app: FastifyInstance): Promise<void> {
 
   app.post(
     '/',
-    { preHandler: [authenticate, requireRoles('ADMIN', 'MANAGER')] },
+    { preHandler: [authenticate, attachIdempotencyKey, requireRoles('ADMIN', 'MANAGER')] },
     async (request: FastifyRequest, reply: FastifyReply) => {
       const body = createUserSchema.parse(request.body);
-      const user = await usersService.createUser(request.user.tenantId, body, {
-        actorUserId: request.user.userId,
-        actorRole: request.user.role,
-      });
-      return sendSuccess(reply, user, 201);
+      const idempotent = await idempotency.execute(
+        request.user.tenantId,
+        request.idempotencyKey,
+        async () => {
+          const user = await usersService.createUser(request.user.tenantId, body, {
+            actorUserId: request.user.userId,
+            actorRole: request.user.role,
+          });
+          return {
+            response: successEnvelope(user) as unknown as Record<string, unknown>,
+            statusCode: 201,
+          };
+        }
+      );
+      return reply.status(idempotent.statusCode).send(idempotent.response);
     }
   );
 

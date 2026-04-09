@@ -10,10 +10,15 @@ interface UsePayrollResult {
   error: Error | null;
 }
 
-export function usePayroll(): UsePayrollResult {
+interface UsePayrollOptions {
+  enabled?: boolean;
+}
+
+export function usePayroll(options?: UsePayrollOptions): UsePayrollResult {
   const { data, isLoading, isError, error } = useQuery({
     queryKey: payrollKeys.list(),
     queryFn: payrollApi.list,
+    enabled: options?.enabled ?? true,
     select: (response) => response.data ?? [],
   });
 

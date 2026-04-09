@@ -4,6 +4,7 @@ import { LoginRequest, RegisterRequest } from './auth.schema.js';
 import { ApplicationError } from '../../shared/utils/application-error.js';
 import { AuthenticatedUser, Role } from '../../shared/types/common.types.js';
 import { validatePassword } from '../../shared/utils/password-validator.js';
+import type { BillingService } from '../billing/billing.service.js';
 
 export interface TokenPair {
   accessToken: string;
@@ -32,7 +33,8 @@ export class AuthService {
     private readonly authRepository: AuthRepository,
     private readonly signAccessToken: TokenSigner,
     private readonly signRefreshToken: TokenSigner,
-    private readonly verifyRefreshToken: TokenVerifier
+    private readonly verifyRefreshToken: TokenVerifier,
+    private readonly billing: BillingService
   ) {}
 
   async login(payload: LoginRequest): Promise<AuthSuccessResponse> {
@@ -95,18 +97,24 @@ export class AuthService {
     const passwordHash = await bcrypt.hash(payload.password, 12);
     const [firstName, lastName] = this.extractNamesFromEmail(payload.email);
 
-    const createdUser = await this.authRepository.createUser({
-      tenant_id: invite.tenant_id,
-      email: payload.email.toLowerCase(),
-      password_hash: passwordHash,
-      first_name: firstName,
-      last_name: lastName,
-      role: invite.role,
-      is_active: true,
-    });
+    const createdUser = await this.billing.runAtomicUserCreation(invite.tenant_id, async (tx) => {
+      const user = await this.authRepository.createUser(
+        {
+          tenant_id: invite.tenant_id,
+          email: payload.email.toLowerCase(),
+          password_hash: passwordHash,
+          first_name: firstName,
+          last_name: lastName,
+          role: invite.role,
+          is_active: true,
+        },
+        tx
+      );
 
-    // Step 6: Mark invite as used
-    await this.authRepository.markInviteAsUsed(invite.id, createdUser.id);
+      // Step 6: Mark invite as used
+      await this.authRepository.markInviteAsUsed(invite.id, user.id, tx);
+      return user;
+    });
 
     // Step 7: Return auth response (need tenant name)
     return this.buildAuthResponse({

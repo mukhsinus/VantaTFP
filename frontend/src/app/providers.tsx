@@ -1,20 +1,57 @@
 import React, { useEffect, useRef } from 'react';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { MutationCache, QueryCache, QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { ApiError } from '@shared/api/client';
 import { authApi } from '@entities/auth/auth.api';
 import { useAuthStore } from '@app/store/auth.store';
-import type { CurrentUser } from '@shared/types/auth.types';
+import { toast } from '@app/store/toast.store';
+import { normalizeMeUser } from '@shared/utils/normalize-me-user';
+import {
+  markBackendReadyFailOpen,
+  markBackendReadyFromHealth,
+} from '@shared/api/backend-readiness';
+
+let sessionBootstrapDone = false;
+let sessionBootstrapPromise: Promise<void> | null = null;
+
+function toErrorMessage(error: unknown): string {
+  if (error instanceof ApiError) return error.message;
+  if (error instanceof Error) return error.message;
+  return 'Request failed. Please try again.';
+}
+
+function queryRetry(failureCount: number, error: unknown): boolean {
+  const status =
+    error instanceof ApiError
+      ? error.statusCode
+      : (error as { status?: number })?.status;
+  if (status === 401) return false;
+  if (error instanceof ApiError && error.statusCode === 403) return false;
+  return failureCount < 2;
+}
 
 const queryClient = new QueryClient({
+  queryCache: new QueryCache({
+    onError: (error) => {
+      if (error instanceof ApiError && error.statusCode === 401) return;
+      toast.error('Request failed', toErrorMessage(error));
+    },
+  }),
+  mutationCache: new MutationCache({
+    onError: (error) => {
+      if (error instanceof ApiError && error.statusCode === 401) return;
+      toast.error('Action failed', toErrorMessage(error));
+    },
+  }),
   defaultOptions: {
     queries: {
-      staleTime: 1000 * 60,       // 1 minute
-      retry: (failureCount, error) => {
-        if (error instanceof ApiError && error.statusCode === 401) return false;
-        return failureCount < 1;
-      },
+      staleTime: 10_000,
+      retry: queryRetry,
+      refetchOnMount: false,
       refetchOnWindowFocus: false,
+    },
+    mutations: {
+      retry: queryRetry,
     },
   },
 });
@@ -23,37 +60,99 @@ interface ProvidersProps {
   children: React.ReactNode;
 }
 
-function normalizeMeResponse(raw: unknown, fallback: CurrentUser | null): CurrentUser | null {
-  if (!raw || typeof raw !== 'object') return null;
+function OverlayLoader() {
+  return (
+    <div
+      style={{
+        position: 'fixed',
+        inset: 0,
+        zIndex: 9998,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        pointerEvents: 'none',
+        background: 'rgba(0,0,0,0.06)',
+      }}
+    >
+      <p
+        style={{
+          margin: 0,
+          padding: '10px 14px',
+          borderRadius: 'var(--radius-lg, 8px)',
+          background: 'var(--color-bg, #fff)',
+          border: '1px solid var(--color-border, #e5e5e5)',
+          boxShadow: 'var(--shadow-md, 0 4px 12px rgba(0,0,0,0.08))',
+          color: 'var(--color-text-secondary, #666)',
+          fontSize: 'var(--text-sm, 13px)',
+        }}
+      >
+        Connecting to server…
+      </p>
+    </div>
+  );
+}
 
-  const value = raw as Record<string, unknown>;
-  const userId = (value.userId as string | undefined) ?? (value.id as string | undefined);
-  const tenantId = value.tenantId as string | undefined;
-  const email = value.email as string | undefined;
-  const firstName = value.firstName as string | undefined;
-  const lastName = value.lastName as string | undefined;
-  const role = value.role as CurrentUser['role'] | undefined;
+function BackendStartupGate({ children }: { children: React.ReactNode }) {
+  const [isReady, setIsReady] = React.useState(false);
 
-  if (!userId || !tenantId || !email || !firstName || !lastName || !role) {
-    return null;
-  }
+  useEffect(() => {
+    let cancelled = false;
+    let resolved = false;
 
-  return {
-    userId,
-    tenantId,
-    tenantName: (value.tenantName as string | undefined) ?? fallback?.tenantName ?? 'Tenant',
-    email,
-    firstName,
-    lastName,
-    role,
-  };
+    const markReady = () => {
+      if (cancelled || resolved) return;
+      resolved = true;
+      setIsReady(true);
+    };
+
+    const timeoutId = window.setTimeout(() => {
+      console.warn('Health check timeout, continuing anyway');
+      markBackendReadyFailOpen();
+      markReady();
+    }, 2000);
+
+    const run = async () => {
+      const healthPaths = ['/api/health', '/health'];
+      for (const path of healthPaths) {
+        try {
+          const response = await fetch(path, { method: 'GET' });
+          console.log('Health check response', response.status, path);
+          if (response.ok) {
+            markBackendReadyFromHealth();
+            markReady();
+            return;
+          }
+        } catch {
+          // Try the next health path.
+        }
+      }
+      markBackendReadyFailOpen();
+      markReady();
+    };
+
+    void run();
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timeoutId);
+    };
+  }, []);
+
+  useEffect(() => {
+    console.log('Backend gate ready:', isReady);
+  }, [isReady]);
+
+  return (
+    <>
+      {!isReady && <OverlayLoader />}
+      {children}
+    </>
+  );
 }
 
 function AuthSessionBootstrap() {
   const isHydrated = useAuthStore((s) => s.isHydrated);
   const accessToken = useAuthStore((s) => s.accessToken);
   const refreshToken = useAuthStore((s) => s.refreshToken);
-  const existingUser = useAuthStore((s) => s.user);
   const setUser = useAuthStore((s) => s.setUser);
   const clearAuth = useAuthStore((s) => s.clearAuth);
   const setSessionLoading = useAuthStore((s) => s.setSessionLoading);
@@ -63,47 +162,86 @@ function AuthSessionBootstrap() {
     if (!isHydrated || bootstrappedRef.current) return;
     bootstrappedRef.current = true;
 
+    if (sessionBootstrapDone) {
+      setSessionLoading(false);
+      return;
+    }
+
     if (!accessToken && !refreshToken) {
+      sessionBootstrapDone = true;
       setSessionLoading(false);
       return;
     }
 
     let cancelled = false;
-    const bootstrap = async () => {
+    const runBootstrap = async () => {
       setSessionLoading(true);
       try {
         const me = await authApi.me();
         if (cancelled) return;
-        const normalized = normalizeMeResponse(me, existingUser);
+
+        const currentUserBeforeNormalize = useAuthStore.getState().user;
+        const normalized = normalizeMeUser(me, currentUserBeforeNormalize);
+
         if (!normalized) {
-          clearAuth();
+          const currentUser = useAuthStore.getState().user;
+          if (!currentUser) {
+            clearAuth();
+          }
+          sessionBootstrapDone = true;
           return;
         }
-        setUser(normalized);
+
+        console.log('BOOTSTRAP USER BEFORE', useAuthStore.getState().user);
+
+        const currentUser = useAuthStore.getState().user;
+        if (!currentUser) {
+          console.log('BOOTSTRAP SET USER', normalized);
+          setUser(normalized);
+        }
+
+        console.log('BOOTSTRAP USER AFTER', useAuthStore.getState().user);
+        sessionBootstrapDone = true;
       } catch (error) {
         if (cancelled) return;
         if (error instanceof ApiError && error.statusCode === 401) {
           clearAuth();
+          sessionBootstrapDone = true;
         }
       } finally {
         if (!cancelled) setSessionLoading(false);
       }
     };
 
-    void bootstrap();
+    if (!sessionBootstrapPromise) {
+      sessionBootstrapPromise = runBootstrap().finally(() => {
+        sessionBootstrapPromise = null;
+      });
+    } else {
+      setSessionLoading(true);
+      void sessionBootstrapPromise.finally(() => {
+        if (!cancelled) setSessionLoading(false);
+      });
+    }
     return () => {
       cancelled = true;
     };
-  }, [isHydrated, accessToken, refreshToken, existingUser, setUser, clearAuth, setSessionLoading]);
+  }, [isHydrated, accessToken, refreshToken, setUser, clearAuth, setSessionLoading]);
 
   return null;
 }
 
 export function Providers({ children }: ProvidersProps) {
+  const user = useAuthStore((s) => s.user);
+  console.log('APP RENDER');
+  console.log('USER STATE', user);
+
   return (
     <QueryClientProvider client={queryClient}>
-      <AuthSessionBootstrap />
-      {children}
+      <BackendStartupGate>
+        <AuthSessionBootstrap />
+        {children}
+      </BackendStartupGate>
       {import.meta.env.DEV && <ReactQueryDevtools initialIsOpen={false} />}
     </QueryClientProvider>
   );

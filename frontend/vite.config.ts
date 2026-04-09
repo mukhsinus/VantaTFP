@@ -21,6 +21,12 @@ export default defineConfig({
       '/api': {
         target: 'http://localhost:3000',
         changeOrigin: true,
+        ws: true,
+        configure: (proxy) => {
+          proxy.on('error', (err) => {
+            console.error('[vite-proxy] backend unavailable:', err.message);
+          });
+        },
       },
     },
   },

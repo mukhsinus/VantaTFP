@@ -3,6 +3,7 @@ import { CreateUserDto, UpdateUserDto } from './users.schema.js';
 import { ApplicationError } from '../../shared/utils/application-error.js';
 import { Role } from '../../shared/types/common.types.js';
 import bcrypt from 'bcrypt';
+import type { BillingService } from '../billing/billing.service.js';
 
 interface ActorContext {
   actorUserId: string;
@@ -35,7 +36,10 @@ export interface UserListResponse {
 }
 
 export class UsersService {
-  constructor(private readonly usersRepository: UsersRepository) {}
+  constructor(
+    private readonly usersRepository: UsersRepository,
+    private readonly billing: BillingService
+  ) {}
 
   async getAllUsers(tenantId: string): Promise<UserResponse[]> {
     const users = await this.usersRepository.findAllActiveByTenant(tenantId);
@@ -100,17 +104,21 @@ export class UsersService {
     }
 
     const passwordHash = await bcrypt.hash(data.password, 12);
-
-    const created = await this.usersRepository.create({
-      tenant_id: tenantId,
-      email: data.email.toLowerCase(),
-      password_hash: passwordHash,
-      first_name: data.firstName,
-      last_name: data.lastName,
-      role: data.role,
-      manager_id: data.managerId ?? null,
-      is_active: true,
-    });
+    const created = await this.billing.runAtomicUserCreation(tenantId, (tx) =>
+      this.usersRepository.create(
+        {
+          tenant_id: tenantId,
+          email: data.email.toLowerCase(),
+          password_hash: passwordHash,
+          first_name: data.firstName,
+          last_name: data.lastName,
+          role: data.role,
+          manager_id: data.managerId ?? null,
+          is_active: true,
+        },
+        tx
+      )
+    );
 
     return this.toUserResponse(created);
   }

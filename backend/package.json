@@ -12,7 +12,10 @@
     "typecheck": "tsc --noEmit",
     "migrate:up": "tsx src/tools/migrate.ts up",
     "migrate:down": "tsx src/tools/migrate.ts down",
-    "migrate:status": "tsx src/tools/migrate.ts status"
+    "migrate:status": "tsx src/tools/migrate.ts status",
+    "migrate:validate": "tsx src/tools/validate-migrations.ts",
+    "backup": "tsx scripts/backup.ts",
+    "restore": "tsx scripts/restore.ts"
   },
   "keywords": [],
   "author": "",
@@ -23,6 +26,8 @@
     "@fastify/jwt": "^9.1.0",
     "@fastify/rate-limit": "^10.3.0",
     "@fastify/sensible": "^6.0.3",
+    "@fastify/websocket": "^11.2.0",
+    "@sentry/node": "^10.47.0",
     "bcrypt": "^6.0.0",
     "bullmq": "^5.73.0",
     "dotenv": "^16.5.0",

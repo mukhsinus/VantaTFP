@@ -21,7 +21,8 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
       app.jwt.sign({ ...payload, tokenType: 'refresh' } as any, {
         expiresIn: expiresIn ?? env.JWT_REFRESH_EXPIRY,
       }),
-    (token) => app.jwt.verify(token) as any
+    (token) => app.jwt.verify(token) as any,
+    app.billing
   );
 
   app.post('/login', async (request: FastifyRequest, reply: FastifyReply) => {

@@ -6,6 +6,8 @@ const environmentSchema = z.object({
   PORT: z.coerce.number().default(3000),
   HOST: z.string().default('0.0.0.0'),
   DATABASE_URL: z.string().min(1),
+  DB_URL: z.string().optional(),
+  BACKUP_PATH: z.string().default('backups'),
   REDIS_URL: z.string().min(1).default('redis://127.0.0.1:6379'),
   BULLMQ_PREFIX: z.string().default('tfp'),
   PAYROLL_DEFAULT_BASE_SALARY: z.coerce.number().nonnegative().default(0),
@@ -14,6 +16,9 @@ const environmentSchema = z.object({
   JWT_EXPIRY: z.string().default('15m'),
   JWT_REFRESH_EXPIRY: z.string().default('7d'),
   CORS_ORIGIN: z.string().default('http://localhost:5173'),
+  SENTRY_DSN: z.string().optional(),
+  BILLING_STRICT_MODE: z.string().optional().default('true').transform((value) => value !== 'false'),
+  BILLING_DEV_API_RATE_LIMIT: z.coerce.number().int().positive().default(10000),
 });
 
 export type Environment = z.infer<typeof environmentSchema>;

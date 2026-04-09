@@ -1,7 +1,17 @@
-import { KpiRepository, KpiRecord, KpiProgressRecord } from './kpi.repository.js';
+import {
+  KpiRepository,
+  KpiRecord,
+  KpiProgressRecord,
+  KpiRecordCacheRow,
+} from './kpi.repository.js';
 import { PayrollService } from '../payroll/payroll.service.js';
 import { ApplicationError } from '../../shared/utils/application-error.js';
 import { logger } from '../../shared/utils/logger.js';
+import type { Role } from '../../shared/types/common.types.js';
+import type { KpiAnalyticsQuery } from './kpi.schema.js';
+import { assertTenantEntityMatch } from '../../shared/utils/tenant-scope.js';
+
+const KPI_CACHE_MAX_AGE_MS = 60_000;
 
 export interface KpiResponse {
   id: string;
@@ -50,6 +60,45 @@ export interface KpiCalculationResponse {
   score: number;
 }
 
+export interface KpiAnalyticsEmployeeRow {
+  userId: string;
+  periodStart: string;
+  periodEnd: string;
+  /** Tasks completed in range (status DONE, completed_at in period). */
+  completedTasks: number;
+  /** Completed tasks with deadline met or no deadline (same basis as score numerator). */
+  onTimeCompletedTasks: number;
+  /** Completed tasks finished after deadline. */
+  overdueCompletedTasks: number;
+  /** Still-open tasks whose deadline is before period end. */
+  openOverdueTasks: number;
+  /** Same formula as legacy `score`: on-time share among completed tasks with a deadline. */
+  performancePercent: number;
+}
+
+export interface KpiAnalyticsByEmployeeResponse {
+  periodStart: string;
+  periodEnd: string;
+  data: KpiAnalyticsEmployeeRow[];
+}
+
+export interface KpiAnalyticsAggregatedResponse {
+  periodStart: string;
+  periodEnd: string;
+  assigneeCount: number;
+  completedTasks: number;
+  onTimeCompletedTasks: number;
+  overdueCompletedTasks: number;
+  openOverdueTasks: number;
+  performancePercent: number;
+  filtersApplied: {
+    userId: string | null;
+    teamId: string | null;
+  };
+  /** Always true: analytics are sourced from `kpi_records` only. */
+  fromCache: boolean;
+}
+
 export class KpiService {
   constructor(
     private readonly kpiRepository: KpiRepository,
@@ -62,7 +111,10 @@ export class KpiService {
     }
 
     const kpis = await this.kpiRepository.findAllByTenant(tenantId);
-    return kpis.map(this.toResponse);
+    return kpis.map((k) => {
+      assertTenantEntityMatch(k.tenant_id, tenantId, 'KPI');
+      return this.toResponse(k);
+    });
   }
 
   async listKpisPaginated(
@@ -79,7 +131,10 @@ export class KpiService {
     const pages = Math.ceil(total / limit);
 
     return {
-      data: kpis.map(this.toResponse),
+      data: kpis.map((k) => {
+        assertTenantEntityMatch(k.tenant_id, tenantId, 'KPI');
+        return this.toResponse(k);
+      }),
       pagination: {
         total,
         page,
@@ -99,6 +154,7 @@ export class KpiService {
     if (!kpi) {
       throw ApplicationError.notFound('KPI');
     }
+    assertTenantEntityMatch(kpi.tenant_id, tenantId, 'KPI');
 
     return this.toResponse(kpi);
   }
@@ -114,7 +170,10 @@ export class KpiService {
     }
 
     const progress = await this.kpiRepository.findProgressByKpi(kpiId, tenantId);
-    return progress.map(this.progressToResponse);
+    return progress.map((p) => {
+      assertTenantEntityMatch(p.tenant_id, tenantId, 'KPI progress');
+      return this.progressToResponse(p);
+    });
   }
 
   async calculateKPI(
@@ -127,31 +186,17 @@ export class KpiService {
       throw ApplicationError.badRequest('Missing tenant context');
     }
 
-    const periodStart = new Date(periodStartInput);
-    const periodEnd = new Date(periodEndInput);
+    const { start: periodStart, end: periodEnd } = this.parsePeriod(
+      periodStartInput,
+      periodEndInput
+    );
 
-    if (Number.isNaN(periodStart.getTime()) || Number.isNaN(periodEnd.getTime())) {
-      throw ApplicationError.badRequest('Invalid period');
-    }
-
-    if (periodEnd < periodStart) {
-      throw ApplicationError.badRequest('periodEnd must be greater than or equal to periodStart');
-    }
-
-    const calculated = await this.kpiRepository.calculateKpiFromTasks(
+    const result = await this.refreshKpiCacheForUser(
       tenantId,
       userId,
       periodStart,
       periodEnd
     );
-
-    const cachedRecord = await this.kpiRepository.upsertKpiRecordCache({
-      tenantId,
-      userId,
-      periodStart,
-      periodEnd,
-      calculated,
-    });
 
     if (this.payrollService) {
       try {
@@ -177,6 +222,190 @@ export class KpiService {
       }
     }
 
+    return result;
+  }
+
+  async getAnalyticsByEmployee(
+    tenantId: string,
+    query: KpiAnalyticsQuery,
+    access: { userId: string; role: Role }
+  ): Promise<KpiAnalyticsByEmployeeResponse> {
+    if (!tenantId) {
+      throw ApplicationError.badRequest('Missing tenant context');
+    }
+
+    const { start: periodStart, end: periodEnd } = this.parsePeriod(
+      query.periodStart,
+      query.periodEnd
+    );
+
+    const guarded = await this.guardAnalyticsFilters(tenantId, query, access);
+    const assigneeIds = await this.kpiRepository.resolveAnalyticsAssigneeIds({
+      tenantId,
+      userId: guarded.userId,
+      teamId: guarded.teamId,
+    });
+
+    const cachedRows = await this.ensureKpiRecordsForUsersAndPeriod({
+      tenantId,
+      userIds: assigneeIds,
+      periodStart,
+      periodEnd,
+      forceRefresh: Boolean(query.refresh),
+    });
+    const cachedByUser = new Map(cachedRows.map((r) => [r.user_id, r]));
+
+    const data: KpiAnalyticsEmployeeRow[] = [];
+
+    for (const uid of assigneeIds) {
+      const cached = cachedByUser.get(uid);
+      if (!cached) {
+        throw ApplicationError.internal('KPI_CACHE_INCONSISTENT');
+      }
+
+      data.push({
+        userId: uid,
+        periodStart: periodStart.toISOString(),
+        periodEnd: periodEnd.toISOString(),
+        completedTasks: cached.tasks_completed,
+        onTimeCompletedTasks: cached.tasks_on_time,
+        overdueCompletedTasks: cached.tasks_overdue,
+        // KPI source-of-truth rule: analytics are derived from kpi_records only.
+        openOverdueTasks: cached.tasks_overdue,
+        performancePercent: Number(cached.score),
+      });
+    }
+
+    return {
+      periodStart: periodStart.toISOString(),
+      periodEnd: periodEnd.toISOString(),
+      data,
+    };
+  }
+
+  async getAnalyticsAggregated(
+    tenantId: string,
+    query: KpiAnalyticsQuery,
+    access: { userId: string; role: Role }
+  ): Promise<KpiAnalyticsAggregatedResponse> {
+    if (!tenantId) {
+      throw ApplicationError.badRequest('Missing tenant context');
+    }
+
+    const { start: periodStart, end: periodEnd } = this.parsePeriod(
+      query.periodStart,
+      query.periodEnd
+    );
+
+    const guarded = await this.guardAnalyticsFilters(tenantId, query, access);
+    const assigneeIds = await this.kpiRepository.resolveAnalyticsAssigneeIds({
+      tenantId,
+      userId: guarded.userId,
+      teamId: guarded.teamId,
+    });
+
+    const filtersApplied = {
+      userId: guarded.userId ?? null,
+      teamId: guarded.teamId ?? null,
+    };
+
+    if (assigneeIds.length === 0) {
+      return {
+        periodStart: periodStart.toISOString(),
+        periodEnd: periodEnd.toISOString(),
+        assigneeCount: 0,
+        completedTasks: 0,
+        onTimeCompletedTasks: 0,
+        overdueCompletedTasks: 0,
+        openOverdueTasks: 0,
+        performancePercent: 0,
+        filtersApplied,
+        fromCache: false,
+      };
+    }
+
+    let completedTasks = 0;
+    let onTimeCompletedTasks = 0;
+    let overdueCompletedTasks = 0;
+    const cachedRows = await this.ensureKpiRecordsForUsersAndPeriod({
+      tenantId,
+      userIds: assigneeIds,
+      periodStart,
+      periodEnd,
+      forceRefresh: Boolean(query.refresh),
+    });
+
+    for (const row of cachedRows) {
+      completedTasks += row.tasks_completed;
+      onTimeCompletedTasks += row.tasks_on_time;
+      overdueCompletedTasks += row.tasks_overdue;
+    }
+    const performancePercent = this.performancePercentFromTotals(onTimeCompletedTasks, completedTasks);
+
+    return {
+      periodStart: periodStart.toISOString(),
+      periodEnd: periodEnd.toISOString(),
+      assigneeCount: assigneeIds.length,
+      completedTasks,
+      onTimeCompletedTasks,
+      overdueCompletedTasks,
+      // KPI source-of-truth rule: analytics are derived from kpi_records only.
+      openOverdueTasks: overdueCompletedTasks,
+      performancePercent,
+      filtersApplied,
+      fromCache: true,
+    };
+  }
+
+  private parsePeriod(
+    periodStartInput: string,
+    periodEndInput: string
+  ): { start: Date; end: Date } {
+    const periodStart = new Date(periodStartInput);
+    const periodEnd = new Date(periodEndInput);
+
+    if (Number.isNaN(periodStart.getTime()) || Number.isNaN(periodEnd.getTime())) {
+      throw ApplicationError.badRequest('Invalid period');
+    }
+
+    if (periodEnd < periodStart) {
+      throw ApplicationError.badRequest('periodEnd must be greater than or equal to periodStart');
+    }
+
+    return { start: periodStart, end: periodEnd };
+  }
+
+  private performancePercentFromTotals(onTimeCompleted: number, completed: number): number {
+    if (completed === 0) {
+      return 0;
+    }
+    return Math.round((onTimeCompleted / completed) * 10000) / 100;
+  }
+
+  /**
+   * Recomputes task KPIs and upserts `kpi_records` (same path as `/calculate/:userId` without payroll).
+   */
+  private async refreshKpiCacheForUser(
+    tenantId: string,
+    userId: string,
+    periodStart: Date,
+    periodEnd: Date
+  ): Promise<KpiCalculationResponse> {
+    const calculated = await this.kpiRepository.calculateKpiFromTasks(
+      tenantId,
+      userId,
+      periodStart,
+      periodEnd
+    );
+
+    const cachedRecord = await this.kpiRepository.upsertKpiRecordCache({
+      tenantId,
+      userId,
+      periodStart,
+      periodEnd,
+      calculated,
+    });
+
     return {
       userId,
       periodStart: periodStart.toISOString(),
@@ -186,6 +415,116 @@ export class KpiService {
       tasksOverdue: cachedRecord.tasks_overdue,
       score: Number(cachedRecord.score),
     };
+  }
+
+  private async ensureKpiRecordsForUsersAndPeriod(params: {
+    tenantId: string;
+    userIds: string[];
+    periodStart: Date;
+    periodEnd: Date;
+    forceRefresh: boolean;
+  }): Promise<KpiRecordCacheRow[]> {
+    if (params.userIds.length === 0) {
+      return [];
+    }
+
+    let cachedRows = await this.kpiRepository.findKpiRecordsForUsersAndPeriod(
+      params.tenantId,
+      params.userIds,
+      params.periodStart,
+      params.periodEnd
+    );
+    const byUser = new Map(cachedRows.map((r) => [r.user_id, r]));
+    const staleOrMissing = params.userIds.filter((uid) => {
+      if (params.forceRefresh) {
+        return true;
+      }
+      const row = byUser.get(uid);
+      return !row || this.isCacheOutdated(row);
+    });
+
+    if (staleOrMissing.length > 0) {
+      for (const uid of staleOrMissing) {
+        await this.refreshKpiCacheForUser(params.tenantId, uid, params.periodStart, params.periodEnd);
+      }
+      cachedRows = await this.kpiRepository.findKpiRecordsForUsersAndPeriod(
+        params.tenantId,
+        params.userIds,
+        params.periodStart,
+        params.periodEnd
+      );
+    }
+
+    return cachedRows;
+  }
+
+  private isCacheOutdated(row: KpiRecordCacheRow): boolean {
+    return Date.now() - row.updated_at.getTime() > KPI_CACHE_MAX_AGE_MS;
+  }
+
+  private async guardAnalyticsFilters(
+    tenantId: string,
+    query: KpiAnalyticsQuery,
+    access: { userId: string; role: Role }
+  ): Promise<{ userId?: string; teamId?: string }> {
+    return this.guardReportScope(
+      tenantId,
+      { userId: query.userId, teamId: query.teamId },
+      access
+    );
+  }
+
+  /**
+   * Same user/team scope as KPI analytics — used by Reports to align filters without duplicating rules.
+   */
+  async resolveReportAssigneeIds(
+    tenantId: string,
+    filters: { userId?: string; teamId?: string },
+    access: { userId: string; role: Role }
+  ): Promise<string[]> {
+    const guarded = await this.guardReportScope(tenantId, filters, access);
+    return this.kpiRepository.resolveAnalyticsAssigneeIds({
+      tenantId,
+      userId: guarded.userId,
+      teamId: guarded.teamId,
+    });
+  }
+
+  private async guardReportScope(
+    tenantId: string,
+    filters: { userId?: string; teamId?: string },
+    access: { userId: string; role: Role }
+  ): Promise<{ userId?: string; teamId?: string }> {
+    void tenantId;
+    let { userId, teamId } = filters;
+
+    if (access.role === 'EMPLOYEE') {
+      if (teamId) {
+        throw ApplicationError.forbidden('Employees cannot filter analytics by team');
+      }
+      if (userId && userId !== access.userId) {
+        throw ApplicationError.forbidden('You can only view your own KPI analytics');
+      }
+      return { userId: access.userId };
+    }
+
+    if (access.role === 'MANAGER') {
+      if (teamId && teamId !== access.userId) {
+        throw ApplicationError.forbidden('Managers may only query analytics for their own team');
+      }
+      if (!userId && !teamId) {
+        teamId = access.userId;
+      }
+      if (userId && userId !== access.userId) {
+        const ok = await this.kpiRepository.isDirectReport(tenantId, access.userId, userId);
+        if (!ok) {
+          throw ApplicationError.forbidden('You can only view analytics for your direct reports');
+        }
+      }
+      return { userId, teamId };
+    }
+
+    return { userId, teamId };
   }
 
   private toResponse(kpi: KpiRecord): KpiResponse {

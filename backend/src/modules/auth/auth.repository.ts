@@ -1,4 +1,4 @@
-import { Pool } from 'pg';
+import { Pool, PoolClient } from 'pg';
 
 export interface UserRecord {
   id: string;
@@ -122,8 +122,12 @@ export class AuthRepository {
     return result.rows[0] ?? null;
   }
 
-  async markInviteAsUsed(inviteId: string, userId: string): Promise<void> {
-    await this.db.query(
+  async markInviteAsUsed(
+    inviteId: string,
+    userId: string,
+    executor: Pick<Pool, 'query'> | Pick<PoolClient, 'query'> = this.db
+  ): Promise<void> {
+    await executor.query(
       `
       UPDATE tenant_invites
       SET used_at = NOW(), used_by_user_id = $1, updated_at = NOW()
@@ -161,9 +165,10 @@ export class AuthRepository {
   }
 
   async createUser(
-    data: Omit<UserRecord, 'id' | 'created_at' | 'updated_at'>
+    data: Omit<UserRecord, 'id' | 'created_at' | 'updated_at'>,
+    executor: Pick<Pool, 'query'> | Pick<PoolClient, 'query'> = this.db
   ): Promise<UserRecord> {
-    const result = await this.db.query<UserRecord>(
+    const result = await executor.query<UserRecord>(
       `
       INSERT INTO users (
         id,

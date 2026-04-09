@@ -4,10 +4,13 @@ import { Badge, Card, EmptyState, PageSkeleton } from '@shared/components/ui';
 import { useIsMobile } from '@shared/hooks/useIsMobile';
 import { useKpis } from '@features/kpi/hooks/useKpis';
 import type { KpiApiDto, KpiPeriod } from '@entities/kpi/kpi.types';
+import { KpiAnalyticsPanel } from '@features/kpi/components/KpiAnalyticsPanel';
+import { useCurrentUser } from '@shared/hooks/useCurrentUser';
 
 export function KpiPage() {
   const { t } = useTranslation();
   const isMobile = useIsMobile();
+  const { role, user } = useCurrentUser();
   const { kpis, isLoading, isError } = useKpis();
   const [period, setPeriod] = useState<KpiPeriod | 'ALL'>('ALL');
   const periodLabel = (value: KpiPeriod | 'ALL') => {
@@ -22,6 +25,14 @@ export function KpiPage() {
     [period, kpis]
   );
 
+  const title = role === 'EMPLOYEE' ? 'My KPI' : role === 'MANAGER' ? 'Team KPI' : t('kpi.title');
+  const subtitle =
+    role === 'EMPLOYEE'
+      ? 'Personal KPI performance for your account.'
+      : role === 'MANAGER'
+        ? 'Team KPI performance and trend overview.'
+        : t('kpi.subtitle');
+
   if (isLoading) return <PageSkeleton />;
 
   if (isError) {
@@ -34,15 +45,15 @@ export function KpiPage() {
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: isMobile ? 14 : 20, width: '100%', maxWidth: '100%' }}>
+    <div className="page-container" style={{ display: 'flex', flexDirection: 'column', gap: isMobile ? 14 : 20, width: '100%', maxWidth: '100%' }}>
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: isMobile ? 'flex-start' : 'center', gap: isMobile ? 10 : 0 }}>
         <div>
           <h2 style={{ fontSize: 'var(--text-2xl)', fontWeight: 700, color: 'var(--color-text-primary)' }}>
-            {t('kpi.title')}
+            {title}
           </h2>
           <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-secondary)', marginTop: 4 }}>
-            {t('kpi.subtitle')}
+            {subtitle}
           </p>
         </div>
         <Badge variant="default">{filtered.length}</Badge>
@@ -57,6 +68,7 @@ export function KpiPage() {
               onClick={() => setPeriod(p)}
               style={{
                 padding: '5px 12px',
+              minHeight: 40,
                 fontSize: 'var(--text-sm)',
                 fontWeight: 500,
                 borderRadius: 'var(--radius-full)',
@@ -78,6 +90,8 @@ export function KpiPage() {
       </div>
 
       {/* KPI cards grid */}
+      <KpiAnalyticsPanel role={role} userId={user?.userId} />
+
       <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fill, minmax(300px, 1fr))', gap: 12 }}>
         {filtered.length === 0 ? (
           <EmptyState title={t('kpi.title')} description={t('kpi.subtitle')} />
