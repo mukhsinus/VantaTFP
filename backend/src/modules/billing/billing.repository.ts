@@ -153,14 +153,18 @@ export class BillingRepository {
    */
   async countBillableTenantMembers(tenantId: string, executor: Queryable = this.db): Promise<number> {
     const caps = await getAuthSchemaCaps(this.db);
+    const systemRoleSql = caps.usersSystemRoleColumn
+      ? `COALESCE(u.system_role::text, 'user')`
+      : `'user'::text`;
+
     const sql = caps.tenantUsersTable
       ? `
       SELECT COUNT(*)::text AS total
       FROM users u
-      LEFT JOIN tenant_users tu
-        ON tu.user_id = u.id AND tu.tenant_id = u.tenant_id
-      WHERE u.tenant_id = $1
-        AND u.is_active = TRUE
+      LEFT JOIN tenant_users tu ON tu.user_id = u.id AND tu.tenant_id = $1
+      WHERE u.is_active = TRUE
+        AND (u.tenant_id = $1 OR tu.user_id IS NOT NULL)
+        AND ${systemRoleSql} IS DISTINCT FROM 'super_admin'
         AND (
           COALESCE(
             tu.role::text,
@@ -177,6 +181,7 @@ export class BillingRepository {
       FROM users u
       WHERE u.tenant_id = $1
         AND u.is_active = TRUE
+        AND ${systemRoleSql} IS DISTINCT FROM 'super_admin'
         AND (
           CASE UPPER(TRIM(u.role::text))
             WHEN 'ADMIN' THEN 'owner'

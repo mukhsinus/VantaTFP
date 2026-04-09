@@ -19,6 +19,10 @@ export class UsersRepository {
   constructor(private readonly db: Pool) {}
 
   async findAllActiveByTenant(tenantId: string): Promise<UserRecord[]> {
+    const caps = await getAuthSchemaCaps(this.db);
+    const systemRoleSql = caps.usersSystemRoleColumn
+      ? `COALESCE(system_role::text, 'user')`
+      : `'user'::text`;
     const result = await this.db.query<UserRecord>(
       `
       SELECT
@@ -36,6 +40,7 @@ export class UsersRepository {
       FROM users
       WHERE tenant_id = $1
         AND is_active = TRUE
+        AND ${systemRoleSql} IS DISTINCT FROM 'super_admin'
       ORDER BY created_at DESC
       `,
       [tenantId]
@@ -49,6 +54,10 @@ export class UsersRepository {
     page: number = 1,
     limit: number = 20
   ): Promise<UserRecord[]> {
+    const caps = await getAuthSchemaCaps(this.db);
+    const systemRoleSql = caps.usersSystemRoleColumn
+      ? `COALESCE(system_role::text, 'user')`
+      : `'user'::text`;
     const offset = (page - 1) * limit;
     const result = await this.db.query<UserRecord>(
       `
@@ -67,6 +76,7 @@ export class UsersRepository {
       FROM users
       WHERE tenant_id = $1
         AND is_active = TRUE
+        AND ${systemRoleSql} IS DISTINCT FROM 'super_admin'
       ORDER BY created_at DESC
       LIMIT $2 OFFSET $3
       `,
@@ -77,11 +87,17 @@ export class UsersRepository {
   }
 
   async countActiveByTenant(tenantId: string): Promise<number> {
+    const caps = await getAuthSchemaCaps(this.db);
+    const systemRoleSql = caps.usersSystemRoleColumn
+      ? `COALESCE(system_role::text, 'user')`
+      : `'user'::text`;
     const result = await this.db.query<{ count: string }>(
       `
       SELECT COUNT(*) as count
       FROM users
-      WHERE tenant_id = $1 AND is_active = TRUE
+      WHERE tenant_id = $1
+        AND is_active = TRUE
+        AND ${systemRoleSql} IS DISTINCT FROM 'super_admin'
       `,
       [tenantId]
     );

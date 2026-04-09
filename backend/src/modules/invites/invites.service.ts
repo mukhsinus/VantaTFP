@@ -38,7 +38,9 @@ export class InvitesService {
       throw ApplicationError.forbidden('Managers can only invite employees');
     }
 
-    await this.billing.assertCanAddUser(tenantId);
+    await this.billing.assertCanAddUser(tenantId, {
+      bypassSubscriptionChecks: actor.system_role === 'super_admin',
+    });
 
     const token = randomUUID();
     const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);

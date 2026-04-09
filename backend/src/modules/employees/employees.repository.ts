@@ -1,4 +1,5 @@
 import type { Pool, PoolClient } from 'pg';
+import { ApplicationError } from '../../shared/utils/application-error.js';
 import { getAuthSchemaCaps } from '../auth/auth-schema-caps.js';
 
 type Queryable = Pick<Pool, 'query'> | PoolClient;
@@ -47,9 +48,9 @@ export class EmployeesRepository {
         )::text AS role
       FROM users u
       LEFT JOIN tenant_users tu
-        ON tu.user_id = u.id AND tu.tenant_id = u.tenant_id
-      WHERE u.tenant_id = $1
-        AND u.is_active = TRUE
+        ON tu.user_id = u.id AND tu.tenant_id = $1::uuid
+      WHERE u.is_active = TRUE
+        AND (u.tenant_id = $1::uuid OR tu.user_id IS NOT NULL)
         AND ${systemRoleSql} IS DISTINCT FROM 'super_admin'
       ORDER BY u.created_at DESC
       LIMIT $2 OFFSET $3
@@ -87,16 +88,24 @@ export class EmployeesRepository {
       ? `COALESCE(u.system_role::text, 'user')`
       : `'user'::text`;
 
-    const result = await executor.query<{ count: string }>(
+    const countSql = caps.tenantUsersTable
+      ? `
+      SELECT COUNT(*)::text AS count
+      FROM users u
+      LEFT JOIN tenant_users tu ON tu.user_id = u.id AND tu.tenant_id = $1::uuid
+      WHERE u.is_active = TRUE
+        AND (u.tenant_id = $1::uuid OR tu.user_id IS NOT NULL)
+        AND ${systemRoleSql} IS DISTINCT FROM 'super_admin'
       `
+      : `
       SELECT COUNT(*)::text AS count
       FROM users u
       WHERE u.tenant_id = $1
         AND u.is_active = TRUE
         AND ${systemRoleSql} IS DISTINCT FROM 'super_admin'
-      `,
-      [tenantId]
-    );
+      `;
+
+    const result = await executor.query<{ count: string }>(countSql, [tenantId]);
     return parseInt(result.rows[0]?.count ?? '0', 10);
   }
 
@@ -144,6 +153,24 @@ export class EmployeesRepository {
     role: TenantMembershipRole,
     executor: Queryable = this.db
   ): Promise<void> {
+    const caps = await getAuthSchemaCaps(this.db);
+    if (caps.usersSystemRoleColumn) {
+      const sr = await executor.query<{ s: string }>(
+        `
+        SELECT COALESCE(system_role::text, 'user') AS s
+        FROM users
+        WHERE id = $1::uuid
+        LIMIT 1
+        `,
+        [userId]
+      );
+      if (sr.rows[0]?.s === 'super_admin') {
+        throw ApplicationError.forbidden(
+          'Platform super administrators cannot be assigned a tenant role'
+        );
+      }
+    }
+
     await executor.query(
       `
       INSERT INTO tenant_users (user_id, tenant_id, role, created_at, updated_at)

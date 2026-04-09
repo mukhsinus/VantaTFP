@@ -10,6 +10,25 @@ export async function billingRoutes(app: FastifyInstance): Promise<void> {
     { preHandler: [authenticate, requireRoles('ADMIN', 'MANAGER', 'EMPLOYEE')] },
     async (request: FastifyRequest, reply: FastifyReply) => {
       const tenantId = request.user.tenantId;
+      if (
+        request.user.system_role === 'super_admin' &&
+        (!tenantId || tenantId.length === 0)
+      ) {
+        return sendSuccess(reply, {
+          tenantId: '',
+          planName: 'platform',
+          limits: {
+            users: null,
+            tasks: null,
+            apiRatePerHour: null,
+          },
+          usage: {
+            users: 0,
+            tasks: 0,
+            apiRatePerHour: 0,
+          },
+        });
+      }
       const plan = await app.billing.getTenantPlan(tenantId);
       const users = await app.billing.checkLimit(tenantId, 'users');
       const tasks = await app.billing.checkLimit(tenantId, 'tasks');

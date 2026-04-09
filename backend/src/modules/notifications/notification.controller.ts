@@ -10,10 +10,14 @@ export async function notificationRoutes(app: FastifyInstance): Promise<void> {
     '/unread',
     { preHandler: [authenticate, requireRoles('ADMIN', 'MANAGER', 'EMPLOYEE')] },
     async (request: FastifyRequest, reply: FastifyReply) => {
-      const data = await app.notifications.listUnread(
-        request.user.tenantId,
-        request.user.userId
-      );
+      if (request.user.system_role === 'super_admin') {
+        return sendSuccess(reply, []);
+      }
+      const tid = request.user.tenantId;
+      if (!tid) {
+        return sendSuccess(reply, []);
+      }
+      const data = await app.notifications.listUnread(tid, request.user.userId);
       return sendSuccess(
         reply,
         data.map((n) => ({

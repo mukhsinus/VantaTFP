@@ -146,14 +146,26 @@ export class BillingService {
     return { allowed, current, max };
   }
 
-  async assertCanAddUser(tenantId: string): Promise<void> {
+  async assertCanAddUser(
+    tenantId: string,
+    options?: { bypassSubscriptionChecks?: boolean }
+  ): Promise<void> {
+    if (options?.bypassSubscriptionChecks) {
+      return;
+    }
     const { allowed } = await this.canAddUser(tenantId);
     if (!allowed) {
       throw ApplicationError.planLimitExceeded('User limit reached');
     }
   }
 
-  async assertCanAddTask(tenantId: string): Promise<void> {
+  async assertCanAddTask(
+    tenantId: string,
+    options?: { bypassSubscriptionChecks?: boolean }
+  ): Promise<void> {
+    if (options?.bypassSubscriptionChecks) {
+      return;
+    }
     const { allowed } = await this.checkLimit(tenantId, 'tasks');
     if (!allowed) {
       throw ApplicationError.planLimitExceeded(
@@ -190,9 +202,12 @@ export class BillingService {
 
   async runAtomicUserCreation<T>(
     tenantId: string,
-    options: { occupiesBillableSeat: boolean },
+    options: { occupiesBillableSeat: boolean; bypassSubscriptionChecks?: boolean },
     insertEntity: (tx: PoolClient) => Promise<T>
   ): Promise<T> {
+    if (options.bypassSubscriptionChecks) {
+      return this.repo.withTransaction(async (tx) => insertEntity(tx));
+    }
     return this.repo.withTransaction(async (tx) => {
       await this.repo.lockTenantMetric(tenantId, 'users', tx);
       const plan = await this.getTenantPlanInTx(tenantId, tx);
@@ -221,8 +236,12 @@ export class BillingService {
 
   async runAtomicTaskCreation<T>(
     tenantId: string,
-    insertEntity: (tx: PoolClient) => Promise<T>
+    insertEntity: (tx: PoolClient) => Promise<T>,
+    options?: { bypassSubscriptionChecks?: boolean }
   ): Promise<T> {
+    if (options?.bypassSubscriptionChecks) {
+      return this.repo.withTransaction(async (tx) => insertEntity(tx));
+    }
     return this.repo.withTransaction(async (tx) => {
       await this.repo.lockTenantMetric(tenantId, 'tasks', tx);
       const plan = await this.getTenantPlanInTx(tenantId, tx);

@@ -15,7 +15,8 @@
     "migrate:status": "tsx src/tools/migrate.ts status",
     "migrate:validate": "tsx src/tools/validate-migrations.ts",
     "backup": "tsx scripts/backup.ts",
-    "restore": "tsx scripts/restore.ts"
+    "restore": "tsx scripts/restore.ts",
+    "create-super-admin": "tsx scripts/createSuperAdmin.ts"
   },
   "keywords": [],
   "author": "",

@@ -42,7 +42,10 @@ export function legacyRoleFromTenantRole(tenantRole: TenantRole | null): Role {
 }
 
 function asSystemRole(value: string): SystemRole {
-  return value === 'super_admin' ? 'super_admin' : 'user';
+  const v = String(value ?? '')
+    .trim()
+    .toLowerCase();
+  return v === 'super_admin' ? 'super_admin' : 'user';
 }
 
 /**
@@ -56,14 +59,14 @@ export function buildAuthenticatedUser(
   const system_role = asSystemRole(row.system_role);
 
   if (system_role === 'super_admin') {
-    const actingTenant = jwtTenantId ?? row.user_primary_tenant_id ?? null;
+    // Platform user: no tenant/subscription scope (ignore JWT and DB primary tenant).
     return {
       id: row.id,
       userId: row.id,
       system_role,
       tenant_role: null,
-      tenant_id: actingTenant,
-      tenantId: actingTenant ?? '',
+      tenant_id: null,
+      tenantId: '',
       email: row.email,
       role: 'ADMIN',
     };

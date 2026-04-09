@@ -126,12 +126,25 @@ export class AuthRepository {
         ${systemRoleSql} AS system_role,
         u.role::text AS legacy_role,
         u.tenant_id AS user_primary_tenant_id,
-        COALESCE($2::uuid, u.tenant_id) AS effective_tenant_id,
+        eff.eff_tid AS effective_tenant_id,
         tu.role::text AS membership_role
       FROM users u
+      CROSS JOIN LATERAL (
+        SELECT COALESCE(
+          $2::uuid,
+          u.tenant_id,
+          (
+            SELECT tu0.tenant_id
+            FROM tenant_users tu0
+            WHERE tu0.user_id = u.id
+            ORDER BY tu0.created_at ASC, tu0.id ASC
+            LIMIT 1
+          )
+        ) AS eff_tid
+      ) eff
       LEFT JOIN tenant_users tu
         ON tu.user_id = u.id
-       AND tu.tenant_id = COALESCE($2::uuid, u.tenant_id)
+       AND tu.tenant_id = eff.eff_tid
       WHERE u.id = $1::uuid
         AND u.is_active = TRUE
       LIMIT 1

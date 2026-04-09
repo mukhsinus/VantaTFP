@@ -5,6 +5,7 @@ import { ApplicationError } from '../../shared/utils/application-error.js';
 import { AuthenticatedUser, Role } from '../../shared/types/common.types.js';
 import { validatePassword } from '../../shared/utils/password-validator.js';
 import type { BillingService } from '../billing/billing.service.js';
+import { parseJwtTenantIdFromPayload } from '../../shared/auth/jwt-tenant.js';
 import { buildAuthenticatedUser } from '../../shared/auth/principal.js';
 import type { EmployeesRepository } from '../employees/employees.repository.js';
 
@@ -164,15 +165,14 @@ export class AuthService {
         throw ApplicationError.unauthorized('Invalid refresh token');
       }
 
-      const userId = decoded.userId ?? decoded.id;
+      const rawSub = (decoded as unknown as { sub?: string }).sub;
+      const userId =
+        decoded.userId ?? decoded.id ?? (typeof rawSub === 'string' ? rawSub : undefined);
       if (!userId) {
         throw ApplicationError.unauthorized('Invalid refresh token');
       }
 
-      const jwtTenant =
-        decoded.tenantId ||
-        (typeof decoded.tenant_id === 'string' ? decoded.tenant_id : null) ||
-        null;
+      const jwtTenant = parseJwtTenantIdFromPayload(decoded);
 
       const active = await this.authRepository.findActiveUserById(userId);
       if (!active) {
@@ -199,17 +199,18 @@ export class AuthService {
   }
 
   private buildAuthResponse(user: UserWithTenantRecord): AuthSuccessResponse {
+    const isSuperAdmin = user.system_role === 'super_admin';
     const principal = buildAuthenticatedUser(
       {
         id: user.id,
         email: user.email,
         system_role: user.system_role,
         legacy_role: user.role,
-        user_primary_tenant_id: user.tenant_id,
-        effective_tenant_id: user.tenant_id,
-        membership_role: user.tenant_membership_role,
+        user_primary_tenant_id: isSuperAdmin ? null : user.tenant_id,
+        effective_tenant_id: isSuperAdmin ? null : user.tenant_id,
+        membership_role: isSuperAdmin ? null : user.tenant_membership_role,
       },
-      user.tenant_id
+      isSuperAdmin ? null : user.tenant_id
     );
 
     const jwtPayload: JwtPrincipalPayload = {

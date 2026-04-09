@@ -77,6 +77,13 @@ export class EmployeesService {
       throw ApplicationError.badRequest('You cannot change your own role');
     }
 
+    const targetProfile = await this.usersRepository.findMeProfile(targetUserId);
+    if (targetProfile?.system_role === 'super_admin') {
+      throw ApplicationError.forbidden(
+        'Platform administrators cannot be assigned a tenant role'
+      );
+    }
+
     const current = await this.employeesRepository.getMembershipRole(targetUserId, tenantId);
     if (!current) {
       throw ApplicationError.notFound('Employee');
@@ -105,6 +112,13 @@ export class EmployeesService {
   ): Promise<void> {
     if (actorUserId === targetUserId) {
       throw ApplicationError.badRequest('You cannot deactivate yourself');
+    }
+
+    const targetProfile = await this.usersRepository.findMeProfile(targetUserId);
+    if (targetProfile?.system_role === 'super_admin') {
+      throw ApplicationError.forbidden(
+        'Platform administrators cannot be managed as tenant employees'
+      );
     }
 
     const current = await this.employeesRepository.getMembershipRole(targetUserId, tenantId);

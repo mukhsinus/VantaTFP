@@ -21,11 +21,23 @@ export async function employeesRoutes(app: FastifyInstance): Promise<void> {
     '/',
     { preHandler: [authenticate, requireManagerOrAbove()] },
     async (request: FastifyRequest, reply: FastifyReply) => {
+      const query = listEmployeesQuerySchema.parse(request.query);
       const tenantId = request.tenantId;
       if (!tenantId) {
+        if (request.user.system_role === 'super_admin') {
+          return sendSuccess(reply, {
+            data: [],
+            pagination: {
+              total: 0,
+              page: query.page,
+              limit: query.limit,
+              pages: 1,
+              hasMore: false,
+            },
+          });
+        }
         throw ApplicationError.forbidden('Tenant context required');
       }
-      const query = listEmployeesQuerySchema.parse(request.query);
       const result = await employeesService.listEmployees(tenantId, query);
       return sendSuccess(reply, result);
     }

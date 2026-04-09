@@ -9,6 +9,8 @@ import type { EmployeesRepository } from '../employees/employees.repository.js';
 interface ActorContext {
   actorUserId: string;
   actorRole: Role;
+  /** Platform super_admin: skip seat caps / subscription when adding tenant users. */
+  bypassSubscriptionChecks?: boolean;
 }
 
 export interface UserResponse {
@@ -111,10 +113,11 @@ export class UsersService {
 
     const systemRole: 'super_admin' | 'user' =
       row.system_role === 'super_admin' ? 'super_admin' : 'user';
-    const tenantId = row.tenant_id ?? '';
+    const tenantId = systemRole === 'super_admin' ? '' : (row.tenant_id ?? '');
     const tenantName =
-      row.tenant_name?.trim() ||
-      (systemRole === 'super_admin' ? 'Platform' : 'Workspace');
+      systemRole === 'super_admin'
+        ? 'Platform'
+        : row.tenant_name?.trim() || 'Workspace';
 
     return {
       userId: row.id,
@@ -158,7 +161,10 @@ export class UsersService {
     const passwordHash = await bcrypt.hash(data.password, 12);
     const created = await this.billing.runAtomicUserCreation(
       tenantId,
-      { occupiesBillableSeat: true },
+      {
+        occupiesBillableSeat: true,
+        bypassSubscriptionChecks: Boolean(context.bypassSubscriptionChecks),
+      },
       async (tx) => {
         const user = await this.usersRepository.create(
           {

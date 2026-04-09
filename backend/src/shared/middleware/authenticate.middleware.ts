@@ -1,5 +1,6 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
 import { AuthRepository } from '../../modules/auth/auth.repository.js';
+import { parseJwtTenantIdFromPayload } from '../auth/jwt-tenant.js';
 import { buildAuthenticatedUser } from '../auth/principal.js';
 import type { AuthenticatedUser } from '../types/common.types.js';
 import { ApplicationError } from '../utils/application-error.js';
@@ -8,19 +9,11 @@ import { attachTenantContext } from './tenant.middleware.js';
 type JwtPayloadShape = Partial<AuthenticatedUser> & {
   userId?: string;
   id?: string;
+  /** Some JWT stacks surface subject only as `sub`. */
+  sub?: string;
   tenantId?: string;
   tenant_id?: string | null;
 };
-
-function resolveJwtTenantId(raw: JwtPayloadShape): string | null {
-  if (typeof raw.tenantId === 'string' && raw.tenantId.length > 0) {
-    return raw.tenantId;
-  }
-  if (typeof raw.tenant_id === 'string' && raw.tenant_id.length > 0) {
-    return raw.tenant_id;
-  }
-  return null;
-}
 
 /**
  * Verifies the JWT, loads `system_role` + `tenant_users.role`, and sets `request.user`.
@@ -45,12 +38,12 @@ export async function authenticateMiddleware(
     }
 
     const raw = request.user as JwtPayloadShape;
-    const userId = raw.userId ?? raw.id;
+    const userId = raw.userId ?? raw.id ?? (typeof raw.sub === 'string' ? raw.sub : undefined);
     if (!userId) {
       throw ApplicationError.unauthorized('Invalid token subject');
     }
 
-    const jwtTenantId = resolveJwtTenantId(raw);
+    const jwtTenantId = parseJwtTenantIdFromPayload(raw);
     const authRepository = new AuthRepository(request.server.db);
     const ctx = await authRepository.findAuthContextById(userId, jwtTenantId);
     if (!ctx) {
@@ -62,7 +55,7 @@ export async function authenticateMiddleware(
     attachTenantContext(request);
 
     const tenantId = request.tenantId;
-    if (tenantId) {
+    if (tenantId && request.user.system_role !== 'super_admin') {
       await request.server.billing.enforceTenantApiRate(request.url, tenantId);
     }
   } catch (err) {

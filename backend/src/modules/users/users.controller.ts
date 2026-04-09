@@ -62,6 +62,7 @@ export async function usersRoutes(app: FastifyInstance): Promise<void> {
           const user = await usersService.createUser(request.user.tenantId, body, {
             actorUserId: request.user.userId,
             actorRole: request.user.role,
+            bypassSubscriptionChecks: request.user.system_role === 'super_admin',
           });
           return {
             response: successEnvelope(user) as unknown as Record<string, unknown>,

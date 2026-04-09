@@ -68,7 +68,12 @@ export class TasksService {
     return this.toTaskResponse(task);
   }
 
-  async createTask(tenantId: string, createdByUserId: string, data: CreateTaskInput) {
+  async createTask(
+    tenantId: string,
+    createdByUserId: string,
+    data: CreateTaskInput,
+    options?: { bypassSubscriptionLimits?: boolean }
+  ) {
     if (!tenantId) {
       throw ApplicationError.badRequest('Missing tenant context');
     }
@@ -83,21 +88,24 @@ export class TasksService {
       }
     }
 
-    const created = await this.billing.runAtomicTaskCreation(tenantId, (tx) =>
-      this.tasksRepository.createWithExecutor(
-        {
-          tenant_id: tenantId,
-          title: data.title,
-          description: data.description ?? null,
-          assignee_id: data.assigneeId ?? null,
-          status: 'TODO',
-          priority: data.priority,
-          deadline: data.deadline ? new Date(data.deadline) : null,
-          completed_at: null,
-          created_by: createdByUserId,
-        },
-        tx
-      )
+    const created = await this.billing.runAtomicTaskCreation(
+      tenantId,
+      (tx) =>
+        this.tasksRepository.createWithExecutor(
+          {
+            tenant_id: tenantId,
+            title: data.title,
+            description: data.description ?? null,
+            assignee_id: data.assigneeId ?? null,
+            status: 'TODO',
+            priority: data.priority,
+            deadline: data.deadline ? new Date(data.deadline) : null,
+            completed_at: null,
+            created_by: createdByUserId,
+          },
+          tx
+        ),
+      { bypassSubscriptionChecks: Boolean(options?.bypassSubscriptionLimits) }
     );
 
     await this.tasksRepository.createAuditLog({

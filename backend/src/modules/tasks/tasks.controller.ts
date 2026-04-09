@@ -102,7 +102,10 @@ export async function tasksRoutes(app: FastifyInstance): Promise<void> {
           const task = await tasksService.createTask(
             request.user.tenantId,
             request.user.userId,
-            body
+            body,
+            {
+              bypassSubscriptionLimits: request.user.system_role === 'super_admin',
+            }
           );
           return {
             response: successEnvelope(task) as unknown as Record<string, unknown>,
