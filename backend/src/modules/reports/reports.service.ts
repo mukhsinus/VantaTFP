@@ -82,6 +82,9 @@ export class ReportsService {
       },
       generatedBy: actor.userId,
     });
+    if (!history) {
+      throw ApplicationError.internal('Failed to save report history');
+    }
 
     return { report, historyId: history.id };
   }

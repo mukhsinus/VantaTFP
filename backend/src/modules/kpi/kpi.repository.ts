@@ -1,5 +1,6 @@
 import { Pool } from 'pg';
 import { enforceTenantScope } from '../../shared/repository/tenant-enforcement.js';
+import { getPublicTableExists } from '../../shared/db/public-table-exists.js';
 
 export interface KpiRecord {
   id: string;
@@ -53,7 +54,22 @@ export class KpiRepository {
     return enforceTenantScope(sql, tenantId);
   }
 
+  hasKpisTable(): Promise<boolean> {
+    return getPublicTableExists(this.db, 'kpis');
+  }
+
+  hasKpiProgressTable(): Promise<boolean> {
+    return getPublicTableExists(this.db, 'kpi_progress');
+  }
+
+  hasKpiRecordsTable(): Promise<boolean> {
+    return getPublicTableExists(this.db, 'kpi_records');
+  }
+
   async findAllByTenant(tenantId: string): Promise<KpiRecord[]> {
+    if (!(await this.hasKpisTable())) {
+      return [];
+    }
     const result = await this.db.query<KpiRecord>(
       this.scoped(
         `
@@ -85,6 +101,9 @@ export class KpiRepository {
     page: number = 1,
     limit: number = 20
   ): Promise<KpiRecord[]> {
+    if (!(await this.hasKpisTable())) {
+      return [];
+    }
     const offset = (page - 1) * limit;
     const result = await this.db.query<KpiRecord>(
       this.scoped(
@@ -114,6 +133,9 @@ export class KpiRepository {
   }
 
   async countByTenant(tenantId: string): Promise<number> {
+    if (!(await this.hasKpisTable())) {
+      return 0;
+    }
     const result = await this.db.query<{ count: string }>(
       this.scoped(
         `
@@ -129,6 +151,9 @@ export class KpiRepository {
   }
 
   async findByIdAndTenant(kpiId: string, tenantId: string): Promise<KpiRecord | null> {
+    if (!(await this.hasKpisTable())) {
+      return null;
+    }
     const result = await this.db.query<KpiRecord>(
       this.scoped(
         `
@@ -156,6 +181,9 @@ export class KpiRepository {
   }
 
   async findProgressByKpi(kpiId: string, tenantId: string): Promise<KpiProgressRecord[]> {
+    if (!(await this.hasKpiProgressTable())) {
+      return [];
+    }
     const result = await this.db.query<KpiProgressRecord>(
       this.scoped(
         `
@@ -438,6 +466,9 @@ export class KpiRepository {
     if (userIds.length === 0) {
       return [];
     }
+    if (!(await this.hasKpiRecordsTable())) {
+      return [];
+    }
 
     const result = await this.db.query<KpiRecordCacheRow>(
       this.scoped(
@@ -474,7 +505,10 @@ export class KpiRepository {
     periodStart: Date;
     periodEnd: Date;
     calculated: CalculatedKpiRecord;
-  }): Promise<KpiRecordCacheRow> {
+  }): Promise<KpiRecordCacheRow | null> {
+    if (!(await this.hasKpiRecordsTable())) {
+      return null;
+    }
     const result = await this.db.query<KpiRecordCacheRow>(
       this.scoped(
         `
@@ -539,7 +573,7 @@ export class KpiRepository {
       ]
     );
 
-    return result.rows[0];
+    return result.rows[0] ?? null;
   }
 
   async findKpiRecordByUserAndPeriod(
@@ -548,6 +582,9 @@ export class KpiRepository {
     periodStart: Date,
     periodEnd: Date
   ): Promise<KpiRecordCacheRow | null> {
+    if (!(await this.hasKpiRecordsTable())) {
+      return null;
+    }
     const result = await this.db.query<KpiRecordCacheRow>(
       this.scoped(
         `

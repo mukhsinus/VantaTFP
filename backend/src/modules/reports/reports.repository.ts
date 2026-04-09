@@ -1,5 +1,7 @@
+import { randomUUID } from 'node:crypto';
 import { Pool } from 'pg';
 import type { ListReportHistoryQuery } from './reports.schema.js';
+import { getPublicTableExists } from '../../shared/db/public-table-exists.js';
 import { enforceTenantScope } from '../../shared/repository/tenant-enforcement.js';
 
 export interface ReportUserRow {
@@ -145,6 +147,9 @@ export class ReportsRepository {
     dateTo: Date
   ): Promise<KpiSummaryRow[]> {
     if (userIds.length === 0) return [];
+    if (!(await getPublicTableExists(this.db, 'kpi_records'))) {
+      return [];
+    }
     const result = await this.db.query<KpiSummaryRow>(
       this.scoped(
         `
@@ -249,7 +254,19 @@ export class ReportsRepository {
     filters: Record<string, unknown>;
     payload: Record<string, unknown>;
     generatedBy: string;
-  }): Promise<ReportHistoryRow> {
+  }): Promise<ReportHistoryRow | null> {
+    if (!(await getPublicTableExists(this.db, 'reports_history'))) {
+      return {
+        id: randomUUID(),
+        tenant_id: params.tenantId,
+        report_type: params.reportType,
+        format: params.format,
+        filters: params.filters,
+        payload: params.payload,
+        generated_by: params.generatedBy,
+        created_at: new Date(),
+      };
+    }
     const result = await this.db.query<ReportHistoryRow>(
       this.scoped(
         `
@@ -276,13 +293,16 @@ export class ReportsRepository {
         params.generatedBy,
       ]
     );
-    return result.rows[0];
+    return result.rows[0] ?? null;
   }
 
   async listHistory(
     tenantId: string,
     query: ListReportHistoryQuery
   ): Promise<ReportHistoryRow[]> {
+    if (!(await getPublicTableExists(this.db, 'reports_history'))) {
+      return [];
+    }
     const offset = (query.page - 1) * query.limit;
     const values: Array<string | number> = [tenantId];
     const conditions: string[] = ['tenant_id = $1'];
@@ -315,6 +335,9 @@ export class ReportsRepository {
   }
 
   async countHistory(tenantId: string, query: ListReportHistoryQuery): Promise<number> {
+    if (!(await getPublicTableExists(this.db, 'reports_history'))) {
+      return 0;
+    }
     const values: string[] = [tenantId];
     const conditions: string[] = ['tenant_id = $1'];
     let i = 2;

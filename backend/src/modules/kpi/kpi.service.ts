@@ -246,6 +246,20 @@ export class KpiService {
       teamId: guarded.teamId,
     });
 
+    if (!(await this.kpiRepository.hasKpiRecordsTable())) {
+      const data = await this.analyticsRowsFromTasks(
+        tenantId,
+        assigneeIds,
+        periodStart,
+        periodEnd
+      );
+      return {
+        periodStart: periodStart.toISOString(),
+        periodEnd: periodEnd.toISOString(),
+        data,
+      };
+    }
+
     const cachedRows = await this.ensureKpiRecordsForUsersAndPeriod({
       tenantId,
       userIds: assigneeIds,
@@ -319,6 +333,37 @@ export class KpiService {
         overdueCompletedTasks: 0,
         openOverdueTasks: 0,
         performancePercent: 0,
+        filtersApplied,
+        fromCache: false,
+      };
+    }
+
+    if (!(await this.kpiRepository.hasKpiRecordsTable())) {
+      const rows = await this.analyticsRowsFromTasks(
+        tenantId,
+        assigneeIds,
+        periodStart,
+        periodEnd
+      );
+      let completedTasks = 0;
+      let onTimeCompletedTasks = 0;
+      let overdueCompletedTasks = 0;
+      let openOverdueTasks = 0;
+      for (const r of rows) {
+        completedTasks += r.completedTasks;
+        onTimeCompletedTasks += r.onTimeCompletedTasks;
+        overdueCompletedTasks += r.overdueCompletedTasks;
+        openOverdueTasks += r.openOverdueTasks;
+      }
+      return {
+        periodStart: periodStart.toISOString(),
+        periodEnd: periodEnd.toISOString(),
+        assigneeCount: assigneeIds.length,
+        completedTasks,
+        onTimeCompletedTasks,
+        overdueCompletedTasks,
+        openOverdueTasks,
+        performancePercent: this.performancePercentFromTotals(onTimeCompletedTasks, completedTasks),
         filtersApplied,
         fromCache: false,
       };
@@ -406,6 +451,18 @@ export class KpiService {
       calculated,
     });
 
+    if (!cachedRecord) {
+      return {
+        userId,
+        periodStart: periodStart.toISOString(),
+        periodEnd: periodEnd.toISOString(),
+        tasksCompleted: calculated.tasks_completed,
+        tasksOnTime: calculated.tasks_on_time,
+        tasksOverdue: calculated.tasks_overdue,
+        score: Number(calculated.score),
+      };
+    }
+
     return {
       userId,
       periodStart: periodStart.toISOString(),
@@ -425,6 +482,9 @@ export class KpiService {
     forceRefresh: boolean;
   }): Promise<KpiRecordCacheRow[]> {
     if (params.userIds.length === 0) {
+      return [];
+    }
+    if (!(await this.kpiRepository.hasKpiRecordsTable())) {
       return [];
     }
 
@@ -456,6 +516,42 @@ export class KpiService {
     }
 
     return cachedRows;
+  }
+
+  /**
+   * When `kpi_records` is not migrated, derive per-user analytics from `tasks` (no persistence).
+   */
+  private async analyticsRowsFromTasks(
+    tenantId: string,
+    assigneeIds: string[],
+    periodStart: Date,
+    periodEnd: Date
+  ): Promise<KpiAnalyticsEmployeeRow[]> {
+    const data: KpiAnalyticsEmployeeRow[] = [];
+    for (const uid of assigneeIds) {
+      const calc = await this.kpiRepository.calculateKpiFromTasks(
+        tenantId,
+        uid,
+        periodStart,
+        periodEnd
+      );
+      const openOverdue = await this.kpiRepository.countOpenOverdueTasksForAssignees(
+        tenantId,
+        [uid],
+        periodEnd
+      );
+      data.push({
+        userId: uid,
+        periodStart: periodStart.toISOString(),
+        periodEnd: periodEnd.toISOString(),
+        completedTasks: calc.tasks_completed,
+        onTimeCompletedTasks: calc.tasks_on_time,
+        overdueCompletedTasks: calc.tasks_overdue,
+        openOverdueTasks: openOverdue,
+        performancePercent: Number(calc.score),
+      });
+    }
+    return data;
   }
 
   private isCacheOutdated(row: KpiRecordCacheRow): boolean {
