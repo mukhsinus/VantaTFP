@@ -17,7 +17,12 @@ import helmetPlugin from './plugins/helmet.plugin.js';
 import sensiblePlugin from './plugins/sensible.plugin.js';
 import jwtPlugin from './plugins/jwt.plugin.js';
 import rateLimitPlugin from './plugins/rate-limit.plugin.js';
+import { redis } from './config/redis.js';
 import { registerDomainEventDispatchers } from './shared/queues/event-dispatcher.js';
+import {
+  kpiRecalculationQueue,
+  payrollRecalculationQueue,
+} from './shared/queues/queues.js';
 import { startOverdueTasksScheduler } from './shared/schedulers/overdue-tasks.scheduler.js';
 
 // Module routes
@@ -101,6 +106,11 @@ export async function buildApp(): Promise<FastifyInstance> {
   });
   app.addHook('onClose', async () => {
     overdueScheduler.stop();
+    await Promise.all([
+      kpiRecalculationQueue.close().catch(() => undefined),
+      payrollRecalculationQueue.close().catch(() => undefined),
+    ]);
+    await redis.quit().catch(() => undefined);
   });
   registerRequestLogger(app);
 

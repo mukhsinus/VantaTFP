@@ -1,5 +1,6 @@
 import { Pool } from 'pg';
 import { Job } from 'bullmq';
+import { redis } from '../../config/redis.js';
 import { createWorker } from './bullmq.js';
 import {
   QUEUE_NAMES,
@@ -31,6 +32,7 @@ export function startQueueProcessors() {
     workers: [kpiWorker],
     async close(): Promise<void> {
       await Promise.all([kpiWorker.close()]);
+      await redis.quit().catch(() => undefined);
       await pool.end();
     },
   };
