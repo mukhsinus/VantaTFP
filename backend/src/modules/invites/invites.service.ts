@@ -74,6 +74,8 @@ export class InvitesService {
       throw ApplicationError.unauthorized('Invalid or expired invite');
     }
 
+    await this.billing.assertSubscriptionOperational(tenantId);
+
     const [firstName, lastName] =
       dto.firstName?.trim() && dto.lastName?.trim()
         ? [dto.firstName.trim(), dto.lastName.trim()]

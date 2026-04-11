@@ -29,15 +29,16 @@ const APP_BOOT_TIME_MS = Date.now();
 export const API_BASE = '/api';
 function resolveApiBaseUrl() {
     const configuredBaseUrl = import.meta.env.VITE_API_BASE_URL?.trim();
+    const directApi = import.meta.env.VITE_DIRECT_API === 'true' || import.meta.env.VITE_DIRECT_API === '1';
+    if (import.meta.env.DEV && !directApi) {
+        return window.location.origin;
+    }
     if (configuredBaseUrl) {
         return configuredBaseUrl;
     }
-    // Local development: same origin; request paths must start with API_BASE (e.g. /api/v1/...).
     if (import.meta.env.DEV) {
         return window.location.origin;
     }
-    // Production without explicit API base URL usually means deployment misconfiguration.
-    // Throw a typed error so UI can show a clear message.
     throw new ApiError(503, 'API_NOT_CONFIGURED', i18n.t('errors.generic.apiNotConfigured'));
 }
 async function fetchWithRetry(url, init) {

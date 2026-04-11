@@ -15,7 +15,9 @@ const environmentSchema = z.object({
   JWT_SECRET: z.string().min(32),
   JWT_EXPIRY: z.string().default('15m'),
   JWT_REFRESH_EXPIRY: z.string().default('7d'),
-  CORS_ORIGIN: z.string().default('http://localhost:5173'),
+  CORS_ORIGIN: z
+    .string()
+    .default('http://localhost:5173,http://127.0.0.1:5173'),
   SENTRY_DSN: z.string().optional(),
   BILLING_STRICT_MODE: z.string().optional().default('true').transform((value) => value !== 'false'),
   BILLING_DEV_API_RATE_LIMIT: z.coerce.number().int().positive().default(10000),

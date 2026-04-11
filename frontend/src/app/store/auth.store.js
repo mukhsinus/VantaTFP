@@ -11,11 +11,7 @@ export const useAuthStore = create()(persist((set) => ({
         accessToken,
         refreshToken: refreshToken ?? state.refreshToken,
     })),
-    setUser: (user) => set((state) => {
-        if (state.user?.userId === user.userId)
-            return state;
-        return { user };
-    }),
+    setUser: (user) => set({ user }),
     setTokens: (accessToken, refreshToken) => set((state) => ({
         accessToken,
         refreshToken: refreshToken ?? state.refreshToken,
@@ -32,9 +28,9 @@ export const useAuthStore = create()(persist((set) => ({
         accessToken: state.accessToken,
         refreshToken: state.refreshToken,
     }),
-    onRehydrateStorage: () => (state) => {
-        // Called once Zustand has merged the stored values into the store.
-        // If there is nothing in storage, state is still populated with defaults.
-        state?.setHydrated();
+    onRehydrateStorage: () => () => {
+        // Must not rely on the persisted slice carrying action methods — always
+        // flip hydration via `getState()` so AuthGuard never deadlocks on a blank shell.
+        useAuthStore.getState().setHydrated();
     },
 }));

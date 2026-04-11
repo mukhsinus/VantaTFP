@@ -325,6 +325,7 @@ export class UsersRepository {
     role: 'ADMIN' | 'MANAGER' | 'EMPLOYEE';
     system_role: string;
     tenant_name: string | null;
+    notification_preferences: unknown;
   } | null> {
     const caps = await getAuthSchemaCaps(this.db);
     const systemRoleSql = caps.usersSystemRoleColumn
@@ -340,6 +341,7 @@ export class UsersRepository {
       role: 'ADMIN' | 'MANAGER' | 'EMPLOYEE';
       system_role: string;
       tenant_name: string | null;
+      notification_preferences: unknown;
     }>(
       `
       SELECT
@@ -350,7 +352,8 @@ export class UsersRepository {
         u.last_name,
         u.role,
         ${systemRoleSql} AS system_role,
-        t.name AS tenant_name
+        t.name AS tenant_name,
+        COALESCE(u.notification_preferences, '{}'::jsonb) AS notification_preferences
       FROM users u
       LEFT JOIN tenants t ON t.id = u.tenant_id
       WHERE u.id = $1::uuid
@@ -361,5 +364,90 @@ export class UsersRepository {
     );
 
     return result.rows[0] ?? null;
+  }
+
+  async findActiveUserIdByEmailExcept(
+    email: string,
+    exceptUserId: string
+  ): Promise<string | null> {
+    const result = await this.db.query<{ id: string }>(
+      `
+      SELECT id
+      FROM users
+      WHERE LOWER(email) = LOWER($1)
+        AND id <> $2::uuid
+        AND is_active = TRUE
+      LIMIT 1
+      `,
+      [email, exceptUserId]
+    );
+    return result.rows[0]?.id ?? null;
+  }
+
+  async findPasswordHashByUserId(userId: string): Promise<string | null> {
+    const result = await this.db.query<{ password_hash: string }>(
+      `
+      SELECT password_hash
+      FROM users
+      WHERE id = $1::uuid
+        AND is_active = TRUE
+      LIMIT 1
+      `,
+      [userId]
+    );
+    return result.rows[0]?.password_hash ?? null;
+  }
+
+  async updateSelfProfile(
+    userId: string,
+    data: { email: string; first_name: string; last_name: string }
+  ): Promise<boolean> {
+    const result = await this.db.query(
+      `
+      UPDATE users
+      SET
+        email = $1,
+        first_name = $2,
+        last_name = $3,
+        updated_at = NOW()
+      WHERE id = $4::uuid
+        AND is_active = TRUE
+      `,
+      [data.email, data.first_name, data.last_name, userId]
+    );
+    return (result.rowCount ?? 0) > 0;
+  }
+
+  async updateSelfPassword(userId: string, passwordHash: string): Promise<boolean> {
+    const result = await this.db.query(
+      `
+      UPDATE users
+      SET
+        password_hash = $1,
+        updated_at = NOW()
+      WHERE id = $2::uuid
+        AND is_active = TRUE
+      `,
+      [passwordHash, userId]
+    );
+    return (result.rowCount ?? 0) > 0;
+  }
+
+  async updateNotificationPreferences(
+    userId: string,
+    preferences: Record<string, unknown>
+  ): Promise<boolean> {
+    const result = await this.db.query(
+      `
+      UPDATE users
+      SET
+        notification_preferences = $1::jsonb,
+        updated_at = NOW()
+      WHERE id = $2::uuid
+        AND is_active = TRUE
+      `,
+      [JSON.stringify(preferences), userId]
+    );
+    return (result.rowCount ?? 0) > 0;
   }
 }

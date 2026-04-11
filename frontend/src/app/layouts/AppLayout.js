@@ -9,6 +9,7 @@ import { useIsMobile } from '@shared/hooks/useIsMobile';
 import { useSidebarStore } from '@app/store/sidebar.store';
 import { useAuthStore } from '@app/store/auth.store';
 import { useNotificationsRealtime } from '@features/notifications/hooks/useNotifications';
+import { TenantTrialExperience } from '@features/billing/components/TenantTrialExperience';
 import styles from './AppLayout.module.css';
 export function AppLayout() {
     const isMobile = useIsMobile();
@@ -18,5 +19,5 @@ export function AppLayout() {
     const sidebarWidth = !isMobile && isCollapsed ? 64 : !isMobile ? 224 : 0;
     return (_jsxs("div", { className: styles.container, children: [!isMobile && _jsx(Sidebar, {}), _jsxs("div", { className: styles.mainWrapper, style: {
                     marginLeft: sidebarWidth,
-                }, children: [_jsx(Topbar, {}), _jsx("main", { className: styles.mainContent, children: _jsx("div", { className: "page-container", children: !user ? (_jsx(Skeleton, { height: 200, borderRadius: "var(--radius-lg)" })) : (_jsx(Outlet, {})) }) })] }), isMobile && _jsx(MobileBottomTabs, {}), _jsx(ToastRenderer, {})] }));
+                }, children: [_jsx(Topbar, {}), _jsxs("main", { className: styles.mainContent, children: [user ? _jsx(TenantTrialExperience, {}) : null, _jsx("div", { className: "page-container", children: !user ? (_jsx(Skeleton, { height: 200, borderRadius: "var(--radius-lg)" })) : (_jsx(Outlet, {})) })] })] }), isMobile && _jsx(MobileBottomTabs, {}), _jsx(ToastRenderer, {})] }));
 }

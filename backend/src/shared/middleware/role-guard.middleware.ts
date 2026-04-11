@@ -49,6 +49,48 @@ export function requireRoles(...allowedRoles: Role[]) {
 }
 
 /**
+ * Like `requireRoles`, but **does not** bypass for `super_admin`.
+ * Use for tenant-only actions (e.g. workspace rename) where platform accounts must not act.
+ */
+export function requireTenantMemberRoles(...allowedRoles: Role[]) {
+  if (allowedRoles.length === 0) {
+    throw new Error('requireTenantMemberRoles() must receive at least one role');
+  }
+
+  return async function tenantMemberRoleGuard(
+    request: FastifyRequest,
+    _reply: FastifyReply
+  ): Promise<void> {
+    try {
+      const user = request.user;
+
+      if (!user) {
+        throw ApplicationError.unauthorized();
+      }
+
+      const tenantId = request.tenantId ?? user.tenantId;
+      if (!tenantId) {
+        throw ApplicationError.forbidden('Tenant context required');
+      }
+
+      const allowed = await request.server.policy.hasAnyRole(
+        tenantId,
+        user.role,
+        allowedRoles
+      );
+      if (!allowed) {
+        throw ApplicationError.forbidden(
+          `Role '${user.role}' is not permitted to access this resource`
+        );
+      }
+    } catch (err) {
+      console.error('MIDDLEWARE ERROR:', err);
+      throw err;
+    }
+  };
+}
+
+/**
  * Policy-based guard for permission checks.
  * Uses tenant-aware role permission mappings.
  */

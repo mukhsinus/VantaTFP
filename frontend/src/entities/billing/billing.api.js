@@ -1,5 +1,10 @@
-import { apiClient } from '@shared/api/client';
-import { API } from '@shared/api/endpoints';
+import { billingService } from './billing.service';
+/**
+ * @deprecated Prefer `billingService` from `@entities/billing/billing.service`.
+ */
 export const billingApi = {
-    snapshot: () => apiClient.get(API.billing.snapshot),
+    snapshot: billingService.getSnapshot,
+    getCurrent: billingService.getCurrent,
+    getPlans: billingService.getPlans,
+    upgrade: billingService.upgrade,
 };

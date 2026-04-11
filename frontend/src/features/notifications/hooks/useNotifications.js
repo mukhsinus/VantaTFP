@@ -13,11 +13,14 @@ const WS_BASE_URL = import.meta.env.VITE_WS_URL?.trim();
 const MAX_RECONNECT_ATTEMPTS = 5;
 const AUTH_CLOSE_CODES = new Set([1008, 4001, 4401]);
 export function useUnreadNotifications() {
-    const isAuthenticated = useAuthStore((s) => Boolean(s.user && s.accessToken));
+    const user = useAuthStore((s) => s.user);
+    const accessToken = useAuthStore((s) => s.accessToken);
+    const isSessionLoading = useAuthStore((s) => s.isSessionLoading);
+    const enabled = Boolean(user && accessToken && !isSessionLoading);
     return useQuery({
         queryKey: notificationKeys.unread(),
         queryFn: notificationsApi.unread,
-        enabled: isAuthenticated,
+        enabled,
         staleTime: 60_000,
         refetchOnMount: false,
         refetchInterval: 60_000,

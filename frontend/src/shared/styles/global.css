@@ -13,6 +13,7 @@ html {
   -moz-osx-font-smoothing: grayscale;
   width: 100%;
   max-width: 100%;
+  min-height: 100%;
   overflow-x: hidden;
 }
 
@@ -24,12 +25,14 @@ body {
   line-height: var(--leading-normal);
   width: 100%;
   max-width: 100%;
+  min-height: 100%;
   overflow-x: hidden;
 }
 
 #root {
   width: 100%;
   max-width: 100%;
+  min-height: 100%;
   overflow-x: clip;
 }
 

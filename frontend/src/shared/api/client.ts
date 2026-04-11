@@ -61,12 +61,23 @@ export const API_BASE = '/api';
 
 function resolveApiBaseUrl(): string {
   const configuredBaseUrl = (import.meta.env.VITE_API_BASE_URL as string | undefined)?.trim();
+  const directApi =
+    import.meta.env.VITE_DIRECT_API === 'true' || import.meta.env.VITE_DIRECT_API === '1';
+
+  /**
+   * In Vite dev, default to same-origin so `/api/*` goes through the dev proxy.
+   * Calling `http://127.0.0.1:3000` directly from `http://localhost:5173` (or the reverse)
+   * requires CORS and often breaks with a blank UI while `/api/health` (relative) still works.
+   * Set `VITE_DIRECT_API=true` to force `VITE_API_BASE_URL` in development.
+   */
+  if (import.meta.env.DEV && !directApi) {
+    return window.location.origin;
+  }
 
   if (configuredBaseUrl) {
     return configuredBaseUrl;
   }
 
-  // Local development: same origin; request paths must start with API_BASE (e.g. /api/v1/...).
   if (import.meta.env.DEV) {
     return window.location.origin;
   }

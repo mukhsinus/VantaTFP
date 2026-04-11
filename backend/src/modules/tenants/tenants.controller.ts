@@ -1,7 +1,7 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { TenantsService } from './tenants.service.js';
 import { TenantsRepository } from './tenants.repository.js';
-import { requireRoles } from '../../shared/middleware/role-guard.middleware.js';
+import { requireRoles, requireTenantMemberRoles } from '../../shared/middleware/role-guard.middleware.js';
 import { sendNoContent, sendSuccess } from '../../shared/utils/response.js';
 import {
   createTenantSchema,
@@ -53,9 +53,10 @@ export async function tenantsRoutes(app: FastifyInstance): Promise<void> {
 
   app.patch(
     '/:tenantId',
-    { preHandler: [authenticate, requireRoles('ADMIN')] },
+    { preHandler: [authenticate, requireTenantMemberRoles('ADMIN')] },
     async (request: FastifyRequest, reply: FastifyReply) => {
       const { tenantId } = tenantIdParamSchema.parse(request.params);
+      console.log('req.body', request.body);
       const body = updateTenantSchema.parse(request.body);
       const tenant = await tenantsService.updateTenant(tenantId, request.tenantId!, body);
       return sendSuccess(reply, tenant);

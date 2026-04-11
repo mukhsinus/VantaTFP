@@ -2,7 +2,7 @@ import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
 import { useState, useEffect } from 'react';
 import { Navigate, useSearchParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Button, Input } from '@shared/components/ui';
+import { Button, Input, PageSkeleton } from '@shared/components/ui';
 import { useLogin } from '@features/auth/hooks/useLogin';
 import { useAuthStore } from '@app/store/auth.store';
 import { useIsMobile } from '@shared/hooks/useIsMobile';
@@ -25,8 +25,9 @@ export function LoginPage() {
     // Already signed in — skip the login page entirely
     if (isAuthenticated) {
         const u = useAuthStore.getState().user;
+        // Never return null (blank screen) if store slices disagree for one frame
         if (!u)
-            return null;
+            return _jsx(PageSkeleton, {});
         return _jsx(Navigate, { to: resolvePostLoginRedirect(u, searchParams.get('redirect')), replace: true });
     }
     const handleSubmit = async (e) => {

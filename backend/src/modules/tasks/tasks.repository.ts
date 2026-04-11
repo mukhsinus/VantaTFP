@@ -74,6 +74,20 @@ export class TasksRepository {
     return enforceTenantScope(sql, tenantId);
   }
 
+  /** Unscoped read — only for platform super_admin resolving a task's owning tenant. */
+  async findTenantIdByTaskId(taskId: string): Promise<string | null> {
+    const result = await this.db.query<{ tenant_id: string }>(
+      `
+      SELECT tenant_id::text AS tenant_id
+      FROM tasks
+      WHERE id = $1::uuid
+      LIMIT 1
+      `,
+      [taskId]
+    );
+    return result.rows[0]?.tenant_id ?? null;
+  }
+
   async findAllByTenant(tenantId: string, filters: ListTasksQuery): Promise<TaskRecord[]> {
     const values: Array<string | number> = [tenantId];
     const conditions: string[] = ['tenant_id = $1'];

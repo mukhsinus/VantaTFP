@@ -102,7 +102,7 @@ const ALLOWED_ROLES_BY_ROUTE: Record<string, Role[]> = {
 };
 
 export function getNavByRole(role: Role): NavItemConfig[] {
-  return NAV_BY_ROLE[role];
+  return NAV_BY_ROLE[role] ?? NAV_BY_ROLE.EMPLOYEE;
 }
 
 export function canAccessRoute(role: Role, path: string): boolean {
@@ -113,5 +113,7 @@ export function canAccessRoute(role: Role, path: string): boolean {
 }
 
 export function getHomeRouteByRole(role: Role): string {
-  return NAV_BY_ROLE[role][0]?.to ?? '/tasks';
+  const nav = NAV_BY_ROLE[role];
+  if (!nav?.length) return '/tasks';
+  return nav[0]?.to ?? '/tasks';
 }

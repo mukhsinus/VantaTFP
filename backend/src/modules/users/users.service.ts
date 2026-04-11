@@ -1,5 +1,11 @@
 import { UsersRepository } from './users.repository.js';
-import { CreateUserDto, UpdateUserDto } from './users.schema.js';
+import {
+  CreateUserDto,
+  UpdateUserDto,
+  type UpdateMyNotificationsDto,
+  type UpdateMyPasswordDto,
+  type UpdateMyProfileDto,
+} from './users.schema.js';
 import { ApplicationError } from '../../shared/utils/application-error.js';
 import type { AuthenticatedUser, Role } from '../../shared/types/common.types.js';
 import bcrypt from 'bcrypt';
@@ -38,6 +44,13 @@ export interface UserListResponse {
   pagination: PaginationMeta;
 }
 
+export interface MeNotificationPreferences {
+  overdue_tasks: boolean;
+  new_tasks: boolean;
+  kpi_updates: boolean;
+  payroll_requests: boolean;
+}
+
 /** Normalized session user for GET /users/me and login envelope. */
 export interface MeResponse {
   userId: string;
@@ -48,6 +61,32 @@ export interface MeResponse {
   lastName: string;
   role: Role;
   systemRole: 'super_admin' | 'user';
+  notifications: MeNotificationPreferences;
+}
+
+const DEFAULT_ME_NOTIFICATIONS: MeNotificationPreferences = {
+  overdue_tasks: true,
+  new_tasks: true,
+  kpi_updates: false,
+  payroll_requests: true,
+};
+
+function parseStoredNotificationPreferences(raw: unknown): MeNotificationPreferences {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
+    return { ...DEFAULT_ME_NOTIFICATIONS };
+  }
+  const o = raw as Record<string, unknown>;
+  return {
+    overdue_tasks:
+      typeof o.overdue_tasks === 'boolean' ? o.overdue_tasks : DEFAULT_ME_NOTIFICATIONS.overdue_tasks,
+    new_tasks: typeof o.new_tasks === 'boolean' ? o.new_tasks : DEFAULT_ME_NOTIFICATIONS.new_tasks,
+    kpi_updates:
+      typeof o.kpi_updates === 'boolean' ? o.kpi_updates : DEFAULT_ME_NOTIFICATIONS.kpi_updates,
+    payroll_requests:
+      typeof o.payroll_requests === 'boolean'
+        ? o.payroll_requests
+        : DEFAULT_ME_NOTIFICATIONS.payroll_requests,
+  };
 }
 
 function legacyInviteRoleToTenantMembership(
@@ -128,7 +167,69 @@ export class UsersService {
       lastName: row.last_name,
       role: principal.role,
       systemRole,
+      notifications: parseStoredNotificationPreferences(row.notification_preferences),
     };
+  }
+
+  async updateMyProfile(principal: AuthenticatedUser, data: UpdateMyProfileDto): Promise<MeResponse> {
+    const email = data.email.trim().toLowerCase();
+    const first_name = data.first_name.trim();
+    const last_name = data.last_name.trim();
+    if (!first_name || !last_name || !email) {
+      throw ApplicationError.badRequest('All profile fields are required');
+    }
+
+    const conflict = await this.usersRepository.findActiveUserIdByEmailExcept(
+      email,
+      principal.userId
+    );
+    if (conflict) {
+      throw ApplicationError.conflict('Email is already in use');
+    }
+
+    const ok = await this.usersRepository.updateSelfProfile(principal.userId, {
+      email,
+      first_name,
+      last_name,
+    });
+    if (!ok) {
+      throw ApplicationError.notFound('User');
+    }
+
+    return this.getMe(principal);
+  }
+
+  async updateMyPassword(principal: AuthenticatedUser, data: UpdateMyPasswordDto): Promise<void> {
+    const currentHash = await this.usersRepository.findPasswordHashByUserId(principal.userId);
+    if (!currentHash) {
+      throw ApplicationError.notFound('User');
+    }
+
+    const matches = await bcrypt.compare(data.currentPassword, currentHash);
+    if (!matches) {
+      throw ApplicationError.forbidden('Current password is incorrect');
+    }
+
+    const passwordHash = await bcrypt.hash(data.newPassword, 12);
+    const ok = await this.usersRepository.updateSelfPassword(principal.userId, passwordHash);
+    if (!ok) {
+      throw ApplicationError.notFound('User');
+    }
+  }
+
+  async updateMyNotifications(
+    principal: AuthenticatedUser,
+    data: UpdateMyNotificationsDto
+  ): Promise<MeNotificationPreferences> {
+    const next: MeNotificationPreferences = { ...data };
+    const ok = await this.usersRepository.updateNotificationPreferences(
+      principal.userId,
+      next as unknown as Record<string, unknown>
+    );
+    if (!ok) {
+      throw ApplicationError.notFound('User');
+    }
+    return next;
   }
 
   async createUser(

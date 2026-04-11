@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Navigate, useSearchParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Button, Input } from '@shared/components/ui';
+import { Button, Input, PageSkeleton } from '@shared/components/ui';
 import { useLogin } from '@features/auth/hooks/useLogin';
 import { useAuthStore } from '@app/store/auth.store';
 import { useIsMobile } from '@shared/hooks/useIsMobile';
@@ -28,7 +28,8 @@ export function LoginPage() {
   // Already signed in — skip the login page entirely
   if (isAuthenticated) {
     const u = useAuthStore.getState().user;
-    if (!u) return null;
+    // Never return null (blank screen) if store slices disagree for one frame
+    if (!u) return <PageSkeleton />;
     return <Navigate to={resolvePostLoginRedirect(u, searchParams.get('redirect'))} replace />;
   }
 

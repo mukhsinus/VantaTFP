@@ -18,14 +18,46 @@ const ALLOWED_STATUS_TRANSITIONS: Record<string, string[]> = {
   CANCELLED: [],
 };
 
+export type TaskRouteAccessOptions = { actingSuperAdmin?: boolean };
+
 export class TasksService {
   constructor(
     private readonly tasksRepository: TasksRepository,
     private readonly billing: BillingService
   ) {}
 
-  async listTasks(tenantId: string, query: ListTasksQuery) {
-    if (!tenantId) {
+  /**
+   * When JWT has no tenant (e.g. platform super_admin), resolve scope from the task row.
+   */
+  private async resolveTaskTenantId(
+    taskId: string,
+    tenantId: string,
+    actingSuperAdmin: boolean
+  ): Promise<string> {
+    if (tenantId && String(tenantId).trim().length > 0) {
+      return tenantId;
+    }
+    if (!actingSuperAdmin) {
+      throw ApplicationError.badRequest('Missing tenant context');
+    }
+    const tid = await this.tasksRepository.findTenantIdByTaskId(taskId);
+    if (!tid) {
+      throw ApplicationError.notFound('Task');
+    }
+    return tid;
+  }
+
+  async listTasks(tenantId: string, query: ListTasksQuery, options?: TaskRouteAccessOptions) {
+    if (!tenantId || String(tenantId).trim().length === 0) {
+      if (options?.actingSuperAdmin) {
+        return {
+          data: [],
+          total: 0,
+          page: query.page,
+          limit: query.limit,
+          totalPages: 1,
+        };
+      }
       throw ApplicationError.badRequest('Missing tenant context');
     }
 
@@ -54,16 +86,18 @@ export class TasksService {
     }
   }
 
-  async getTaskById(taskId: string, tenantId: string) {
-    if (!tenantId) {
-      throw ApplicationError.badRequest('Missing tenant context');
-    }
+  async getTaskById(taskId: string, tenantId: string, options?: TaskRouteAccessOptions) {
+    const effectiveTenantId = await this.resolveTaskTenantId(
+      taskId,
+      tenantId,
+      Boolean(options?.actingSuperAdmin)
+    );
 
-    const task = await this.tasksRepository.findByIdAndTenant(taskId, tenantId);
+    const task = await this.tasksRepository.findByIdAndTenant(taskId, effectiveTenantId);
     if (!task) {
       throw ApplicationError.notFound('Task');
     }
-    assertTenantEntityMatch(task.tenant_id, tenantId, 'Task');
+    assertTenantEntityMatch(task.tenant_id, effectiveTenantId, 'Task');
 
     return this.toTaskResponse(task);
   }
@@ -147,12 +181,20 @@ export class TasksService {
     return this.toTaskResponse(created);
   }
 
-  async updateTask(taskId: string, tenantId: string, actorUserId: string, data: UpdateTaskInput) {
-    if (!tenantId) {
-      throw ApplicationError.badRequest('Missing tenant context');
-    }
+  async updateTask(
+    taskId: string,
+    tenantId: string,
+    actorUserId: string,
+    data: UpdateTaskInput,
+    options?: TaskRouteAccessOptions
+  ) {
+    const effectiveTenantId = await this.resolveTaskTenantId(
+      taskId,
+      tenantId,
+      Boolean(options?.actingSuperAdmin)
+    );
 
-    const existing = await this.tasksRepository.findByIdAndTenant(taskId, tenantId);
+    const existing = await this.tasksRepository.findByIdAndTenant(taskId, effectiveTenantId);
     if (!existing) {
       throw ApplicationError.notFound('Task');
     }
@@ -160,7 +202,7 @@ export class TasksService {
     if (data.assigneeId) {
       const assigneeExists = await this.tasksRepository.existsAssigneeInTenant(
         data.assigneeId,
-        tenantId
+        effectiveTenantId
       );
       if (!assigneeExists) {
         throw ApplicationError.badRequest('assignee_id must belong to the current tenant');
@@ -195,7 +237,7 @@ export class TasksService {
       completedAt = undefined;
     }
 
-    const updated = await this.tasksRepository.update(taskId, tenantId, {
+    const updated = await this.tasksRepository.update(taskId, effectiveTenantId, {
       title: data.title,
       description: data.description,
       assignee_id: data.assigneeId,
@@ -210,7 +252,7 @@ export class TasksService {
     });
 
     await this.tasksRepository.createAuditLog({
-      tenantId,
+      tenantId: effectiveTenantId,
       taskId: updated.id,
       actorUserId,
       action: data.status && data.status !== existing.status ? 'TASK_STATUS_CHANGED' : 'TASK_UPDATED',
@@ -224,7 +266,7 @@ export class TasksService {
     const fieldDiff = this.diffTaskRecords(existing, updated);
     if (fieldDiff) {
       await this.tasksRepository.insertTaskHistory({
-        tenantId,
+        tenantId: effectiveTenantId,
         taskId: updated.id,
         changedBy: actorUserId,
         oldValue: fieldDiff.old,
@@ -234,7 +276,7 @@ export class TasksService {
 
     if (existing.status !== 'DONE' && updated.status === 'DONE' && updated.completed_at) {
       domainEvents.emit(DOMAIN_EVENT_TASK_COMPLETED, {
-        tenantId,
+        tenantId: effectiveTenantId,
         taskId: updated.id,
         actorUserId,
         assigneeId: updated.assignee_id,
@@ -250,32 +292,39 @@ export class TasksService {
     ) {
       await this.markAndEmitTaskOverdueIfNeeded({
         taskId: updated.id,
-        tenantId,
+        tenantId: effectiveTenantId,
         actorUserId,
       });
     }
 
-    assertTenantEntityMatch(updated.tenant_id, tenantId, 'Task');
+    assertTenantEntityMatch(updated.tenant_id, effectiveTenantId, 'Task');
     return this.toTaskResponse(updated);
   }
 
-  async deleteTask(taskId: string, tenantId: string, actorUserId: string) {
-    if (!tenantId) {
-      throw ApplicationError.badRequest('Missing tenant context');
-    }
+  async deleteTask(
+    taskId: string,
+    tenantId: string,
+    actorUserId: string,
+    options?: TaskRouteAccessOptions
+  ) {
+    const effectiveTenantId = await this.resolveTaskTenantId(
+      taskId,
+      tenantId,
+      Boolean(options?.actingSuperAdmin)
+    );
 
-    const existing = await this.tasksRepository.findByIdAndTenant(taskId, tenantId);
+    const existing = await this.tasksRepository.findByIdAndTenant(taskId, effectiveTenantId);
     if (!existing) {
       throw ApplicationError.notFound('Task');
     }
 
-    const deleted = await this.tasksRepository.delete(taskId, tenantId);
+    const deleted = await this.tasksRepository.delete(taskId, effectiveTenantId);
     if (!deleted) {
       throw ApplicationError.notFound('Task');
     }
 
     await this.tasksRepository.createAuditLog({
-      tenantId,
+      tenantId: effectiveTenantId,
       taskId: existing.id,
       actorUserId,
       action: 'TASK_DELETED',
@@ -287,17 +336,24 @@ export class TasksService {
     });
   }
 
-  async startTaskTimer(taskId: string, tenantId: string, userId: string) {
-    if (!tenantId) {
-      throw ApplicationError.badRequest('Missing tenant context');
-    }
+  async startTaskTimer(
+    taskId: string,
+    tenantId: string,
+    userId: string,
+    options?: TaskRouteAccessOptions
+  ) {
+    const effectiveTenantId = await this.resolveTaskTenantId(
+      taskId,
+      tenantId,
+      Boolean(options?.actingSuperAdmin)
+    );
 
-    const task = await this.tasksRepository.findByIdAndTenant(taskId, tenantId);
+    const task = await this.tasksRepository.findByIdAndTenant(taskId, effectiveTenantId);
     if (!task) {
       throw ApplicationError.notFound('Task');
     }
 
-    const open = await this.tasksRepository.findAnyOpenTimerForUser(tenantId, userId);
+    const open = await this.tasksRepository.findAnyOpenTimerForUser(effectiveTenantId, userId);
     if (open) {
       if (open.task_id === taskId) {
         throw ApplicationError.conflict('A timer is already running on this task');
@@ -306,7 +362,7 @@ export class TasksService {
     }
 
     const hasOverlapsBeforeStart = await this.tasksRepository.hasOverlappingTimersForUser(
-      tenantId,
+      effectiveTenantId,
       userId
     );
     if (hasOverlapsBeforeStart) {
@@ -314,7 +370,7 @@ export class TasksService {
     }
 
     const row = await this.tasksRepository.insertTimerStart({
-      tenantId,
+      tenantId: effectiveTenantId,
       taskId,
       userId,
     });
@@ -326,30 +382,37 @@ export class TasksService {
     return this.toTimerResponse(row);
   }
 
-  async stopTaskTimer(taskId: string, tenantId: string, userId: string) {
-    if (!tenantId) {
-      throw ApplicationError.badRequest('Missing tenant context');
-    }
+  async stopTaskTimer(
+    taskId: string,
+    tenantId: string,
+    userId: string,
+    options?: TaskRouteAccessOptions
+  ) {
+    const effectiveTenantId = await this.resolveTaskTenantId(
+      taskId,
+      tenantId,
+      Boolean(options?.actingSuperAdmin)
+    );
 
-    const task = await this.tasksRepository.findByIdAndTenant(taskId, tenantId);
+    const task = await this.tasksRepository.findByIdAndTenant(taskId, effectiveTenantId);
     if (!task) {
       throw ApplicationError.notFound('Task');
     }
 
-    const open = await this.tasksRepository.findOpenTimerOnTask(tenantId, taskId, userId);
+    const open = await this.tasksRepository.findOpenTimerOnTask(effectiveTenantId, taskId, userId);
     if (!open) {
       throw ApplicationError.notFound('Active timer');
     }
 
     const stopped = await this.tasksRepository.stopOpenTimerOnTask({
       timerId: open.id,
-      tenantId,
+      tenantId: effectiveTenantId,
       userId,
       taskId,
     });
     if (!stopped) {
       const latest = await this.tasksRepository.findLatestTimerForTaskAndUser(
-        tenantId,
+        effectiveTenantId,
         taskId,
         userId
       );
@@ -364,7 +427,7 @@ export class TasksService {
     }
 
     const hasOverlapsAfterStop = await this.tasksRepository.hasOverlappingTimersForUser(
-      tenantId,
+      effectiveTenantId,
       userId
     );
     if (hasOverlapsAfterStop) {
@@ -374,15 +437,21 @@ export class TasksService {
     return this.toTimerResponse(stopped);
   }
 
-  async getTotalTimeByTask(taskId: string, tenantId: string): Promise<number> {
-    if (!tenantId) {
-      throw ApplicationError.badRequest('Missing tenant context');
-    }
-    const task = await this.tasksRepository.findByIdAndTenant(taskId, tenantId);
+  async getTotalTimeByTask(
+    taskId: string,
+    tenantId: string,
+    options?: TaskRouteAccessOptions
+  ): Promise<number> {
+    const effectiveTenantId = await this.resolveTaskTenantId(
+      taskId,
+      tenantId,
+      Boolean(options?.actingSuperAdmin)
+    );
+    const task = await this.tasksRepository.findByIdAndTenant(taskId, effectiveTenantId);
     if (!task) {
       throw ApplicationError.notFound('Task');
     }
-    return this.tasksRepository.getTotalTimeByTask(tenantId, taskId);
+    return this.tasksRepository.getTotalTimeByTask(effectiveTenantId, taskId);
   }
 
   async getTotalTimeByUser(userId: string, tenantId: string): Promise<number> {
@@ -417,19 +486,21 @@ export class TasksService {
     return emitted;
   }
 
-  async getUnifiedTaskHistory(taskId: string, tenantId: string) {
-    if (!tenantId) {
-      throw ApplicationError.badRequest('Missing tenant context');
-    }
+  async getUnifiedTaskHistory(taskId: string, tenantId: string, options?: TaskRouteAccessOptions) {
+    const effectiveTenantId = await this.resolveTaskTenantId(
+      taskId,
+      tenantId,
+      Boolean(options?.actingSuperAdmin)
+    );
 
-    const task = await this.tasksRepository.findByIdAndTenant(taskId, tenantId);
+    const task = await this.tasksRepository.findByIdAndTenant(taskId, effectiveTenantId);
     if (!task) {
       throw ApplicationError.notFound('Task');
     }
 
     const [histories, audits] = await Promise.all([
-      this.tasksRepository.listTaskHistoryForTask(tenantId, taskId),
-      this.tasksRepository.listAuditLogsForTask(tenantId, taskId),
+      this.tasksRepository.listTaskHistoryForTask(effectiveTenantId, taskId),
+      this.tasksRepository.listAuditLogsForTask(effectiveTenantId, taskId),
     ]);
 
     type UnifiedEntry =

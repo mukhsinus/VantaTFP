@@ -90,6 +90,29 @@ export function requireOwner() {
   return requireTenantRole('owner');
 }
 
+/**
+ * Tenant owner only — **no** `super_admin` bypass (e.g. plan upgrade must be done by the workspace owner).
+ */
+export function requireTenantOwnerStrict() {
+  return async function ownerStrictGuard(
+    request: FastifyRequest,
+    _reply: FastifyReply
+  ): Promise<void> {
+    const user = getUser(request);
+    if (user.system_role === 'super_admin') {
+      throw ApplicationError.forbidden('Only the tenant owner can perform this action');
+    }
+    const tr = user.tenant_role;
+    if (tr !== 'owner') {
+      throw ApplicationError.forbidden('Only the tenant owner can perform this action');
+    }
+    const tenantId = user.tenant_id ?? user.tenantId;
+    if (!tenantId || String(tenantId).trim().length === 0) {
+      throw ApplicationError.forbidden('Tenant context required');
+    }
+  };
+}
+
 /** Owner, manager, or super_admin (typical “management” gate). */
 export function requireManagerOrAbove() {
   return requireTenantRole('owner', 'manager');

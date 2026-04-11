@@ -538,7 +538,13 @@
   },
   "billing": {
     "title": "Billing",
-    "subtitle": "Current plan and subscription limits"
+    "subtitle": "Current plan and subscription limits",
+    "trial": {
+      "bannerDays": "Free trial — {{count}} days left",
+      "bannerLastDay": "Free trial — ends today",
+      "expiredMessage": "Your trial has expired. Upgrade to continue.",
+      "upgradeCta": "Upgrade"
+    }
   },
   "settings": {
     "title": "Settings",
@@ -587,6 +593,19 @@
       "newPassword": "New Password",
       "confirmPassword": "Confirm New Password",
       "update": "Update Password"
+    },
+    "feedback": {
+      "profileSaved": "Profile saved",
+      "workspaceSaved": "Workspace name saved",
+      "notificationsSaved": "Notification preferences saved",
+      "passwordUpdated": "Password updated",
+      "validation": "Please fill in all required fields",
+      "passwordTooShort": "New password must be at least 6 characters",
+      "passwordMismatch": "New password and confirmation do not match",
+      "workspaceNameTooShort": "Workspace name must be at least 2 characters",
+      "workspaceOwnerOnly": "Only the workspace owner (admin) can rename the organization.",
+      "saveFailed": "Could not save changes",
+      "loadFailed": "Could not load settings"
     }
   }
   ,

@@ -18,15 +18,22 @@ export function getBackendReady(): boolean {
   return isBackendReady;
 }
 
+const MAX_BACKEND_WAIT_MS = 15_000;
+
 export function waitUntilBackendReady(): Promise<void> {
   if (isBackendReady) return Promise.resolve();
 
   console.log('API BLOCKED UNTIL READY');
 
   return new Promise((resolve) => {
+    const started = Date.now();
     const interval = window.setInterval(() => {
-      if (isBackendReady) {
+      if (isBackendReady || Date.now() - started >= MAX_BACKEND_WAIT_MS) {
         window.clearInterval(interval);
+        if (!isBackendReady) {
+          console.warn('[backend-readiness] timed out waiting for health gate; unblocking API');
+          markBackendReadyFailOpen();
+        }
         resolve();
       }
     }, 100);

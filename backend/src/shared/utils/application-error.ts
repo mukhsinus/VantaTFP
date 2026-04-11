@@ -51,4 +51,8 @@ export class ApplicationError extends Error {
   static planLimitExceeded(message: string): ApplicationError {
     return new ApplicationError(message, 'PLAN_LIMIT_EXCEEDED', 403);
   }
+
+  static trialExpired(message = 'Trial expired. Please upgrade plan.'): ApplicationError {
+    return new ApplicationError(message, 'PLAN_LIMIT_EXCEEDED', 403);
+  }
 }

@@ -54,6 +54,35 @@ export async function buildApp(): Promise<FastifyInstance> {
   app.get('/health', healthHandler);
   app.get('/api/health', healthHandler);
 
+  /** Browsers often open PORT (3000) directly; the SPA is served by Vite on 5173, not Fastify. */
+  app.get('/', async (_request, reply) => {
+    const web =
+      process.env.PUBLIC_WEB_APP_URL?.trim() ||
+      process.env.FRONTEND_URL?.trim() ||
+      'http://localhost:5173';
+    const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>TFP — API</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 42rem; margin: 2.5rem auto; padding: 0 1rem; color: #111; line-height: 1.5; }
+    code { background: #f4f4f5; padding: 0.15rem 0.35rem; border-radius: 4px; }
+    a { color: #2563eb; }
+  </style>
+</head>
+<body>
+  <h1>TFP backend is running</h1>
+  <p>This URL is the <strong>REST API</strong> (Fastify), not the web app. Open the UI in your browser at:</p>
+  <p><a href="${web}">${web}</a></p>
+  <p>From the repo: <code>cd frontend && npm run dev</code>, then use the URL Vite prints (usually port <strong>5173</strong>).</p>
+  <p>If the UI loads but stays blank, check the browser console. Typical dev issues: <code>localhost</code> vs <code>127.0.0.1</code> for both Vite and <code>CORS_ORIGIN</code>, or <code>VITE_API_BASE_URL</code> pointing at :3000 without matching CORS (Vite defaults to same-origin API in dev unless <code>VITE_DIRECT_API=true</code>).</p>
+</body>
+</html>`;
+    return reply.type('text/html').send(html);
+  });
+
   // ── Infrastructure plugins ────────────────────────────────────────────────
   await app.register(helmetPlugin);
   await app.register(corsPlugin);

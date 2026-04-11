@@ -9,6 +9,7 @@ import { useIsMobile } from '@shared/hooks/useIsMobile';
 import { useSidebarStore } from '@app/store/sidebar.store';
 import { useAuthStore } from '@app/store/auth.store';
 import { useNotificationsRealtime } from '@features/notifications/hooks/useNotifications';
+import { TenantTrialExperience } from '@features/billing/components/TenantTrialExperience';
 import styles from './AppLayout.module.css';
 
 export function AppLayout() {
@@ -32,6 +33,7 @@ export function AppLayout() {
         <Topbar />
         
         <main className={styles.mainContent}>
+          {user ? <TenantTrialExperience /> : null}
           <div className="page-container">
             {!user ? (
               <Skeleton height={200} borderRadius="var(--radius-lg)" />

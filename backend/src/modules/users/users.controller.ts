@@ -11,6 +11,9 @@ import {
   updateUserSchema,
   userIdParamSchema,
   listUsersQuerySchema,
+  updateMyProfileSchema,
+  updateMyPasswordSchema,
+  updateMyNotificationsSchema,
 } from './users.schema.js';
 
 export async function usersRoutes(app: FastifyInstance): Promise<void> {
@@ -27,6 +30,75 @@ export async function usersRoutes(app: FastifyInstance): Promise<void> {
     async (request: FastifyRequest, reply: FastifyReply) => {
       const me = await usersService.getMe(request.user);
       return sendSuccess(reply, me);
+    }
+  );
+
+  /** Canonical self-service profile update (`PATCH /api/v1/users/profile`). */
+  app.patch(
+    '/profile',
+    { preHandler: [authenticate] },
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      console.log('req.body', request.body);
+      const body = updateMyProfileSchema.parse(request.body);
+      const me = await usersService.updateMyProfile(request.user, body);
+      return sendSuccess(reply, me);
+    }
+  );
+
+  /** Canonical self-service password update (`PATCH /api/v1/users/password`). */
+  app.patch(
+    '/password',
+    { preHandler: [authenticate] },
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      const raw = request.body;
+      console.log(
+        'req.body',
+        raw && typeof raw === 'object' && !Array.isArray(raw)
+          ? { ...raw, currentPassword: '[REDACTED]', newPassword: '[REDACTED]' }
+          : raw
+      );
+      const body = updateMyPasswordSchema.parse(raw);
+      await usersService.updateMyPassword(request.user, body);
+      return sendSuccess(reply, { ok: true });
+    }
+  );
+
+  app.patch(
+    '/me/profile',
+    { preHandler: [authenticate] },
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      console.log('req.body', request.body);
+      const body = updateMyProfileSchema.parse(request.body);
+      const me = await usersService.updateMyProfile(request.user, body);
+      return sendSuccess(reply, me);
+    }
+  );
+
+  app.patch(
+    '/me/password',
+    { preHandler: [authenticate] },
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      const raw = request.body;
+      console.log(
+        'req.body',
+        raw && typeof raw === 'object' && !Array.isArray(raw)
+          ? { ...raw, currentPassword: '[REDACTED]', newPassword: '[REDACTED]' }
+          : raw
+      );
+      const body = updateMyPasswordSchema.parse(raw);
+      await usersService.updateMyPassword(request.user, body);
+      return sendSuccess(reply, { ok: true });
+    }
+  );
+
+  app.patch(
+    '/me/notifications',
+    { preHandler: [authenticate] },
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      console.log('req.body', request.body);
+      const body = updateMyNotificationsSchema.parse(request.body);
+      const notifications = await usersService.updateMyNotifications(request.user, body);
+      return sendSuccess(reply, { notifications });
     }
   );
 

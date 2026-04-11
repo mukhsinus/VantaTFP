@@ -7,7 +7,8 @@ import { CreateTaskModal } from '@features/tasks/components/CreateTaskModal';
 import { usePermissions } from '@shared/hooks/useCanPerform';
 import { useIsMobile } from '@shared/hooks/useIsMobile';
 import type { TaskUiModel, TaskStatus, TaskPriority } from '@entities/task/task.types';
-import { useBillingSnapshot } from '@features/billing/hooks/useBilling';
+import { TASK_STATUS_ALLOWED_NEXT } from '@entities/task/task.transitions';
+import { useBilling } from '@features/billing/hooks/useBilling';
 import { useCurrentUser } from '@shared/hooks/useCurrentUser';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -50,13 +51,16 @@ export function TasksPage() {
 
 
   const { tasks, total, isLoading, isError, refetch } = useTasks();
-  const { data: billing } = useBillingSnapshot();
+  const { data: billing } = useBilling();
   const { can } = usePermissions();
 
   const overdueTasks = tasks.filter((task) => task.overdue);
   const taskLimitReached =
-    billing?.limits.tasks !== null && billing?.limits.tasks !== undefined
-      ? total >= billing.limits.tasks
+    billing &&
+    billing.plan !== 'platform' &&
+    billing.tasks_limit !== null &&
+    billing.tasks_limit !== undefined
+      ? total >= billing.tasks_limit
       : false;
 
   if (isLoading) return <PageSkeleton />;
@@ -253,7 +257,12 @@ function MobileTaskCard({ task }: { task: TaskUiModel }) {
   const { updateStatus } = useUpdateTaskStatus();
   const { can } = usePermissions();
 
-  const statusOptions = STATUS_COLUMNS.map((col) => ({ value: col.id, label: t(col.labelKey) }));
+  const allowedNext = TASK_STATUS_ALLOWED_NEXT[task.status] ?? [];
+  const optionIds = new Set<TaskStatus>([task.status, ...allowedNext]);
+  const statusOptions = STATUS_COLUMNS.filter((col) => optionIds.has(col.id)).map((col) => ({
+    value: col.id,
+    label: t(col.labelKey),
+  }));
 
   return (
     <Card style={{ width: '100%' }}>
@@ -281,7 +290,11 @@ function MobileTaskCard({ task }: { task: TaskUiModel }) {
           label={t('common.fields.status')}
           value={task.status}
           options={statusOptions}
-          onChange={(e) => updateStatus({ taskId: task.id, status: e.target.value as TaskStatus, taskTitle: task.title })}
+          onChange={(e) => {
+            const next = e.target.value as TaskStatus;
+            if (next === task.status) return;
+            updateStatus({ taskId: task.id, status: next, taskTitle: task.title });
+          }}
         />
       )}
     </Card>
@@ -387,8 +400,9 @@ function TaskCard({ task, canChangeStatus }: { task: TaskUiModel; canChangeStatu
         <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
           <Badge variant={PRIORITY_VARIANT[task.priority]}>{t(PRIORITY_LABEL_KEY[task.priority])}</Badge>
 
-          {/* Status action menu — hidden for roles without task:changeStatus */}
-          {canChangeStatus && <div style={{ position: 'relative' }}>
+          {/* Status menu only when at least one valid transition exists (e.g. not from DONE). */}
+          {canChangeStatus && (TASK_STATUS_ALLOWED_NEXT[task.status] ?? []).length > 0 && (
+          <div style={{ position: 'relative' }}>
             <button
               onClick={(e) => { e.stopPropagation(); setMenuOpen((o) => !o); }}
               style={{
@@ -433,7 +447,10 @@ function TaskCard({ task, canChangeStatus }: { task: TaskUiModel; canChangeStatu
                 <p style={{ padding: '6px 10px 4px', fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                   {t('tasks.moveTo')}
                 </p>
-                {STATUS_COLUMNS.filter((col) => col.id !== task.status).map((col) => (
+                {(TASK_STATUS_ALLOWED_NEXT[task.status] ?? [])
+                  .map((targetId) => STATUS_COLUMNS.find((c) => c.id === targetId))
+                  .filter((col): col is (typeof STATUS_COLUMNS)[number] => Boolean(col))
+                  .map((col) => (
                   <button
                     key={col.id}
                     onClick={(e) => {
@@ -464,7 +481,8 @@ function TaskCard({ task, canChangeStatus }: { task: TaskUiModel; canChangeStatu
                 ))}
               </div>
             )}
-          </div>}
+          </div>
+          )}
         </div>
       </div>
 
@@ -524,6 +542,7 @@ function StatusBadge({ status }: { status: TaskStatus }) {
     IN_PROGRESS: { labelKey: 'status.inProgress', variant: 'warning'  },
     IN_REVIEW:   { labelKey: 'status.inReview',   variant: 'accent'   },
     DONE:        { labelKey: 'status.done',       variant: 'success'  },
+    CANCELLED:   { labelKey: 'status.cancelled',  variant: 'default'  },
   };
   const { labelKey, variant } = map[status];
   return <Badge variant={variant} dot>{t(labelKey)}</Badge>;

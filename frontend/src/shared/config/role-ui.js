@@ -46,7 +46,7 @@ const ALLOWED_ROLES_BY_ROUTE = {
     '/settings': ['ADMIN', 'MANAGER', 'EMPLOYEE'],
 };
 export function getNavByRole(role) {
-    return NAV_BY_ROLE[role];
+    return NAV_BY_ROLE[role] ?? NAV_BY_ROLE.EMPLOYEE;
 }
 export function canAccessRoute(role, path) {
     const basePath = `/${path.split('/').filter(Boolean)[0] ?? ''}`;
@@ -56,5 +56,8 @@ export function canAccessRoute(role, path) {
     return allowed.includes(role);
 }
 export function getHomeRouteByRole(role) {
-    return NAV_BY_ROLE[role][0]?.to ?? '/tasks';
+    const nav = NAV_BY_ROLE[role];
+    if (!nav?.length)
+        return '/tasks';
+    return nav[0]?.to ?? '/tasks';
 }

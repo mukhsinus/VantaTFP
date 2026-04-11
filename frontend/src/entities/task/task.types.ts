@@ -1,6 +1,11 @@
 // ─── Shared enums (aligned with backend schema) ───────────────────────────────
 
-export type TaskStatus   = 'TODO' | 'IN_PROGRESS' | 'IN_REVIEW' | 'DONE';
+export type TaskStatus =
+  | 'TODO'
+  | 'IN_PROGRESS'
+  | 'IN_REVIEW'
+  | 'DONE'
+  | 'CANCELLED';
 export type TaskPriority = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
 
 // ─── Backend API DTO ──────────────────────────────────────────────────────────

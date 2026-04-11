@@ -1,8 +1,11 @@
-import { apiClient } from '@shared/api/client';
-import { API } from '@shared/api/endpoints';
-import type { BillingSnapshotDto } from './billing.types';
+import { billingService } from './billing.service';
 
+/**
+ * @deprecated Prefer `billingService` from `@entities/billing/billing.service`.
+ */
 export const billingApi = {
-  snapshot: (): Promise<BillingSnapshotDto> =>
-    apiClient.get<BillingSnapshotDto>(API.billing.snapshot),
+  snapshot: billingService.getSnapshot,
+  getCurrent: billingService.getCurrent,
+  getPlans: billingService.getPlans,
+  upgrade: billingService.upgrade,
 };

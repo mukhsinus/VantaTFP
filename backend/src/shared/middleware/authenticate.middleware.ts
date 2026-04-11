@@ -56,6 +56,11 @@ export async function authenticateMiddleware(
 
     const tenantId = request.tenantId;
     if (tenantId && request.user.system_role !== 'super_admin') {
+      await request.server.billing.assertTenantSubscriptionAllowsRequest(
+        tenantId,
+        request.method,
+        request.url
+      );
       await request.server.billing.enforceTenantApiRate(request.url, tenantId);
     }
   } catch (err) {

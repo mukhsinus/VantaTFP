@@ -7,7 +7,8 @@ import { useUpdateTaskStatus } from '@features/tasks/hooks/useUpdateTaskStatus';
 import { CreateTaskModal } from '@features/tasks/components/CreateTaskModal';
 import { usePermissions } from '@shared/hooks/useCanPerform';
 import { useIsMobile } from '@shared/hooks/useIsMobile';
-import { useBillingSnapshot } from '@features/billing/hooks/useBilling';
+import { TASK_STATUS_ALLOWED_NEXT } from '@entities/task/task.transitions';
+import { useBilling } from '@features/billing/hooks/useBilling';
 import { useCurrentUser } from '@shared/hooks/useCurrentUser';
 // ─── Constants ────────────────────────────────────────────────────────────────
 const STATUS_COLUMNS = [
@@ -39,11 +40,14 @@ export function TasksPage() {
     const taskTitle = role === 'EMPLOYEE' ? 'My Tasks' : role === 'MANAGER' ? 'Team Tasks' : t('tasks.title');
     const canSwitchView = role !== 'EMPLOYEE';
     const { tasks, total, isLoading, isError, refetch } = useTasks();
-    const { data: billing } = useBillingSnapshot();
+    const { data: billing } = useBilling();
     const { can } = usePermissions();
     const overdueTasks = tasks.filter((task) => task.overdue);
-    const taskLimitReached = billing?.limits.tasks !== null && billing?.limits.tasks !== undefined
-        ? total >= billing.limits.tasks
+    const taskLimitReached = billing &&
+        billing.plan !== 'platform' &&
+        billing.tasks_limit !== null &&
+        billing.tasks_limit !== undefined
+        ? total >= billing.tasks_limit
         : false;
     if (isLoading)
         return _jsx(PageSkeleton, {});
@@ -103,8 +107,18 @@ function MobileTaskCard({ task }) {
     const { t } = useTranslation();
     const { updateStatus } = useUpdateTaskStatus();
     const { can } = usePermissions();
-    const statusOptions = STATUS_COLUMNS.map((col) => ({ value: col.id, label: t(col.labelKey) }));
-    return (_jsxs(Card, { style: { width: '100%' }, children: [_jsxs("div", { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10, marginBottom: 10 }, children: [_jsxs("div", { style: { minWidth: 0 }, children: [_jsx("p", { style: { fontSize: 'var(--text-md)', fontWeight: 600, color: 'var(--color-text-primary)', lineHeight: 1.35 }, children: task.title }), _jsx("p", { style: { fontSize: 'var(--text-sm)', color: 'var(--color-text-secondary)', marginTop: 4 }, children: task.assignee })] }), _jsx(Badge, { variant: PRIORITY_VARIANT[task.priority], children: t(PRIORITY_LABEL_KEY[task.priority]) })] }), _jsxs("div", { style: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }, children: [_jsxs("span", { style: { fontSize: 'var(--text-sm)', color: task.overdue ? 'var(--color-danger)' : 'var(--color-text-secondary)', fontWeight: task.overdue ? 600 : 400 }, children: [task.overdue ? '⚠ ' : '', task.dueDate] }), _jsx(StatusBadge, { status: task.status })] }), can('task:changeStatus') && (_jsx(Select, { label: t('common.fields.status'), value: task.status, options: statusOptions, onChange: (e) => updateStatus({ taskId: task.id, status: e.target.value, taskTitle: task.title }) }))] }));
+    const allowedNext = TASK_STATUS_ALLOWED_NEXT[task.status] ?? [];
+    const optionIds = new Set([task.status, ...allowedNext]);
+    const statusOptions = STATUS_COLUMNS.filter((col) => optionIds.has(col.id)).map((col) => ({
+        value: col.id,
+        label: t(col.labelKey),
+    }));
+    return (_jsxs(Card, { style: { width: '100%' }, children: [_jsxs("div", { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10, marginBottom: 10 }, children: [_jsxs("div", { style: { minWidth: 0 }, children: [_jsx("p", { style: { fontSize: 'var(--text-md)', fontWeight: 600, color: 'var(--color-text-primary)', lineHeight: 1.35 }, children: task.title }), _jsx("p", { style: { fontSize: 'var(--text-sm)', color: 'var(--color-text-secondary)', marginTop: 4 }, children: task.assignee })] }), _jsx(Badge, { variant: PRIORITY_VARIANT[task.priority], children: t(PRIORITY_LABEL_KEY[task.priority]) })] }), _jsxs("div", { style: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }, children: [_jsxs("span", { style: { fontSize: 'var(--text-sm)', color: task.overdue ? 'var(--color-danger)' : 'var(--color-text-secondary)', fontWeight: task.overdue ? 600 : 400 }, children: [task.overdue ? '⚠ ' : '', task.dueDate] }), _jsx(StatusBadge, { status: task.status })] }), can('task:changeStatus') && (_jsx(Select, { label: t('common.fields.status'), value: task.status, options: statusOptions, onChange: (e) => {
+                    const next = e.target.value;
+                    if (next === task.status)
+                        return;
+                    updateStatus({ taskId: task.id, status: next, taskTitle: task.title });
+                } }))] }));
 }
 // ─── Board view ───────────────────────────────────────────────────────────────
 function BoardView({ tasks }) {
@@ -151,7 +165,7 @@ function TaskCard({ task, canChangeStatus }) {
                 ? '0 0 0 2px var(--color-danger-subtle)'
                 : hovered ? 'var(--shadow-md)' : 'var(--shadow-xs)',
             transform: hovered ? 'translateY(-1px)' : 'none',
-        }, onMouseEnter: () => setHovered(true), onMouseLeave: () => { setHovered(false); setMenuOpen(false); }, children: [_jsxs("div", { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8, marginBottom: 8 }, children: [_jsx("p", { style: { fontSize: 'var(--text-sm)', fontWeight: 500, color: 'var(--color-text-primary)', lineHeight: 1.4 }, children: task.title }), _jsxs("div", { style: { display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }, children: [_jsx(Badge, { variant: PRIORITY_VARIANT[task.priority], children: t(PRIORITY_LABEL_KEY[task.priority]) }), canChangeStatus && _jsxs("div", { style: { position: 'relative' }, children: [_jsx("button", { onClick: (e) => { e.stopPropagation(); setMenuOpen((o) => !o); }, style: {
+        }, onMouseEnter: () => setHovered(true), onMouseLeave: () => { setHovered(false); setMenuOpen(false); }, children: [_jsxs("div", { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8, marginBottom: 8 }, children: [_jsx("p", { style: { fontSize: 'var(--text-sm)', fontWeight: 500, color: 'var(--color-text-primary)', lineHeight: 1.4 }, children: task.title }), _jsxs("div", { style: { display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }, children: [_jsx(Badge, { variant: PRIORITY_VARIANT[task.priority], children: t(PRIORITY_LABEL_KEY[task.priority]) }), canChangeStatus && (TASK_STATUS_ALLOWED_NEXT[task.status] ?? []).length > 0 && (_jsxs("div", { style: { position: 'relative' }, children: [_jsx("button", { onClick: (e) => { e.stopPropagation(); setMenuOpen((o) => !o); }, style: {
                                             width: 22,
                                             height: 22,
                                             display: hovered || menuOpen ? 'flex' : 'none',
@@ -175,7 +189,10 @@ function TaskCard({ task, canChangeStatus }) {
                                             zIndex: 'var(--z-dropdown)',
                                             overflow: 'hidden',
                                             minWidth: 160,
-                                        }, children: [_jsx("p", { style: { padding: '6px 10px 4px', fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }, children: t('tasks.moveTo') }), STATUS_COLUMNS.filter((col) => col.id !== task.status).map((col) => (_jsxs("button", { onClick: (e) => {
+                                        }, children: [_jsx("p", { style: { padding: '6px 10px 4px', fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }, children: t('tasks.moveTo') }), (TASK_STATUS_ALLOWED_NEXT[task.status] ?? [])
+                                                .map((targetId) => STATUS_COLUMNS.find((c) => c.id === targetId))
+                                                .filter((col) => Boolean(col))
+                                                .map((col) => (_jsxs("button", { onClick: (e) => {
                                                     e.stopPropagation();
                                                     updateStatus({ taskId: task.id, status: col.id, taskTitle: task.title });
                                                     setMenuOpen(false);
@@ -192,7 +209,7 @@ function TaskCard({ task, canChangeStatus }) {
                                                     color: 'var(--color-text-primary)',
                                                     textAlign: 'left',
                                                     transition: 'background var(--transition-fast)',
-                                                }, onMouseEnter: (e) => (e.currentTarget.style.background = 'var(--color-bg-subtle)'), onMouseLeave: (e) => (e.currentTarget.style.background = 'transparent'), children: [_jsx("span", { style: { width: 7, height: 7, borderRadius: '50%', background: col.color, flexShrink: 0 } }), t(col.labelKey)] }, col.id)))] }))] })] })] }), _jsxs("div", { style: { display: 'flex', alignItems: 'center', justifyContent: 'space-between' }, children: [_jsx(Avatar, { name: task.assignee, size: "xs" }), _jsxs("span", { style: {
+                                                }, onMouseEnter: (e) => (e.currentTarget.style.background = 'var(--color-bg-subtle)'), onMouseLeave: (e) => (e.currentTarget.style.background = 'transparent'), children: [_jsx("span", { style: { width: 7, height: 7, borderRadius: '50%', background: col.color, flexShrink: 0 } }), t(col.labelKey)] }, col.id)))] }))] }))] })] }), _jsxs("div", { style: { display: 'flex', alignItems: 'center', justifyContent: 'space-between' }, children: [_jsx(Avatar, { name: task.assignee, size: "xs" }), _jsxs("span", { style: {
                             fontSize: 'var(--text-xs)',
                             color: task.overdue ? 'var(--color-danger)' : 'var(--color-text-muted)',
                             fontWeight: task.overdue ? 600 : 400,
@@ -225,6 +242,7 @@ function StatusBadge({ status }) {
         IN_PROGRESS: { labelKey: 'status.inProgress', variant: 'warning' },
         IN_REVIEW: { labelKey: 'status.inReview', variant: 'accent' },
         DONE: { labelKey: 'status.done', variant: 'success' },
+        CANCELLED: { labelKey: 'status.cancelled', variant: 'default' },
     };
     const { labelKey, variant } = map[status];
     return _jsx(Badge, { variant: variant, dot: true, children: t(labelKey) });

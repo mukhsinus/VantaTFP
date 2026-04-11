@@ -3,6 +3,8 @@ import type { Pool } from 'pg';
 export interface BillingSubscriptionCaps {
   planColumn: boolean;
   maxUsersColumn: boolean;
+  /** `trial_ends_at` + trial lifecycle (migration `20260411160000_billing_trial_and_plan_limits`) */
+  trialEndsAtColumn: boolean;
 }
 
 let cached: BillingSubscriptionCaps | null = null;
@@ -19,7 +21,7 @@ export function getBillingSubscriptionCaps(db: Pool): Promise<BillingSubscriptio
   if (!inflight) {
     inflight = (async () => {
       try {
-        const r = await db.query<{ pc: boolean; mc: boolean }>(
+        const r = await db.query<{ pc: boolean; mc: boolean; tc: boolean }>(
           `
           SELECT
             EXISTS (
@@ -35,15 +37,23 @@ export function getBillingSubscriptionCaps(db: Pool): Promise<BillingSubscriptio
               WHERE table_schema = 'public'
                 AND table_name = 'subscriptions'
                 AND column_name = 'max_users'
-            ) AS mc
+            ) AS mc,
+            EXISTS (
+              SELECT 1
+              FROM information_schema.columns
+              WHERE table_schema = 'public'
+                AND table_name = 'subscriptions'
+                AND column_name = 'trial_ends_at'
+            ) AS tc
           `
         );
         cached = {
           planColumn: Boolean(r.rows[0]?.pc),
           maxUsersColumn: Boolean(r.rows[0]?.mc),
+          trialEndsAtColumn: Boolean(r.rows[0]?.tc),
         };
       } catch {
-        cached = { planColumn: false, maxUsersColumn: false };
+        cached = { planColumn: false, maxUsersColumn: false, trialEndsAtColumn: false };
       }
       return cached;
     })();

@@ -1,5 +1,11 @@
-import React, { useEffect, useRef } from 'react';
-import { MutationCache, QueryCache, QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import React, { useEffect } from 'react';
+import {
+  MutationCache,
+  QueryCache,
+  QueryClient,
+  QueryClientProvider,
+  useQueryClient,
+} from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { ApiError } from '@shared/api/client';
 import { authApi } from '@entities/auth/auth.api';
@@ -11,8 +17,21 @@ import {
   markBackendReadyFromHealth,
 } from '@shared/api/backend-readiness';
 
-let sessionBootstrapDone = false;
-let sessionBootstrapPromise: Promise<void> | null = null;
+/** Stable key for the current persisted session (access token preferred). */
+function sessionBootstrapKey(
+  accessToken: string | null,
+  refreshToken: string | null
+): string | null {
+  if (!accessToken && !refreshToken) return null;
+  if (accessToken) return `a:${accessToken}`;
+  return `r:${refreshToken}`;
+}
+
+/** Which session key has finished bootstrap (success or terminal failure). */
+let sessionBootstrapCompletedFor: string | null = null;
+let sessionBootstrapInFlight: Promise<void> | null = null;
+
+const SESSION_BOOTSTRAP_TIMEOUT_MS = 25_000;
 
 function toErrorMessage(error: unknown): string {
   if (error instanceof ApiError) return error.message;
@@ -112,11 +131,13 @@ function BackendStartupGate({ children }: { children: React.ReactNode }) {
     }, 2000);
 
     const run = async () => {
-      const healthPaths = ['/api/health', '/health'];
+      const configuredBase = (import.meta.env.VITE_API_BASE_URL as string | undefined)?.trim().replace(/\/$/, '');
+      const healthPaths = configuredBase
+        ? [`${configuredBase}/api/health`, `${configuredBase}/health`]
+        : ['/api/health', '/health'];
       for (const path of healthPaths) {
         try {
           const response = await fetch(path, { method: 'GET' });
-          console.log('Health check response', response.status, path);
           if (response.ok) {
             markBackendReadyFromHealth();
             markReady();
@@ -137,10 +158,6 @@ function BackendStartupGate({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
-  useEffect(() => {
-    console.log('Backend gate ready:', isReady);
-  }, [isReady]);
-
   return (
     <>
       {!isReady && <OverlayLoader />}
@@ -156,28 +173,41 @@ function AuthSessionBootstrap() {
   const setUser = useAuthStore((s) => s.setUser);
   const clearAuth = useAuthStore((s) => s.clearAuth);
   const setSessionLoading = useAuthStore((s) => s.setSessionLoading);
-  const bootstrappedRef = useRef(false);
 
   useEffect(() => {
-    if (!isHydrated || bootstrappedRef.current) return;
-    bootstrappedRef.current = true;
+    if (!isHydrated) return;
 
-    if (sessionBootstrapDone) {
-      setSessionLoading(false);
+    const releaseSessionGate = () => setSessionLoading(false);
+    const key = sessionBootstrapKey(accessToken, refreshToken);
+
+    if (!key) {
+      sessionBootstrapCompletedFor = null;
+      releaseSessionGate();
       return;
     }
 
-    if (!accessToken && !refreshToken) {
-      sessionBootstrapDone = true;
-      setSessionLoading(false);
+    if (sessionBootstrapCompletedFor === key) {
+      releaseSessionGate();
       return;
     }
 
     let cancelled = false;
+
     const runBootstrap = async () => {
       setSessionLoading(true);
       try {
-        const me = await authApi.me();
+        let bootstrapTimeoutId = 0;
+        const me = await Promise.race([
+          authApi.me().finally(() => {
+            if (bootstrapTimeoutId) window.clearTimeout(bootstrapTimeoutId);
+          }),
+          new Promise<never>((_, reject) => {
+            bootstrapTimeoutId = window.setTimeout(() => {
+              reject(new ApiError(408, 'TIMEOUT', 'Session bootstrap timed out'));
+            }, SESSION_BOOTSTRAP_TIMEOUT_MS);
+          }),
+        ]);
+
         if (cancelled) return;
 
         const currentUserBeforeNormalize = useAuthStore.getState().user;
@@ -187,42 +217,55 @@ function AuthSessionBootstrap() {
           const currentUser = useAuthStore.getState().user;
           if (!currentUser) {
             clearAuth();
+            sessionBootstrapCompletedFor = null;
+            return;
           }
-          sessionBootstrapDone = true;
+          sessionBootstrapCompletedFor = key;
           return;
         }
 
-        console.log('BOOTSTRAP USER BEFORE', useAuthStore.getState().user);
-
         const currentUser = useAuthStore.getState().user;
         if (!currentUser) {
-          console.log('BOOTSTRAP SET USER', normalized);
           setUser(normalized);
         }
 
-        console.log('BOOTSTRAP USER AFTER', useAuthStore.getState().user);
-        sessionBootstrapDone = true;
+        sessionBootstrapCompletedFor = key;
       } catch (error) {
         if (cancelled) return;
+
         if (error instanceof ApiError && error.statusCode === 401) {
           clearAuth();
-          sessionBootstrapDone = true;
+          sessionBootstrapCompletedFor = null;
+          return;
         }
+
+        if (error instanceof ApiError && error.statusCode === 408) {
+          if (!useAuthStore.getState().user) {
+            clearAuth();
+            sessionBootstrapCompletedFor = null;
+            return;
+          }
+          sessionBootstrapCompletedFor = key;
+          return;
+        }
+
+        sessionBootstrapCompletedFor = key;
       } finally {
-        if (!cancelled) setSessionLoading(false);
+        releaseSessionGate();
       }
     };
 
-    if (!sessionBootstrapPromise) {
-      sessionBootstrapPromise = runBootstrap().finally(() => {
-        sessionBootstrapPromise = null;
+    if (!sessionBootstrapInFlight) {
+      sessionBootstrapInFlight = runBootstrap().finally(() => {
+        sessionBootstrapInFlight = null;
       });
     } else {
       setSessionLoading(true);
-      void sessionBootstrapPromise.finally(() => {
-        if (!cancelled) setSessionLoading(false);
+      void sessionBootstrapInFlight.finally(() => {
+        releaseSessionGate();
       });
     }
+
     return () => {
       cancelled = true;
     };
@@ -231,14 +274,72 @@ function AuthSessionBootstrap() {
   return null;
 }
 
-export function Providers({ children }: ProvidersProps) {
-  const user = useAuthStore((s) => s.user);
-  console.log('APP RENDER');
-  console.log('USER STATE', user);
+/** Drop cached API state when the session ends so stale data never renders after logout/401. */
+/**
+ * Ensures `isHydrated` flips true even if `onRehydrateStorage` never runs (storage/quirks),
+ * so AuthGuard does not show the loading screen forever.
+ */
+function AuthPersistHydrationBridge() {
+  useEffect(() => {
+    const store = useAuthStore as unknown as {
+      persist?: {
+        hasHydrated?: () => boolean;
+        onFinishHydration?: (fn: () => void) => () => void;
+      };
+    };
+    const persist = store.persist;
+    const mark = () => {
+      if (!useAuthStore.getState().isHydrated) {
+        useAuthStore.getState().setHydrated();
+      }
+    };
 
+    if (persist?.hasHydrated?.()) {
+      mark();
+      return undefined;
+    }
+
+    const unsub = persist?.onFinishHydration?.(mark);
+    const tid = window.setTimeout(() => {
+      if (!useAuthStore.getState().isHydrated) {
+        console.warn(
+          '[TFP auth] Persist did not finish in time; unlocking the shell. Sign in again if your session was lost.'
+        );
+        mark();
+      }
+    }, 4000);
+
+    return () => {
+      unsub?.();
+      window.clearTimeout(tid);
+    };
+  }, []);
+
+  return null;
+}
+
+function AuthQueryResetOnLogout() {
+  const queryClient = useQueryClient();
+
+  useEffect(() => {
+    let prevToken = useAuthStore.getState().accessToken;
+    return useAuthStore.subscribe((state) => {
+      if (prevToken && !state.accessToken) {
+        void queryClient.clear();
+      }
+      prevToken = state.accessToken;
+    });
+  }, [queryClient]);
+
+  return null;
+}
+
+export function Providers({ children }: ProvidersProps) {
   return (
     <QueryClientProvider client={queryClient}>
       <BackendStartupGate>
+        <AuthPersistHydrationBridge />
+        <AuthQueryResetOnLogout />
         <AuthSessionBootstrap />
         {children}
       </BackendStartupGate>

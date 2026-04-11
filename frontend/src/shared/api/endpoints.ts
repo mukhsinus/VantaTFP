@@ -10,7 +10,10 @@ export const API = {
   },
 
   users: {
-    me:     '/api/v1/users/me',
+    me:             '/api/v1/users/me',
+    profile:        '/api/v1/users/profile',
+    password:       '/api/v1/users/password',
+    notifications:  '/api/v1/users/me/notifications',
     list:   '/api/v1/users',
     detail: (userId: string) => `/api/v1/users/${userId}`,
   },
@@ -64,6 +67,9 @@ export const API = {
 
   billing: {
     snapshot: '/api/v1/billing/snapshot',
+    current: '/api/v1/billing/current',
+    plans: '/api/v1/billing/plans',
+    upgrade: '/api/v1/billing/upgrade',
   },
 
   /** Platform operator API (`requireSystemRole('super_admin')`). */

@@ -233,7 +233,13 @@
   },
   "billing": {
     "title": "Billing",
-    "subtitle": "Joriy tarif va obuna limitlari"
+    "subtitle": "Joriy tarif va obuna limitlari",
+    "trial": {
+      "bannerDays": "Bepul sinov — {{count}} kun qoldi",
+      "bannerLastDay": "Bepul sinov — bugun tugaydi",
+      "expiredMessage": "Sinov muddati tugadi. Davom etish uchun tarifni yangilang.",
+      "upgradeCta": "Yangilash"
+    }
   },
   "settings": {
     "title": "Sozlamalar",
@@ -276,6 +282,19 @@
       "newPassword": "Yangi parol",
       "confirmPassword": "Yangi parolni tasdiqlang",
       "update": "Parolni yangilash"
+    },
+    "feedback": {
+      "profileSaved": "Profil saqlandi",
+      "workspaceSaved": "Ish maydoni nomi saqlandi",
+      "notificationsSaved": "Bildirishnoma sozlamalari saqlandi",
+      "passwordUpdated": "Parol yangilandi",
+      "validation": "Barcha majburiy maydonlarni to‘ldiring",
+      "passwordTooShort": "Yangi parol kamida 6 belgidan iborat bo‘lishi kerak",
+      "passwordMismatch": "Yangi parol va tasdiq mos kelmaydi",
+      "workspaceNameTooShort": "Nom kamida 2 belgidan iborat bo‘lishi kerak",
+      "workspaceOwnerOnly": "Tashkilot nomini faqat egasi (admin) o‘zgartirishi mumkin.",
+      "saveFailed": "Saqlab bo‘lmadi",
+      "loadFailed": "Sozlamalarni yuklab bo‘lmadi"
     }
   }
 }
