@@ -10,6 +10,7 @@ export const authApi = {
      * Returns access token, refresh token, and the full user object.
      */
     login: (payload) => apiClient.post(API.auth.login, payload),
+    refresh: (refreshToken) => apiClient.post(API.auth.refresh, { refreshToken }),
     /**
      * Fetches the authenticated user's profile.
      * Used for session bootstrap to re-hydrate user details from a stored token.

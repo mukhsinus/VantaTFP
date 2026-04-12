@@ -1,0 +1,2 @@
+# Daily database backup at 03:00 server time
+0 3 * * * cd /path/to/TFP/backend && DB_URL="$DB_URL" BACKUP_PATH="backups" npm run backup >> logs/backup.log 2>&1

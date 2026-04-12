@@ -13,6 +13,7 @@ html {
   -moz-osx-font-smoothing: grayscale;
   width: 100%;
   max-width: 100%;
+  min-height: 100%;
   overflow-x: hidden;
 }
 
@@ -24,13 +25,22 @@ body {
   line-height: var(--leading-normal);
   width: 100%;
   max-width: 100%;
+  min-height: 100%;
   overflow-x: hidden;
 }
 
 #root {
   width: 100%;
   max-width: 100%;
+  min-height: 100%;
   overflow-x: clip;
+}
+
+img,
+svg,
+video,
+canvas {
+  max-width: 100%;
 }
 
 a {
@@ -144,4 +154,22 @@ input, textarea, select {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.page-container {
+  width: 100%;
+  max-width: 1180px;
+  margin: 0 auto;
+}
+
+.responsive-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: var(--space-3);
+}
+
+@media (min-width: 768px) {
+  .responsive-grid {
+    gap: var(--space-4);
+  }
 }

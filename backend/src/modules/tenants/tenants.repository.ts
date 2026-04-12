@@ -13,45 +13,40 @@ export interface TenantRecord {
 export class TenantsRepository {
   constructor(private readonly db: Pool) {}
 
-  async findAll(): Promise<TenantRecord[]> {
+  async findActiveById(tenantId: string): Promise<TenantRecord | null> {
     const result = await this.db.query<TenantRecord>(
       `
       SELECT id, name, slug, plan, is_active, created_at, updated_at
       FROM tenants
-      WHERE is_active = TRUE
-      ORDER BY created_at DESC
-      `
-    );
-    return result.rows;
-  }
-
-  async findAllPaginated(
-    page: number = 1,
-    limit: number = 20
-  ): Promise<TenantRecord[]> {
-    const offset = (page - 1) * limit;
-    const result = await this.db.query<TenantRecord>(
-      `
-      SELECT id, name, slug, plan, is_active, created_at, updated_at
-      FROM tenants
-      WHERE is_active = TRUE
-      ORDER BY created_at DESC
-      LIMIT $1 OFFSET $2
+      WHERE id = $1
+        AND is_active = TRUE
+      LIMIT 1
       `,
-      [limit, offset]
+      [tenantId]
     );
-    return result.rows;
+    return result.rows[0] ?? null;
   }
 
-  async count(): Promise<number> {
-    const result = await this.db.query<{ count: string }>(
-      `
-      SELECT COUNT(*) as count
-      FROM tenants
-      WHERE is_active = TRUE
-      `
-    );
-    return parseInt(result.rows[0].count, 10);
+  /**
+   * Tenant-scoped listing: returns at most the single tenant row for the caller's tenant.
+   * No cross-tenant table scans.
+   */
+  async findAllForTenant(tenantId: string): Promise<TenantRecord[]> {
+    const row = await this.findActiveById(tenantId);
+    return row ? [row] : [];
+  }
+
+  async findPaginatedForTenant(
+    tenantId: string,
+    _page: number = 1,
+    _limit: number = 20
+  ): Promise<TenantRecord[]> {
+    return this.findAllForTenant(tenantId);
+  }
+
+  async countForTenant(tenantId: string): Promise<number> {
+    const row = await this.findActiveById(tenantId);
+    return row ? 1 : 0;
   }
 
   async findById(tenantId: string): Promise<TenantRecord | null> {

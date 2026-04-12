@@ -1,9 +1,13 @@
 import bcrypt from 'bcrypt';
-import { AuthRepository, UserWithTenantRecord, TenantInviteRecord } from './auth.repository.js';
+import { AuthRepository, UserWithTenantRecord } from './auth.repository.js';
 import { LoginRequest, RegisterRequest } from './auth.schema.js';
 import { ApplicationError } from '../../shared/utils/application-error.js';
 import { AuthenticatedUser, Role } from '../../shared/types/common.types.js';
 import { validatePassword } from '../../shared/utils/password-validator.js';
+import type { BillingService } from '../billing/billing.service.js';
+import { parseJwtTenantIdFromPayload } from '../../shared/auth/jwt-tenant.js';
+import { buildAuthenticatedUser } from '../../shared/auth/principal.js';
+import type { EmployeesRepository } from '../employees/employees.repository.js';
 
 export interface TokenPair {
   accessToken: string;
@@ -18,20 +22,26 @@ export interface AuthUserResponse {
   firstName: string;
   lastName: string;
   role: Role;
+  systemRole: 'super_admin' | 'user';
 }
 
 export interface AuthSuccessResponse extends TokenPair {
   user: AuthUserResponse;
 }
 
-type TokenSigner = (payload: AuthenticatedUser, expiresIn: string) => string;
-type TokenVerifier = (token: string) => AuthenticatedUser;
+type JwtPrincipalPayload = AuthenticatedUser & { tokenType?: 'access' | 'refresh' };
+
+type TokenSigner = (payload: JwtPrincipalPayload, expiresIn: string) => string;
+type TokenVerifier = (token: string) => JwtPrincipalPayload;
 
 export class AuthService {
   constructor(
     private readonly authRepository: AuthRepository,
-    private readonly signToken: TokenSigner,
-    private readonly verifyToken: TokenVerifier
+    private readonly signAccessToken: TokenSigner,
+    private readonly signRefreshToken: TokenSigner,
+    private readonly verifyRefreshToken: TokenVerifier,
+    private readonly billing: BillingService,
+    private readonly employeesRepository: EmployeesRepository
   ) {}
 
   async login(payload: LoginRequest): Promise<AuthSuccessResponse> {
@@ -51,6 +61,15 @@ export class AuthService {
     }
 
     return this.buildAuthResponse(user);
+  }
+
+  /** Issue tokens after user row exists (e.g. link-invite acceptance). */
+  async issueSessionAfterRegistration(email: string): Promise<AuthSuccessResponse> {
+    const full = await this.authRepository.findUserByEmail(email.toLowerCase());
+    if (!full) {
+      throw ApplicationError.internal('Failed to load user after registration');
+    }
+    return this.buildAuthResponse(full);
   }
 
   /**
@@ -94,24 +113,45 @@ export class AuthService {
     const passwordHash = await bcrypt.hash(payload.password, 12);
     const [firstName, lastName] = this.extractNamesFromEmail(payload.email);
 
-    const createdUser = await this.authRepository.createUser({
-      tenant_id: invite.tenant_id,
-      email: payload.email.toLowerCase(),
-      password_hash: passwordHash,
-      first_name: firstName,
-      last_name: lastName,
-      role: invite.role,
-      is_active: true,
-    });
+    const occupiesBillableSeat = invite.role !== 'ADMIN';
 
-    // Step 6: Mark invite as used
-    await this.authRepository.markInviteAsUsed(invite.id, createdUser.id);
+    await this.billing.runAtomicUserCreation(
+      invite.tenant_id,
+      { occupiesBillableSeat },
+      async (tx) => {
+        const user = await this.authRepository.createUser(
+        {
+          tenant_id: invite.tenant_id,
+          email: payload.email.toLowerCase(),
+          password_hash: passwordHash,
+          first_name: firstName,
+          last_name: lastName,
+          role: invite.role,
+          is_active: true,
+        },
+        tx
+        );
 
-    // Step 7: Return auth response (need tenant name)
-    return this.buildAuthResponse({
-      ...createdUser,
-      tenant_name: invite.tenant_id, // Will be replaced by fetching tenant in a real scenario
-    });
+        await this.authRepository.markInviteAsUsed(invite.id, user.id, tx);
+
+        const tenantRole =
+          invite.role === 'ADMIN' ? 'owner' : invite.role === 'MANAGER' ? 'manager' : 'employee';
+        await this.employeesRepository.upsertTenantMembership(
+          user.id,
+          invite.tenant_id,
+          tenantRole,
+          tx
+        );
+
+        return user;
+      }
+    );
+
+    const full = await this.authRepository.findUserByEmail(payload.email.toLowerCase());
+    if (!full) {
+      throw ApplicationError.internal('Failed to load user after registration');
+    }
+    return this.buildAuthResponse(full);
   }
 
   /**
@@ -120,31 +160,35 @@ export class AuthService {
    */
   async refreshTokens(refreshToken: string): Promise<TokenPair> {
     try {
-      // Decode refresh token (should have long expiry)
-      const decoded = this.verifyToken(refreshToken);
-
-      // For super admins (tenantId is null), just verify the user exists
-      if (!decoded.tenantId) {
-        const user = await this.authRepository.findUserById(decoded.userId);
-        if (!user) {
-          throw ApplicationError.unauthorized('Super admin user no longer exists');
-        }
-      } else {
-        // Verify user and tenant still exist and are active
-        const user = await this.authRepository.findUserByIdAndTenant(
-          decoded.userId,
-          decoded.tenantId
-        );
-
-        if (!user) {
-          throw ApplicationError.unauthorized('User or tenant no longer exists');
-        }
+      const decoded = this.verifyRefreshToken(refreshToken);
+      if (decoded.tokenType && decoded.tokenType !== 'refresh') {
+        throw ApplicationError.unauthorized('Invalid refresh token');
       }
 
-      // Create new token pair
+      const rawSub = (decoded as unknown as { sub?: string }).sub;
+      const userId =
+        decoded.userId ?? decoded.id ?? (typeof rawSub === 'string' ? rawSub : undefined);
+      if (!userId) {
+        throw ApplicationError.unauthorized('Invalid refresh token');
+      }
+
+      const jwtTenant = parseJwtTenantIdFromPayload(decoded);
+
+      const active = await this.authRepository.findActiveUserById(userId);
+      if (!active) {
+        throw ApplicationError.unauthorized('User no longer exists');
+      }
+
+      const ctx = await this.authRepository.findAuthContextById(userId, jwtTenant);
+      if (!ctx) {
+        throw ApplicationError.unauthorized('User or tenant no longer exists');
+      }
+
+      const principal = buildAuthenticatedUser(ctx, jwtTenant);
+
       return {
-        accessToken: this.signToken(decoded, '15m'),
-        refreshToken: this.signToken(decoded, '7d'),
+        accessToken: this.signAccessToken({ ...principal, tokenType: 'access' }, '15m'),
+        refreshToken: this.signRefreshToken({ ...principal, tokenType: 'refresh' }, '7d'),
       };
     } catch (error) {
       if (error instanceof ApplicationError) {
@@ -155,26 +199,36 @@ export class AuthService {
   }
 
   private buildAuthResponse(user: UserWithTenantRecord): AuthSuccessResponse {
-    const jwtPayload: AuthenticatedUser = {
-      userId: user.id,
-      tenantId: user.tenant_id,
-      email: user.email,
-      role: user.role as Role,
-      tenantPlan: user.tenant_plan as 'FREE' | 'PRO' | 'ENTERPRISE',
-      is_super_admin: (user as any).is_super_admin,
+    const isSuperAdmin = user.system_role === 'super_admin';
+    const principal = buildAuthenticatedUser(
+      {
+        id: user.id,
+        email: user.email,
+        system_role: user.system_role,
+        legacy_role: user.role,
+        user_primary_tenant_id: isSuperAdmin ? null : user.tenant_id,
+        effective_tenant_id: isSuperAdmin ? null : user.tenant_id,
+        membership_role: isSuperAdmin ? null : user.tenant_membership_role,
+      },
+      isSuperAdmin ? null : user.tenant_id
+    );
+
+    const jwtPayload: JwtPrincipalPayload = {
+      ...principal,
     };
 
     return {
-      accessToken: this.signToken(jwtPayload, '15m'),
-      refreshToken: this.signToken(jwtPayload, '7d'),
+      accessToken: this.signAccessToken(jwtPayload, '15m'),
+      refreshToken: this.signRefreshToken(jwtPayload, '7d'),
       user: {
         userId: user.id,
-        tenantId: user.tenant_id,
-        tenantName: user.tenant_name ?? 'Platform Admin',
+        tenantId: principal.tenant_id ?? '',
+        tenantName: user.tenant_name ?? '',
         email: user.email,
         firstName: user.first_name,
         lastName: user.last_name,
-        role: user.role as Role,
+        role: principal.role as Role,
+        systemRole: principal.system_role === 'super_admin' ? 'super_admin' : 'user',
       },
     };
   }

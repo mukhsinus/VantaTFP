@@ -1,0 +1,85 @@
+.trialBanner {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  margin: 0 0 var(--space-4);
+  padding: var(--space-3) var(--space-4);
+  background: var(--color-accent-subtle);
+  border: 1px solid var(--color-accent-subtle-border);
+  border-radius: var(--radius-lg);
+  color: var(--color-accent-hover);
+  font-size: max(15px, var(--text-base));
+  font-weight: 600;
+  line-height: 1.4;
+  box-shadow: var(--shadow-xs);
+}
+
+.trialBannerIcon {
+  flex-shrink: 0;
+  display: flex;
+  opacity: 0.9;
+}
+
+.trialBannerText {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Blocking modal — no dismiss; z-index above app chrome */
+.modalRoot {
+  position: fixed;
+  inset: 0;
+  z-index: calc(var(--z-modal) + 1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: max(16px, env(safe-area-inset-left)) max(16px, env(safe-area-inset-right))
+    max(16px, env(safe-area-inset-bottom));
+}
+
+.modalBackdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.55);
+  backdrop-filter: blur(4px);
+}
+
+.modalPanel {
+  position: relative;
+  width: 100%;
+  max-width: 400px;
+  padding: var(--space-8) var(--space-6);
+  background: var(--color-bg);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-lg);
+  text-align: center;
+  animation: trialModalIn 220ms ease;
+}
+
+@keyframes trialModalIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.modalTitle {
+  margin: 0;
+  font-size: clamp(1.125rem, 4vw, 1.25rem);
+  font-weight: 700;
+  color: var(--color-text-primary);
+  line-height: 1.3;
+}
+
+.modalCta {
+  margin-top: var(--space-6);
+  width: 100%;
+  min-height: 48px !important;
+  font-size: 17px !important;
+  font-weight: 600 !important;
+}

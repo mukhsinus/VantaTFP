@@ -25,6 +25,7 @@ export interface LoginApiResponse {
     firstName: string;
     lastName: string;
     role: Role;
+    systemRole?: 'super_admin' | 'user';
   };
 }
 

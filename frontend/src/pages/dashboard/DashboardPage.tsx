@@ -1,315 +1,108 @@
-import React from 'react';
-import { useTranslation } from 'react-i18next';
-import { Card, CardHeader, Badge, Avatar, Skeleton } from '@shared/components/ui';
+import React, { useEffect, useState } from 'react';
+import { Card, CardHeader, Badge, Skeleton } from '@shared/components/ui';
 import { useIsMobile } from '@shared/hooks/useIsMobile';
+import { useCurrentUser } from '@shared/hooks/useCurrentUser';
+import { useTasks } from '@features/tasks/hooks/useTasks';
+import { usePayroll } from '@features/payroll/hooks/usePayroll';
+import { useReportHistory } from '@features/reports/hooks/useReports';
+import { useKpiAnalytics } from '@features/kpi/hooks/useKpiAnalytics';
 
 interface StatCardProps {
   label: string;
   value: string | number;
-  delta?: { value: string; positive: boolean };
-  icon: React.ReactNode;
   accent?: string;
-  compact?: boolean;
 }
 
-function StatCard({ label, value, delta, icon, accent = 'var(--color-accent)', compact = false }: StatCardProps) {
+function StatCard({ label, value, accent = 'var(--color-accent)' }: StatCardProps) {
   return (
-    <Card padding={compact ? 'sm' : 'md'}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-        <div style={{ minWidth: 0 }}>
-          <p
-            style={{
-              fontSize: compact ? '11px' : 'var(--text-sm)',
-              color: 'var(--color-text-secondary)',
-              marginBottom: compact ? 4 : 6,
-              lineHeight: 1.25,
-            }}
-          >
-            {label}
-          </p>
-          <p
-            style={{
-              fontSize: compact ? 'var(--text-2xl)' : 'var(--text-3xl)',
-              fontWeight: 700,
-              color: 'var(--color-text-primary)',
-              lineHeight: 1,
-            }}
-          >
-            {value}
-          </p>
-          {delta && (
-            <p
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 4,
-                fontSize: compact ? '10px' : 'var(--text-xs)',
-                color: delta.positive ? 'var(--color-success)' : 'var(--color-danger)',
-                marginTop: compact ? 4 : 6,
-                fontWeight: 500,
-                lineHeight: 1.2,
-              }}
-            >
-              {delta.positive ? '↑' : '↓'} {delta.value}
-            </p>
-          )}
-        </div>
-        <div
-          style={{
-            width: compact ? 32 : 40,
-            height: compact ? 32 : 40,
-            borderRadius: compact ? 'var(--radius)' : 'var(--radius-lg)',
-            background: accent + '18',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            color: accent,
-            flexShrink: 0,
-          }}
-        >
-          {icon}
-        </div>
-      </div>
+    <Card>
+      <p style={{ margin: 0, fontSize: 'var(--text-sm)', color: 'var(--color-text-secondary)' }}>{label}</p>
+      <p style={{ margin: '6px 0 0', fontSize: 'var(--text-2xl)', fontWeight: 700, color: accent }}>{value}</p>
     </Card>
   );
 }
 
-const typeToVariant = {
-  success: 'success',
-  accent: 'accent',
-  danger: 'danger',
-  warning: 'warning',
-} as const;
-
 export function DashboardPage() {
-  const { t } = useTranslation();
   const isMobile = useIsMobile();
+  const { role } = useCurrentUser();
+  const [stage, setStage] = useState(0);
 
-  const mockActivity = [
-    { id: '1', userKey: 'overview.sample.users.sofiaChen', taskKey: 'overview.sample.tasks.q1ReportDraft', actionKey: 'completedTask', time: t('time.minutesAgo', { count: 2 }), type: 'success' as const },
-    { id: '2', userKey: 'overview.sample.users.jamesPark', taskKey: 'overview.sample.tasks.clientOnboardingFlow', actionKey: 'createdTask', time: t('time.minutesAgo', { count: 15 }), type: 'accent' as const },
-    { id: '3', userKey: 'overview.sample.users.amaraDiallo', taskKey: 'overview.sample.tasks.invoiceProcessing', actionKey: 'overdueTask', time: t('time.hoursAgo', { count: 1 }), type: 'danger' as const },
-    { id: '4', userKey: 'overview.sample.users.lucaFerrari', taskKey: 'overview.sample.tasks.monthlySalesTarget', actionKey: 'updatedKpi', time: t('time.hoursAgo', { count: 2 }), type: 'warning' as const },
-    { id: '5', userKey: 'overview.sample.users.mariaSantos', taskKey: 'overview.sample.tasks.teamReviewMeeting', actionKey: 'completedTask', time: t('time.hoursAgo', { count: 3 }), type: 'success' as const },
-  ];
+  useEffect(() => {
+    const t1 = window.setTimeout(() => setStage(1), 150);
+    const t2 = window.setTimeout(() => setStage(2), 350);
+    const t3 = window.setTimeout(() => setStage(3), 700);
+    return () => {
+      window.clearTimeout(t1);
+      window.clearTimeout(t2);
+      window.clearTimeout(t3);
+    };
+  }, []);
+
+  const { tasks, isLoading: tasksLoading } = useTasks({}, { enabled: true });
+  const { payroll } = usePayroll({ enabled: stage >= 1 });
+  const { data: history } = useReportHistory(undefined, { enabled: stage >= 2 });
+  const { aggregated } = useKpiAnalytics({ role, enabled: stage >= 3 });
+
+  if (tasksLoading) {
+    return <Skeleton height={260} borderRadius="var(--radius-lg)" />;
+  }
+
+  const totalTasks = tasks.length;
+  const completedTasks = tasks.filter((task) => task.status === 'DONE').length;
+  const overdueTasks = tasks.filter((task) => task.overdue).length;
+  const inProgressTasks = tasks.filter((task) => task.status === 'IN_PROGRESS' || task.status === 'IN_REVIEW').length;
+  const payrollTotal = payroll.reduce((sum, item) => sum + item.netSalary, 0);
+  const performance = aggregated.data?.performancePercent ?? 0;
+  const title = role === 'MANAGER' ? 'Team Dashboard' : role === 'EMPLOYEE' ? 'My Dashboard' : 'Dashboard';
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: isMobile ? 12 : 24, width: '100%', maxWidth: '100%' }}>
-      {/* Page header */}
-      {isMobile ? (
-        <div>
-          <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', margin: 0 }}>
-            {t('overview.subtitle')}
-          </p>
-        </div>
-      ) : (
-        <div>
-          <h2 style={{ fontSize: 'var(--text-2xl)', fontWeight: 700, color: 'var(--color-text-primary)' }}>
-            {t('overview.title')}
-          </h2>
-          <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-secondary)', marginTop: 4 }}>
-            {t('overview.subtitle')}
-          </p>
-        </div>
-      )}
-
-      {/* Stat cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(auto-fit, minmax(200px, 1fr))', gap: isMobile ? 8 : 12 }}>
-        <StatCard
-          label={t('overview.stats.totalTasks')}
-          value={48}
-          delta={{ value: t('overview.stats.delta.totalTasksWeek'), positive: true }}
-          accent="var(--color-accent)"
-          compact={isMobile}
-          icon={
-            <svg width={isMobile ? '16' : '18'} height={isMobile ? '16' : '18'} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75}>
-              <path d="M9 11l3 3L22 4" /><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11" />
-            </svg>
-          }
-        />
-        <StatCard
-          label={t('overview.stats.completed')}
-          value={31}
-          delta={{ value: t('overview.stats.delta.completedWeek'), positive: true }}
-          accent="var(--color-success)"
-          compact={isMobile}
-          icon={
-            <svg width={isMobile ? '16' : '18'} height={isMobile ? '16' : '18'} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75}>
-              <circle cx="12" cy="12" r="10" /><path d="M9 12l2 2 4-4" />
-            </svg>
-          }
-        />
-        <StatCard
-          label={t('overview.stats.overdue')}
-          value={5}
-          delta={{ value: t('overview.stats.delta.overdueSinceYesterday'), positive: false }}
-          accent="var(--color-danger)"
-          compact={isMobile}
-          icon={
-            <svg width={isMobile ? '16' : '18'} height={isMobile ? '16' : '18'} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75}>
-              <circle cx="12" cy="12" r="10" /><path d="M12 8v4M12 16h.01" />
-            </svg>
-          }
-        />
-        <StatCard
-          label={t('overview.stats.inProgress')}
-          value={12}
-          accent="var(--color-warning)"
-          compact={isMobile}
-          icon={
-            <svg width={isMobile ? '16' : '18'} height={isMobile ? '16' : '18'} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75}>
-              <circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" />
-            </svg>
-          }
-        />
+    <div className="page-container" style={{ display: 'flex', flexDirection: 'column', gap: isMobile ? 12 : 20 }}>
+      <div>
+        <h2 style={{ margin: 0, fontSize: 'var(--text-2xl)' }}>{title}</h2>
+        <p style={{ margin: '6px 0 0', color: 'var(--color-text-secondary)' }}>Live tenant data synchronized from backend services.</p>
       </div>
 
-      {/* Two-column layout */}
-      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 360px', gap: 16, width: '100%', maxWidth: '100%' }}>
-        {/* Recent activity */}
-        <Card padding={isMobile ? 'sm' : 'md'}>
-          <CardHeader title={t('overview.activity.title')} subtitle={t('overview.activity.subtitle')} />
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
-            {mockActivity.map((item, index) => (
-              <div
-                key={item.id}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: isMobile ? 8 : 12,
-                  padding: isMobile ? '8px 0' : '12px 0',
-                  borderBottom: index < mockActivity.length - 1 ? '1px solid var(--color-border)' : 'none',
-                }}
-              >
-                <Avatar name={t(item.userKey)} size="sm" />
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  {(() => {
-                    const userName = t(item.userKey);
-                    const activity = t(`overview.activity.${item.actionKey}`, {
-                      user: userName,
-                      task: t(item.taskKey),
-                    });
-                    const actionText = activity.startsWith(userName)
-                      ? activity.slice(userName.length).trimStart()
-                      : activity;
+      <div className="responsive-grid" style={{ gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(4, minmax(180px, 1fr))' }}>
+        <StatCard label="Total Tasks" value={totalTasks} />
+        <StatCard label="Completed Tasks" value={completedTasks} accent="var(--color-success)" />
+        <StatCard label="Overdue Tasks" value={overdueTasks} accent="var(--color-danger)" />
+        <StatCard label="In Progress" value={inProgressTasks} accent="var(--color-warning)" />
+      </div>
 
-                    return (
-                      <p style={{ fontSize: isMobile ? '13px' : 'var(--text-sm)', color: 'var(--color-text-primary)', lineHeight: 1.4 }}>
-                        <strong style={{ fontWeight: 600 }}>{userName}</strong>{' '}
-                        <span style={{ color: 'var(--color-text-secondary)' }}>{actionText}</span>
-                      </p>
-                    );
-                  })()}
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-                  <Badge
-                    variant={typeToVariant[item.type]}
-                    dot
-                    style={
-                      isMobile
-                        ? {
-                            padding: '1px 6px',
-                            fontSize: '10px',
-                            lineHeight: 1.4,
-                            opacity: 0.85,
-                          }
-                        : undefined
-                    }
-                  >
-                    {item.type === 'success'
-                      ? t('status.success')
-                      : item.type === 'warning'
-                        ? t('status.warning')
-                        : item.type === 'danger'
-                          ? t('status.danger')
-                          : t('status.accent')}
-                  </Badge>
-                  <span style={{ fontSize: isMobile ? '10px' : 'var(--text-xs)', color: 'var(--color-text-muted)', whiteSpace: 'nowrap' }}>
-                    {item.time}
-                  </span>
-                </div>
-              </div>
-            ))}
-          </div>
+      <div className="responsive-grid" style={{ gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, minmax(260px, 1fr))' }}>
+        <Card>
+          <CardHeader title="KPI Summary" subtitle="From KPI analytics endpoint" />
+          <p style={{ margin: 0, fontSize: 'var(--text-3xl)', fontWeight: 700 }}>{performance.toFixed(2)}%</p>
+          <p style={{ marginTop: 8, fontSize: 'var(--text-xs)', color: 'var(--color-text-secondary)' }}>
+            Assignees: {aggregated.data?.assigneeCount ?? 0} · Completed: {aggregated.data?.completedTasks ?? 0}
+          </p>
         </Card>
-
-        {/* Quick overview */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          <Card padding={isMobile ? 'sm' : 'md'}>
-            <CardHeader title={t('overview.overdue.title')} />
-            <div style={{ display: 'flex', flexDirection: 'column', gap: isMobile ? 8 : 10 }}>
-                {[
-                  t('overview.overdue.items.invoiceProcessing'),
-                  t('overview.overdue.items.budgetReviewQ4'),
-                  t('overview.overdue.items.teamFeedbackSession'),
-                ].map((task) => (
-                <div
-                  key={task}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 10,
-                    padding: isMobile ? '8px' : '8px 10px',
-                    background: 'var(--color-danger-subtle)',
-                    border: '1px solid var(--color-danger-border)',
-                    borderRadius: 'var(--radius)',
-                    cursor: 'pointer',
-                  }}
-                >
-                  <span style={{ color: 'var(--color-danger)', flexShrink: 0 }}>
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
-                      <circle cx="12" cy="12" r="10" /><path d="M12 8v4M12 16h.01" />
-                    </svg>
-                  </span>
-                  <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-danger)', fontWeight: 500, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {task}
-                  </p>
-                </div>
-              ))}
-            </div>
-          </Card>
-
-          <Card padding={isMobile ? 'sm' : 'md'}>
-            <CardHeader title={t('overview.progress.title')} />
-            <div style={{ display: 'flex', flexDirection: 'column', gap: isMobile ? 12 : 14 }}>
-              {[
-                { label: t('overview.stats.completed'), value: 31, total: 48, color: 'var(--color-success)' },
-                { label: t('overview.stats.inProgress'), value: 12, total: 48, color: 'var(--color-warning)' },
-                { label: t('overview.stats.overdue'), value: 5, total: 48, color: 'var(--color-danger)' },
-              ].map((item) => (
-                <div key={item.label}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5 }}>
-                    <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-secondary)', fontWeight: 500 }}>
-                      {item.label}
-                    </span>
-                    <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', fontWeight: 500 }}>
-                      {item.value}/{item.total}
-                    </span>
-                  </div>
-                  <div
-                    style={{
-                      height: 6,
-                      borderRadius: 'var(--radius-full)',
-                      background: 'var(--color-bg-muted)',
-                      overflow: 'hidden',
-                    }}
-                  >
-                    <div
-                      style={{
-                        height: '100%',
-                        width: `${(item.value / item.total) * 100}%`,
-                        background: item.color,
-                        borderRadius: 'var(--radius-full)',
-                        transition: 'width 0.8s ease',
-                      }}
-                    />
-                  </div>
-                </div>
-              ))}
-            </div>
-          </Card>
-        </div>
+        <Card>
+          <CardHeader title="Payroll Summary" subtitle="From payroll entries endpoint" />
+          <p style={{ margin: 0, fontSize: 'var(--text-3xl)', fontWeight: 700 }}>{payrollTotal.toLocaleString()}</p>
+          <p style={{ marginTop: 8, fontSize: 'var(--text-xs)', color: 'var(--color-text-secondary)' }}>
+            Entries: {payroll.length}
+          </p>
+        </Card>
       </div>
+
+      <Card>
+        <CardHeader title="Recent Tasks" subtitle="Latest synced tasks" />
+        {tasks.slice(0, 5).map((task) => (
+          <div key={task.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderTop: '1px solid var(--color-border)' }}>
+            <div style={{ minWidth: 0 }}>
+              <p style={{ margin: 0, fontWeight: 600 }}>{task.title}</p>
+              <p style={{ margin: '4px 0 0', fontSize: 'var(--text-xs)', color: 'var(--color-text-secondary)' }}>{task.assignee}</p>
+            </div>
+            <Badge variant={task.overdue ? 'danger' : 'default'}>{task.status}</Badge>
+          </div>
+        ))}
+      </Card>
+
+      <Card>
+        <CardHeader title="Reports Activity" subtitle="From report history endpoint" />
+        <p style={{ margin: 0, fontSize: 'var(--text-sm)' }}>Generated reports: {history?.data?.length ?? 0}</p>
+      </Card>
     </div>
   );
 }

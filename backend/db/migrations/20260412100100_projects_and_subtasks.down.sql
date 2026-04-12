@@ -1,0 +1,8 @@
+ALTER TABLE tasks DROP CONSTRAINT IF EXISTS fk_tasks_parent;
+ALTER TABLE tasks DROP CONSTRAINT IF EXISTS fk_tasks_project;
+ALTER TABLE tasks DROP COLUMN IF EXISTS estimate_minutes;
+ALTER TABLE tasks DROP COLUMN IF EXISTS estimate_points;
+ALTER TABLE tasks DROP COLUMN IF EXISTS sort_order;
+ALTER TABLE tasks DROP COLUMN IF EXISTS parent_task_id;
+ALTER TABLE tasks DROP COLUMN IF EXISTS project_id;
+DROP TABLE IF EXISTS projects;

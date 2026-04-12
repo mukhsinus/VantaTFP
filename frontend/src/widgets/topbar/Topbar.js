@@ -5,24 +5,18 @@ import { createPortal } from 'react-dom';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Avatar, Badge } from '@shared/components/ui';
 import { LanguageSwitcher } from '@shared/components/language-switcher/LanguageSwitcher';
-import { NotificationPanel } from '@shared/components/NotificationPanel';
 import { useAuthStore } from '@app/store/auth.store';
 import { useSidebarStore } from '@app/store/sidebar.store';
-import { useNotificationStore } from '@app/store/notifications.store';
 import { useIsMobile } from '@shared/hooks/useIsMobile';
+import { useCurrentUser } from '@shared/hooks/useCurrentUser';
+import { useUnreadNotifications } from '@features/notifications/hooks/useNotifications';
 import styles from './Topbar.module.css';
-const pageTitles = {
-    '/dashboard': 'nav.overview',
-    '/tasks': 'nav.tasks',
-    '/employees': 'nav.employees',
-    '/kpi': 'nav.kpi',
-    '/payroll': 'nav.payroll',
-    '/settings': 'nav.settings',
-};
 const mobileSubtitleKeys = {
     '/dashboard': 'overview.subtitle',
     '/kpi': 'kpi.subtitle',
     '/payroll': 'payroll.subtitle',
+    '/reports': 'reports.subtitle',
+    '/billing': 'billing.subtitle',
     '/settings': 'settings.subtitle',
 };
 const roleVariant = {
@@ -35,20 +29,30 @@ export function Topbar() {
     const location = useLocation();
     const navigate = useNavigate();
     const user = useAuthStore((s) => s.user);
+    const { role } = useCurrentUser();
     const clearAuth = useAuthStore((s) => s.clearAuth);
     const toggleSidebar = useSidebarStore((s) => s.toggleCollapsed);
     const isMobile = useIsMobile();
-    const [search, setSearch] = useState('');
     const [isAccountSheetOpen, setIsAccountSheetOpen] = useState(false);
-    const [isNotificationPanelOpen, setIsNotificationPanelOpen] = useState(false);
-    const unreadCount = useNotificationStore((s) => s.getUnreadCount());
+    const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+    const unread = useUnreadNotifications();
     const baseRoute = '/' + location.pathname.split('/')[1];
-    const titleKey = pageTitles[baseRoute] ?? 'nav.overview';
+    const titleByRoute = {
+        '/dashboard': role === 'MANAGER' ? 'Team Dashboard' : 'Dashboard',
+        '/tasks': role === 'EMPLOYEE' ? 'My Tasks' : role === 'MANAGER' ? 'Team Tasks' : 'Tasks',
+        '/employees': 'Employees',
+        '/kpi': role === 'EMPLOYEE' ? 'My KPI' : role === 'MANAGER' ? 'Team KPI' : 'KPI',
+        '/payroll': role === 'EMPLOYEE' ? 'My Payroll' : 'Payroll',
+        '/reports': 'Reports',
+        '/billing': 'Billing',
+        '/settings': 'Settings',
+    };
+    const title = titleByRoute[baseRoute] ?? 'Dashboard';
     const subtitleKey = mobileSubtitleKeys[baseRoute];
     const fullName = user ? `${user.firstName} ${user.lastName}` : '';
     useEffect(() => {
         setIsAccountSheetOpen(false);
-        setIsNotificationPanelOpen(false);
+        setIsNotificationsOpen(false);
     }, [location.pathname, location.search]);
     useEffect(() => {
         if (!isAccountSheetOpen)
@@ -65,6 +69,18 @@ export function Topbar() {
             document.body.style.overflow = '';
         };
     }, [isAccountSheetOpen]);
+    useEffect(() => {
+        if (!isNotificationsOpen)
+            return;
+        const onClick = (event) => {
+            const target = event.target;
+            if (target?.closest('[data-notification-panel]'))
+                return;
+            setIsNotificationsOpen(false);
+        };
+        document.addEventListener('click', onClick);
+        return () => document.removeEventListener('click', onClick);
+    }, [isNotificationsOpen]);
     const closeAccountSheet = () => setIsAccountSheetOpen(false);
     const goToSettings = () => {
         closeAccountSheet();
@@ -75,7 +91,41 @@ export function Topbar() {
         clearAuth();
         navigate('/login', { replace: true });
     };
-    return (_jsxs("header", { className: `${styles.header} ${isMobile ? styles.headerMobile : styles.headerDesktop}`, children: [!isMobile && (_jsx("button", { onClick: toggleSidebar, title: t('sidebar.toggle') ?? t('nav.actions.toggleSidebar'), className: styles.toggleButton, children: _jsxs("svg", { width: "18", height: "18", viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 2, children: [_jsx("line", { x1: "3", y1: "6", x2: "21", y2: "6" }), _jsx("line", { x1: "3", y1: "12", x2: "21", y2: "12" }), _jsx("line", { x1: "3", y1: "18", x2: "21", y2: "18" })] }) })), isMobile ? (_jsxs("div", { className: styles.mobileTitleWrap, children: [_jsx("h1", { className: `${styles.title} ${styles.titleMobile}`, children: t(titleKey) }), subtitleKey && _jsx("p", { className: styles.mobileSubtitle, children: t(subtitleKey) })] })) : (_jsx("h1", { className: styles.title, children: t(titleKey) })), !isMobile && (_jsx("div", { className: styles.searchContainer, children: _jsxs("div", { className: styles.searchWrapper, children: [_jsx("span", { className: styles.searchIcon, children: _jsxs("svg", { width: "14", height: "14", viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 2, children: [_jsx("circle", { cx: "11", cy: "11", r: "8" }), _jsx("path", { d: "M21 21l-4.35-4.35" })] }) }), _jsx("input", { type: "search", placeholder: t('topbar.search'), value: search, onChange: (e) => setSearch(e.target.value), className: styles.searchInput }), _jsx("kbd", { className: styles.searchShortcut, children: t('topbar.shortcut') })] }) })), _jsxs("div", { className: `${styles.actions} ${isMobile ? styles.actionsMobile : ''}`, children: [_jsx(LanguageSwitcher, {}), _jsxs("button", { onClick: () => setIsNotificationPanelOpen(!isNotificationPanelOpen), className: styles.notificationButton, "aria-label": t('nav.notifications.title'), "aria-pressed": isNotificationPanelOpen, children: [_jsx("svg", { width: "16", height: "16", viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 1.75, children: _jsx("path", { d: "M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 01-3.46 0" }) }), unreadCount > 0 && _jsx("span", { className: styles.notificationDot, children: unreadCount > 9 ? '9+' : unreadCount })] }), !isMobile && _jsx("div", { className: styles.divider }), user && (_jsxs("div", { className: styles.userSection, children: [isMobile ? (_jsx("button", { onClick: () => setIsAccountSheetOpen(true), "aria-label": t('nav.account.openMenu'), className: styles.userButtonMobile, children: _jsx(Avatar, { name: fullName, size: "sm" }) })) : (_jsx(Avatar, { name: fullName, size: "sm" })), !isMobile && (_jsxs("div", { className: styles.userInfo, children: [_jsxs("h2", { className: styles.userName, children: [user.firstName, " ", user.lastName] }), _jsx("div", { className: styles.userBadge, children: _jsx(Badge, { variant: roleVariant[user.role] ?? 'default', children: user.role === 'ADMIN'
+    return (_jsxs("header", { className: `${styles.header} ${isMobile ? styles.headerMobile : styles.headerDesktop}`, children: [!isMobile && (_jsx("button", { onClick: toggleSidebar, title: t('sidebar.toggle') ?? t('nav.actions.toggleSidebar'), className: styles.toggleButton, children: _jsxs("svg", { width: "18", height: "18", viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 2, children: [_jsx("line", { x1: "3", y1: "6", x2: "21", y2: "6" }), _jsx("line", { x1: "3", y1: "12", x2: "21", y2: "12" }), _jsx("line", { x1: "3", y1: "18", x2: "21", y2: "18" })] }) })), isMobile ? (_jsxs("div", { className: styles.mobileTitleWrap, children: [_jsx("h1", { className: `${styles.title} ${styles.titleMobile}`, children: title }), subtitleKey && _jsx("p", { className: styles.mobileSubtitle, children: t(subtitleKey) })] })) : (_jsx("h1", { className: styles.title, children: title })), _jsxs("div", { className: `${styles.actions} ${isMobile ? styles.actionsMobile : ''}`, children: [!isMobile && _jsx(LanguageSwitcher, {}), !isMobile && _jsx("div", { className: styles.divider }), user && (_jsxs("div", { style: { position: 'relative' }, "data-notification-panel": true, children: [_jsxs("button", { onClick: () => setIsNotificationsOpen((v) => !v), style: {
+                                    position: 'relative',
+                                    width: 36,
+                                    height: 36,
+                                    borderRadius: '50%',
+                                    border: '1px solid var(--color-border)',
+                                    background: 'var(--color-bg)',
+                                    cursor: 'pointer',
+                                }, children: [_jsxs("svg", { width: "16", height: "16", viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 2, children: [_jsx("path", { d: "M18 8a6 6 0 10-12 0c0 7-3 9-3 9h18s-3-2-3-9" }), _jsx("path", { d: "M13.73 21a2 2 0 01-3.46 0" })] }), (unread.data?.length ?? 0) > 0 && (_jsx("span", { style: {
+                                            position: 'absolute',
+                                            top: 2,
+                                            right: 2,
+                                            minWidth: 16,
+                                            height: 16,
+                                            borderRadius: 999,
+                                            background: 'var(--color-danger)',
+                                            color: '#fff',
+                                            fontSize: 10,
+                                            lineHeight: '16px',
+                                            textAlign: 'center',
+                                            padding: '0 4px',
+                                        }, children: Math.min(unread.data?.length ?? 0, 99) }))] }), isNotificationsOpen && (_jsxs("div", { style: {
+                                    position: 'absolute',
+                                    right: 0,
+                                    top: 42,
+                                    width: 320,
+                                    maxHeight: 360,
+                                    overflowY: 'auto',
+                                    background: 'var(--color-bg)',
+                                    border: '1px solid var(--color-border)',
+                                    borderRadius: 'var(--radius-lg)',
+                                    boxShadow: 'var(--shadow-lg)',
+                                    padding: 10,
+                                    zIndex: 30,
+                                }, children: [_jsx("p", { style: { margin: '0 0 8px', fontWeight: 600, fontSize: 'var(--text-sm)' }, children: "Notifications" }), !unread.data?.length ? (_jsx("p", { style: { margin: 0, color: 'var(--color-text-secondary)', fontSize: 'var(--text-xs)' }, children: "No unread notifications." })) : (unread.data.map((item) => (_jsxs("div", { style: { borderTop: '1px solid var(--color-border)', padding: '8px 0' }, children: [_jsx("p", { style: { margin: 0, fontSize: 'var(--text-sm)', fontWeight: 600 }, children: item.title }), _jsx("p", { style: { margin: '4px 0 0', fontSize: 'var(--text-xs)', color: 'var(--color-text-secondary)' }, children: item.message })] }, item.id))))] }))] })), user && (_jsxs("div", { className: styles.userSection, children: [isMobile ? (_jsx("button", { onClick: () => setIsAccountSheetOpen(true), "aria-label": t('nav.account.openMenu'), className: styles.userButtonMobile, children: _jsx(Avatar, { name: fullName, size: "sm" }) })) : (_jsx(Avatar, { name: fullName, size: "sm" })), !isMobile && (_jsxs("div", { className: styles.userInfo, children: [_jsxs("h2", { className: styles.userName, children: [user.firstName, " ", user.lastName] }), _jsx("div", { className: styles.userBadge, children: _jsx(Badge, { variant: roleVariant[user.role] ?? 'default', children: user.role === 'ADMIN'
                                                 ? t('profile.roles.admin')
                                                 : user.role === 'MANAGER'
                                                     ? t('profile.roles.manager')
@@ -95,9 +145,5 @@ export function Topbar() {
                                                                     ? t('profile.roles.admin')
                                                                     : user.role === 'MANAGER'
                                                                         ? t('profile.roles.manager')
-                                                                        : t('profile.roles.employee') }) })] })] })] }), _jsxs("div", { className: styles.sheetSection, children: [_jsx("p", { className: styles.sheetSectionTitle, children: t('nav.account.actionsTitle') }), _jsxs("div", { className: styles.sheetActions, children: [_jsx("button", { onClick: goToSettings, className: styles.sheetActionButton, children: t('nav.labels.settings') }), _jsx("button", { onClick: handleLogout, className: `${styles.sheetActionButton} ${styles.sheetActionButtonDanger}`, children: t('nav.labels.logout') })] })] })] })] }), document.body), isMobile && isNotificationPanelOpen ? (createPortal(_jsx("div", { className: styles.notificationOverlay, onClick: (e) => {
-                    if (e.target === e.currentTarget) {
-                        setIsNotificationPanelOpen(false);
-                    }
-                }, children: _jsx(NotificationPanel, { isOpen: isNotificationPanelOpen, onClose: () => setIsNotificationPanelOpen(false), isMobile: true }) }), document.body)) : (!isMobile && isNotificationPanelOpen && (_jsx("div", { className: styles.notificationPanelWrapper, children: _jsx(NotificationPanel, { isOpen: isNotificationPanelOpen, onClose: () => setIsNotificationPanelOpen(false), isMobile: false }) })))] }));
+                                                                        : t('profile.roles.employee') }) })] })] })] }), _jsxs("div", { className: styles.sheetSection, children: [_jsx("p", { className: styles.sheetSectionTitle, children: t('common.languageSwitcher') }), _jsx("div", { className: styles.sheetLanguage, children: _jsx(LanguageSwitcher, { fullWidth: true }) })] }), _jsxs("div", { className: styles.sheetSection, children: [_jsx("p", { className: styles.sheetSectionTitle, children: t('nav.account.actionsTitle') }), _jsxs("div", { className: styles.sheetActions, children: [_jsx("button", { onClick: goToSettings, className: styles.sheetActionButton, children: t('nav.labels.settings') }), _jsx("button", { onClick: handleLogout, className: `${styles.sheetActionButton} ${styles.sheetActionButtonDanger}`, children: t('nav.labels.logout') })] })] })] })] }), document.body)] }));
 }

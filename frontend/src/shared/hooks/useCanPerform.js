@@ -4,12 +4,16 @@ const PERMISSION_MAP = {
     'task:delete': ['ADMIN', 'MANAGER'],
     'task:assign': ['ADMIN', 'MANAGER'],
     'task:changeStatus': ['ADMIN', 'MANAGER', 'EMPLOYEE'],
-    'employee:invite': ['ADMIN', 'MANAGER'],
-    'employee:manage': ['ADMIN', 'MANAGER'],
+    'employee:invite': ['ADMIN'],
+    /** Owner only (JWT role ADMIN = tenant owner). */
+    'employee:changeRole': ['ADMIN'],
+    'employee:deactivate': ['ADMIN', 'MANAGER'],
+    /** Legacy: prefer `employee:changeRole` / `employee:deactivate`. */
+    'employee:manage': ['ADMIN'],
     'kpi:create': ['ADMIN', 'MANAGER'],
     'kpi:delete': ['ADMIN'],
-    'payroll:view': ['ADMIN', 'MANAGER'],
-    'payroll:create': ['ADMIN', 'MANAGER'],
+    'payroll:view': ['ADMIN', 'EMPLOYEE'],
+    'payroll:create': ['ADMIN'],
     'payroll:approve': ['ADMIN'],
     'tenant:manage': ['ADMIN'],
 };

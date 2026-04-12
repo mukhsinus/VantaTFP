@@ -1,82 +1,134 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
 import { Role } from '../types/common.types.js';
-import { Permission, roleHasPermission } from '../types/permissions.js';
 import { ApplicationError } from '../utils/application-error.js';
 
 /**
  * Returns a preHandler that enforces role-based access control.
- * DEPRECATED: Use requirePermission() for new code - more flexible and maintainable.
- * 
  * Usage in a route: preHandler: [fastify.authenticate, requireRoles('ADMIN', 'MANAGER')]
  */
 export function requireRoles(...allowedRoles: Role[]) {
+  if (allowedRoles.length === 0) {
+    throw new Error('requireRoles() must receive at least one role');
+  }
+
   return async function roleGuard(
     request: FastifyRequest,
-    reply: FastifyReply
+    _reply: FastifyReply
   ): Promise<void> {
-    const user = request.user;
+    try {
+      const user = request.user;
 
-    if (!user) {
-      const error = ApplicationError.unauthorized();
-      reply.status(error.statusCode).send({
-        statusCode: error.statusCode,
-        errorCode: error.errorCode,
-        message: error.message,
-      });
-      return;
-    }
+      if (!user) {
+        throw ApplicationError.unauthorized();
+      }
 
-    if (!allowedRoles.includes(user.role)) {
-      const error = ApplicationError.forbidden(
-        `Role '${user.role}' is not permitted to access this resource`
+      if (user.system_role === 'super_admin') {
+        return;
+      }
+
+      const tenantId = request.tenantId ?? user.tenantId;
+      if (!tenantId) {
+        throw ApplicationError.forbidden('Tenant context required');
+      }
+
+      const allowed = await request.server.policy.hasAnyRole(
+        tenantId,
+        user.role,
+        allowedRoles
       );
-      reply.status(error.statusCode).send({
-        statusCode: error.statusCode,
-        errorCode: error.errorCode,
-        message: error.message,
-      });
+      if (!allowed) {
+        throw ApplicationError.forbidden(
+          `Role '${user.role}' is not permitted to access this resource`
+        );
+      }
+    } catch (err) {
+      console.error('MIDDLEWARE ERROR:', err);
+      throw err;
     }
   };
 }
 
 /**
- * Permission-based access control (PREFERRED).
- * Checks if user's role has the required permission.
- * More flexible than hardcoded roles - supports custom permissions per application.
- * 
- * Usage: preHandler: [fastify.authenticate, requirePermission('update:task')]
+ * Like `requireRoles`, but **does not** bypass for `super_admin`.
+ * Use for tenant-only actions (e.g. workspace rename) where platform accounts must not act.
  */
-export function requirePermission(...permissions: Permission[]) {
+export function requireTenantMemberRoles(...allowedRoles: Role[]) {
+  if (allowedRoles.length === 0) {
+    throw new Error('requireTenantMemberRoles() must receive at least one role');
+  }
+
+  return async function tenantMemberRoleGuard(
+    request: FastifyRequest,
+    _reply: FastifyReply
+  ): Promise<void> {
+    try {
+      const user = request.user;
+
+      if (!user) {
+        throw ApplicationError.unauthorized();
+      }
+
+      const tenantId = request.tenantId ?? user.tenantId;
+      if (!tenantId) {
+        throw ApplicationError.forbidden('Tenant context required');
+      }
+
+      const allowed = await request.server.policy.hasAnyRole(
+        tenantId,
+        user.role,
+        allowedRoles
+      );
+      if (!allowed) {
+        throw ApplicationError.forbidden(
+          `Role '${user.role}' is not permitted to access this resource`
+        );
+      }
+    } catch (err) {
+      console.error('MIDDLEWARE ERROR:', err);
+      throw err;
+    }
+  };
+}
+
+/**
+ * Policy-based guard for permission checks.
+ * Uses tenant-aware role permission mappings.
+ */
+export function requirePermission(action: string, resource: string) {
   return async function permissionGuard(
     request: FastifyRequest,
-    reply: FastifyReply
+    _reply: FastifyReply
   ): Promise<void> {
-    const user = request.user;
+    try {
+      const user = request.user;
+      if (!user) {
+        throw ApplicationError.unauthorized();
+      }
 
-    if (!user) {
-      const error = ApplicationError.unauthorized();
-      reply.status(error.statusCode).send({
-        statusCode: error.statusCode,
-        errorCode: error.errorCode,
-        message: error.message,
-      });
-      return;
-    }
+      if (user.system_role === 'super_admin') {
+        return;
+      }
 
-    // Check if user's role has any of the required permissions
-    const hasPermission = permissions.some(permission =>
-      roleHasPermission(user.role, permission)
-    );
+      const tenantId = request.tenantId ?? user.tenantId;
+      if (!tenantId) {
+        throw ApplicationError.forbidden('Tenant context required');
+      }
 
-    if (!hasPermission) {
-      const error = ApplicationError.forbidden(
-        `Permission denied. Required one of: ${permissions.join(', ')}`
+      const allowed = await request.server.policy.checkPermission(
+        tenantId,
+        user.role,
+        action,
+        resource
       );
-      reply.status(error.statusCode).send({
-        statusCode: error.statusCode,
-        errorCode: error.errorCode,
-        message: error.message,
-      });
+
+      if (!allowed) {
+        throw ApplicationError.forbidden(
+          `Permission denied: ${action}:${resource}`
+        );
+      }
+    } catch (err) {
+      console.error('MIDDLEWARE ERROR:', err);
+      throw err;
     }
   };
 }
@@ -90,31 +142,31 @@ export function requirePermission(...permissions: Permission[]) {
 export function validateTenantContext() {
   return async function tenantValidator(
     request: FastifyRequest,
-    reply: FastifyReply
+    _reply: FastifyReply
   ): Promise<void> {
-    const user = request.user;
-    const requestedTenantId = (request.params as any).tenantId ?? (request.query as any).tenantId ?? user?.tenantId;
+    try {
+      const user = request.user;
+      const params = (request.params ?? {}) as { tenantId?: string };
+      const requestedTenantId = params.tenantId ?? user?.tenantId;
 
-    if (!user) {
-      const error = ApplicationError.unauthorized();
-      reply.status(error.statusCode).send({
-        statusCode: error.statusCode,
-        errorCode: error.errorCode,
-        message: error.message,
-      });
-      return;
-    }
+      if (!user) {
+        throw ApplicationError.unauthorized();
+      }
 
-    // User can only access their own tenant (unless they're a platform admin)
-    if (requestedTenantId && requestedTenantId !== user.tenantId && user.role !== 'ADMIN') {
-      const error = ApplicationError.forbidden(
-        'You cannot access data from another tenant'
-      );
-      reply.status(error.statusCode).send({
-        statusCode: error.statusCode,
-        errorCode: error.errorCode,
-        message: error.message,
-      });
+      if (user.system_role === 'super_admin') {
+        return;
+      }
+
+      // Strict isolation: all protected tenant context must match JWT tenant.
+      const userTenant = user.tenant_id ?? user.tenantId;
+      if (requestedTenantId && requestedTenantId !== userTenant) {
+        throw ApplicationError.forbidden(
+          'You cannot access data from another tenant'
+        );
+      }
+    } catch (err) {
+      console.error('MIDDLEWARE ERROR:', err);
+      throw err;
     }
   };
 }

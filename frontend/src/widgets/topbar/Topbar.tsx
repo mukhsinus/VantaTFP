@@ -4,26 +4,19 @@ import { createPortal } from 'react-dom';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Avatar, Badge } from '@shared/components/ui';
 import { LanguageSwitcher } from '@shared/components/language-switcher/LanguageSwitcher';
-import { NotificationPanel } from '@shared/components/NotificationPanel';
 import { useAuthStore } from '@app/store/auth.store';
 import { useSidebarStore } from '@app/store/sidebar.store';
-import { useNotificationStore } from '@app/store/notifications.store';
 import { useIsMobile } from '@shared/hooks/useIsMobile';
+import { useCurrentUser } from '@shared/hooks/useCurrentUser';
+import { useUnreadNotifications } from '@features/notifications/hooks/useNotifications';
 import styles from './Topbar.module.css';
-
-const pageTitles: Record<string, string> = {
-  '/dashboard': 'nav.overview',
-  '/tasks': 'nav.tasks',
-  '/employees': 'nav.employees',
-  '/kpi': 'nav.kpi',
-  '/payroll': 'nav.payroll',
-  '/settings': 'nav.settings',
-};
 
 const mobileSubtitleKeys: Partial<Record<string, string>> = {
   '/dashboard': 'overview.subtitle',
   '/kpi': 'kpi.subtitle',
   '/payroll': 'payroll.subtitle',
+  '/reports': 'reports.subtitle',
+  '/billing': 'billing.subtitle',
   '/settings': 'settings.subtitle',
 };
 
@@ -38,22 +31,32 @@ export function Topbar() {
   const location = useLocation();
   const navigate = useNavigate();
   const user = useAuthStore((s) => s.user);
+  const { role } = useCurrentUser();
   const clearAuth = useAuthStore((s) => s.clearAuth);
   const toggleSidebar = useSidebarStore((s) => s.toggleCollapsed);
   const isMobile = useIsMobile();
-  const [search, setSearch] = useState('');
   const [isAccountSheetOpen, setIsAccountSheetOpen] = useState(false);
-  const [isNotificationPanelOpen, setIsNotificationPanelOpen] = useState(false);
-  const unreadCount = useNotificationStore((s: any) => s.getUnreadCount());
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+  const unread = useUnreadNotifications();
 
   const baseRoute = '/' + location.pathname.split('/')[1];
-  const titleKey = pageTitles[baseRoute] ?? 'nav.overview';
+  const titleByRoute: Record<string, string> = {
+    '/dashboard': role === 'MANAGER' ? 'Team Dashboard' : 'Dashboard',
+    '/tasks': role === 'EMPLOYEE' ? 'My Tasks' : role === 'MANAGER' ? 'Team Tasks' : 'Tasks',
+    '/employees': 'Employees',
+    '/kpi': role === 'EMPLOYEE' ? 'My KPI' : role === 'MANAGER' ? 'Team KPI' : 'KPI',
+    '/payroll': role === 'EMPLOYEE' ? 'My Payroll' : 'Payroll',
+    '/reports': 'Reports',
+    '/billing': 'Billing',
+    '/settings': 'Settings',
+  };
+  const title = titleByRoute[baseRoute] ?? 'Dashboard';
   const subtitleKey = mobileSubtitleKeys[baseRoute];
   const fullName = user ? `${user.firstName} ${user.lastName}` : '';
 
   useEffect(() => {
     setIsAccountSheetOpen(false);
-    setIsNotificationPanelOpen(false);
+    setIsNotificationsOpen(false);
   }, [location.pathname, location.search]);
 
   useEffect(() => {
@@ -73,6 +76,17 @@ export function Topbar() {
       document.body.style.overflow = '';
     };
   }, [isAccountSheetOpen]);
+
+  useEffect(() => {
+    if (!isNotificationsOpen) return;
+    const onClick = (event: MouseEvent) => {
+      const target = event.target as HTMLElement | null;
+      if (target?.closest('[data-notification-panel]')) return;
+      setIsNotificationsOpen(false);
+    };
+    document.addEventListener('click', onClick);
+    return () => document.removeEventListener('click', onClick);
+  }, [isNotificationsOpen]);
 
   const closeAccountSheet = () => setIsAccountSheetOpen(false);
 
@@ -107,55 +121,96 @@ export function Topbar() {
       {/* Page title */}
       {isMobile ? (
         <div className={styles.mobileTitleWrap}>
-          <h1 className={`${styles.title} ${styles.titleMobile}`}>{t(titleKey)}</h1>
+          <h1 className={`${styles.title} ${styles.titleMobile}`}>{title}</h1>
           {subtitleKey && <p className={styles.mobileSubtitle}>{t(subtitleKey)}</p>}
         </div>
       ) : (
-        <h1 className={styles.title}>{t(titleKey)}</h1>
-      )}
-
-      {/* Search */}
-      {!isMobile && (
-        <div className={styles.searchContainer}>
-          <div className={styles.searchWrapper}>
-            <span className={styles.searchIcon}>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
-                <circle cx="11" cy="11" r="8" />
-                <path d="M21 21l-4.35-4.35" />
-              </svg>
-            </span>
-            <input
-              type="search"
-              placeholder={t('topbar.search')}
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className={styles.searchInput}
-            />
-            <kbd className={styles.searchShortcut}>{t('topbar.shortcut')}</kbd>
-          </div>
-        </div>
+        <h1 className={styles.title}>{title}</h1>
       )}
 
       {/* Actions */}
       <div className={`${styles.actions} ${isMobile ? styles.actionsMobile : ''}`}>
-        {/* Language switcher - show on desktop and mobile */}
-        <LanguageSwitcher />
+        {!isMobile && <LanguageSwitcher />}
 
-        {/* Notifications bell - now visible on both desktop and mobile */}
-        <button
-          onClick={() => setIsNotificationPanelOpen(!isNotificationPanelOpen)}
-          className={styles.notificationButton}
-          aria-label={t('nav.notifications.title')}
-          aria-pressed={isNotificationPanelOpen}
-        >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75}>
-            <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 01-3.46 0" />
-          </svg>
-          {unreadCount > 0 && <span className={styles.notificationDot}>{unreadCount > 9 ? '9+' : unreadCount}</span>}
-        </button>
-
-        {/* Divider - hide on mobile */}
+        {/* Divider */}
         {!isMobile && <div className={styles.divider} />}
+
+        {user && (
+          <div style={{ position: 'relative' }} data-notification-panel>
+            <button
+              onClick={() => setIsNotificationsOpen((v) => !v)}
+              style={{
+                position: 'relative',
+                width: 36,
+                height: 36,
+                borderRadius: '50%',
+                border: '1px solid var(--color-border)',
+                background: 'var(--color-bg)',
+                cursor: 'pointer',
+              }}
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                <path d="M18 8a6 6 0 10-12 0c0 7-3 9-3 9h18s-3-2-3-9" />
+                <path d="M13.73 21a2 2 0 01-3.46 0" />
+              </svg>
+              {(unread.data?.length ?? 0) > 0 && (
+                <span
+                  style={{
+                    position: 'absolute',
+                    top: 2,
+                    right: 2,
+                    minWidth: 16,
+                    height: 16,
+                    borderRadius: 999,
+                    background: 'var(--color-danger)',
+                    color: '#fff',
+                    fontSize: 10,
+                    lineHeight: '16px',
+                    textAlign: 'center',
+                    padding: '0 4px',
+                  }}
+                >
+                  {Math.min(unread.data?.length ?? 0, 99)}
+                </span>
+              )}
+            </button>
+
+            {isNotificationsOpen && (
+              <div
+                style={{
+                  position: 'absolute',
+                  right: 0,
+                  top: 42,
+                  width: 320,
+                  maxHeight: 360,
+                  overflowY: 'auto',
+                  background: 'var(--color-bg)',
+                  border: '1px solid var(--color-border)',
+                  borderRadius: 'var(--radius-lg)',
+                  boxShadow: 'var(--shadow-lg)',
+                  padding: 10,
+                  zIndex: 30,
+                }}
+              >
+                <p style={{ margin: '0 0 8px', fontWeight: 600, fontSize: 'var(--text-sm)' }}>Notifications</p>
+                {!unread.data?.length ? (
+                  <p style={{ margin: 0, color: 'var(--color-text-secondary)', fontSize: 'var(--text-xs)' }}>
+                    No unread notifications.
+                  </p>
+                ) : (
+                  unread.data.map((item) => (
+                    <div key={item.id} style={{ borderTop: '1px solid var(--color-border)', padding: '8px 0' }}>
+                      <p style={{ margin: 0, fontSize: 'var(--text-sm)', fontWeight: 600 }}>{item.title}</p>
+                      <p style={{ margin: '4px 0 0', fontSize: 'var(--text-xs)', color: 'var(--color-text-secondary)' }}>
+                        {item.message}
+                      </p>
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* User */}
         {user && (
@@ -240,6 +295,13 @@ export function Topbar() {
               </div>
 
               <div className={styles.sheetSection}>
+                <p className={styles.sheetSectionTitle}>{t('common.languageSwitcher')}</p>
+                <div className={styles.sheetLanguage}>
+                  <LanguageSwitcher fullWidth />
+                </div>
+              </div>
+
+              <div className={styles.sheetSection}>
                 <p className={styles.sheetSectionTitle}>{t('nav.account.actionsTitle')}</p>
                 <div className={styles.sheetActions}>
                   <button onClick={goToSettings} className={styles.sheetActionButton}>
@@ -257,37 +319,6 @@ export function Topbar() {
           </div>,
           document.body
         )}
-
-      {/* Notification Panel - Render as portal on mobile, inline on desktop */}
-      {isMobile && isNotificationPanelOpen ? (
-        createPortal(
-          <div
-            className={styles.notificationOverlay}
-            onClick={(e) => {
-              if (e.target === e.currentTarget) {
-                setIsNotificationPanelOpen(false);
-              }
-            }}
-          >
-            <NotificationPanel
-              isOpen={isNotificationPanelOpen}
-              onClose={() => setIsNotificationPanelOpen(false)}
-              isMobile={true}
-            />
-          </div>,
-          document.body
-        )
-      ) : (
-        !isMobile && isNotificationPanelOpen && (
-          <div className={styles.notificationPanelWrapper}>
-            <NotificationPanel
-              isOpen={isNotificationPanelOpen}
-              onClose={() => setIsNotificationPanelOpen(false)}
-              isMobile={false}
-            />
-          </div>
-        )
-      )}
     </header>
   );
 }

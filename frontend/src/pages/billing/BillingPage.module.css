@@ -1,0 +1,530 @@
+/* ═══ Mobile-first billing — base is small screens ═══ */
+
+/* Scroll + min-width: avoids clipped plan row inside overflow-x:hidden ancestors */
+.billingContainer {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  overflow-x: auto;
+  overflow-y: visible;
+  padding-bottom: 0;
+}
+
+.pageRootStickyPad {
+  padding-bottom: calc(88px + env(safe-area-inset-bottom, 0px));
+}
+
+@media (min-width: 900px) {
+  .pageRootStickyPad {
+    padding-bottom: 0;
+  }
+}
+
+/* ─── Trial banner (billing page only) ───────────────────────────────────── */
+.billingTrialBanner {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-5);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-lg);
+  background: var(--color-accent-subtle);
+  border: 1px solid var(--color-accent);
+  color: var(--color-text-primary);
+  font-size: max(15px, var(--text-base));
+  font-weight: 600;
+}
+
+.billingTrialBannerIcon {
+  flex-shrink: 0;
+  color: var(--color-accent);
+}
+
+/* ─── Past-due modal (billing page) ──────────────────────────────────────── */
+.billingPastDueOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 400;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-4);
+}
+
+.billingPastDueBackdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.55);
+}
+
+.billingPastDuePanel {
+  position: relative;
+  z-index: 1;
+  width: min(100%, 400px);
+  padding: var(--space-6);
+  border-radius: var(--radius-lg);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  box-shadow: var(--shadow-lg);
+  text-align: center;
+}
+
+.billingPastDueTitle {
+  margin: 0 0 var(--space-5);
+  font-size: max(17px, var(--text-lg));
+  font-weight: 700;
+  line-height: 1.45;
+  color: var(--color-text-primary);
+}
+
+/* ─── Header (readable sizes) ───────────────────────────────────────────── */
+.header {
+  margin-bottom: var(--space-5);
+}
+
+.title {
+  margin: 0;
+  font-size: clamp(1.625rem, 5.5vw, 1.875rem);
+  font-weight: 700;
+  color: var(--color-text-primary);
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+
+.subtitle {
+  margin: var(--space-3) 0 0;
+  font-size: max(15px, var(--text-base));
+  color: var(--color-text-secondary);
+  max-width: 42rem;
+  line-height: 1.55;
+}
+
+/* ─── Main: stacked by default; 2-col on large screens ───────────────────── */
+.billingMainGrid {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  align-items: stretch;
+}
+
+@media (min-width: 1100px) {
+  .billingMainGrid {
+    display: grid;
+    grid-template-columns: 1fr minmax(300px, 400px);
+    gap: var(--space-8);
+    align-items: start;
+  }
+}
+
+.sectionLabel {
+  margin: 0 0 var(--space-4);
+  font-size: max(13px, var(--text-sm));
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-text-secondary);
+}
+
+/* ─── Plan row: horizontal scroll (no negative margins — avoids parent clip) ─ */
+.plansScroll {
+  display: flex;
+  flex-direction: row;
+  gap: 12px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-snap-type: x mandatory;
+  scroll-padding-inline: var(--space-2);
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-x;
+  overscroll-behavior-x: contain;
+  padding: var(--space-1) 0 var(--space-3);
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  scrollbar-width: thin;
+}
+
+@media (min-width: 900px) {
+  .plansScroll {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--space-4);
+    overflow: visible;
+    scroll-snap-type: none;
+    padding-left: 0;
+    padding-right: 0;
+  }
+}
+
+.planCard {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  flex: 0 0 min(88vw, 320px);
+  min-width: min(88vw, 320px);
+  scroll-snap-align: center;
+  padding: var(--space-5);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-xs);
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease,
+    border-color 0.2s ease;
+}
+
+@media (min-width: 900px) {
+  .planCard {
+    flex: none;
+    min-width: 0;
+    width: auto;
+    scroll-snap-align: unset;
+  }
+
+  .planCard:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+    border-color: var(--color-border-strong);
+  }
+}
+
+.planCardHighlighted {
+  border-color: var(--color-accent);
+  box-shadow:
+    0 0 0 2px var(--color-accent),
+    var(--shadow-md);
+  background: linear-gradient(180deg, var(--color-accent-subtle) 0%, var(--color-bg) 48%);
+}
+
+@media (min-width: 900px) {
+  .planCardHighlighted:hover {
+    border-color: var(--color-accent-hover);
+    box-shadow:
+      0 0 0 2px var(--color-accent-hover),
+      var(--shadow-lg);
+  }
+}
+
+.planCardName {
+  margin: 0;
+  font-size: max(17px, var(--text-lg));
+  font-weight: 700;
+  color: var(--color-text-primary);
+  text-transform: capitalize;
+}
+
+.planCardPrice {
+  margin: var(--space-3) 0 0;
+  font-size: clamp(1.375rem, 4vw, 1.5rem);
+  font-weight: 700;
+  color: var(--color-text-primary);
+  letter-spacing: -0.02em;
+}
+
+.planCardPriceSuffix {
+  font-size: max(14px, var(--text-sm));
+  font-weight: 500;
+  color: var(--color-text-secondary);
+}
+
+.planCardList {
+  margin: var(--space-4) 0 0;
+  padding: 0 0 0 var(--space-4);
+  flex: 1;
+  font-size: max(15px, var(--text-base));
+  color: var(--color-text-secondary);
+  line-height: 1.6;
+}
+
+.planCardList li {
+  margin-bottom: var(--space-2);
+}
+
+.planCardList li:last-child {
+  margin-bottom: 0;
+}
+
+.planCardCta {
+  margin-top: var(--space-5);
+}
+
+/* Large tap targets on plan actions */
+.tapButton {
+  min-height: 48px !important;
+  font-size: max(16px, var(--text-base)) !important;
+  font-weight: 600 !important;
+}
+
+/* ─── Sticky bottom CTA (mobile / small tablet only) ─────────────────────── */
+.stickyUpgrade {
+  display: flex;
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  z-index: 199;
+  padding: var(--space-3) max(16px, env(safe-area-inset-left)) calc(var(--space-3) + 72px + env(safe-area-inset-bottom, 0px))
+    max(16px, env(safe-area-inset-right));
+  background: linear-gradient(to top, var(--color-bg) 70%, rgba(255, 255, 255, 0.92));
+  border-top: 1px solid var(--color-border);
+  box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.08);
+  backdrop-filter: blur(8px);
+  box-sizing: border-box;
+}
+
+.stickyUpgradeButton {
+  width: 100%;
+  min-height: 52px !important;
+  font-size: 17px !important;
+  font-weight: 600 !important;
+  border-radius: var(--radius-md) !important;
+}
+
+@media (min-width: 900px) {
+  .stickyUpgrade {
+    display: none;
+  }
+}
+
+/* ─── Usage / current plan panel ─────────────────────────────────────────── */
+.usageBlock {
+  padding: var(--space-5);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+}
+
+@media (min-width: 1100px) {
+  .usageBlock {
+    position: sticky;
+    top: calc(var(--topbar-height) + var(--space-4));
+  }
+}
+
+.currentPanelTitle {
+  margin: 0 0 var(--space-4);
+  font-size: max(13px, var(--text-sm));
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-text-secondary);
+}
+
+.planNameDisplay {
+  margin: 0 0 var(--space-5);
+  font-size: clamp(1.25rem, 4vw, 1.375rem);
+  font-weight: 700;
+  text-transform: capitalize;
+  color: var(--color-text-primary);
+}
+
+.progressBlock {
+  margin-bottom: var(--space-5);
+}
+
+.progressLabelRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
+}
+
+.progressLabel {
+  font-size: max(15px, var(--text-base));
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.progressMeta {
+  font-size: max(14px, var(--text-sm));
+  font-weight: 500;
+  color: var(--color-text-secondary);
+}
+
+.progressTrack {
+  width: 100%;
+  height: 12px;
+  border-radius: var(--radius-full);
+  background: var(--color-bg-muted);
+  overflow: hidden;
+}
+
+.progressFill {
+  height: 100%;
+  border-radius: var(--radius-full);
+  background: linear-gradient(90deg, var(--color-accent) 0%, #3b82f6 100%);
+  transition: width 0.35s ease;
+}
+
+.progressFillWarning {
+  background: linear-gradient(90deg, var(--color-warning) 0%, #f59e0b 100%);
+}
+
+.divider {
+  margin: var(--space-5) 0;
+  height: 1px;
+  background: var(--color-border);
+  border: none;
+}
+
+.metaRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--space-3);
+  font-size: max(15px, var(--text-base));
+  margin-bottom: var(--space-4);
+}
+
+.metaRow:last-child {
+  margin-bottom: 0;
+}
+
+.metaKey {
+  color: var(--color-text-secondary);
+  flex-shrink: 0;
+}
+
+.metaVal {
+  font-weight: 500;
+  color: var(--color-text-primary);
+  text-align: right;
+}
+
+/* ─── Subscription overview ───────────────────────────────────────────────── */
+.overviewSection {
+  margin-top: var(--space-8);
+}
+
+.overviewCard {
+  padding: var(--space-5);
+  background: var(--color-bg-subtle);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+}
+
+.overviewTitle {
+  margin: 0 0 var(--space-4);
+  font-size: max(13px, var(--text-sm));
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-text-secondary);
+}
+
+.overviewGrid {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+@media (min-width: 768px) {
+  .overviewGrid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--space-5);
+  }
+}
+
+.overviewItemTitle {
+  margin: 0 0 var(--space-2);
+  font-size: max(13px, var(--text-sm));
+  color: var(--color-text-secondary);
+}
+
+.overviewItemValue {
+  margin: 0;
+  font-size: max(15px, var(--text-base));
+  font-weight: 500;
+  color: var(--color-text-primary);
+}
+
+.historyPlaceholder {
+  margin: var(--space-3) 0 0;
+  padding: var(--space-4);
+  font-size: max(15px, var(--text-base));
+  color: var(--color-text-muted);
+  text-align: center;
+  background: var(--color-bg);
+  border: 1px dashed var(--color-border-strong);
+  border-radius: var(--radius);
+}
+
+/* ─── Limit alert ─────────────────────────────────────────────────────────── */
+.limitAlert {
+  margin-top: var(--space-6);
+  padding: var(--space-4) var(--space-5);
+  background: var(--color-warning-subtle);
+  border: 1px solid var(--color-warning-border);
+  border-radius: var(--radius-lg);
+  color: var(--color-warning);
+  font-size: max(15px, var(--text-base));
+  font-weight: 500;
+  line-height: 1.5;
+}
+
+/* ─── Security block ─────────────────────────────────────────────────────── */
+.securitySection {
+  margin-top: var(--space-8);
+  margin-bottom: var(--space-4);
+}
+
+.securityCard {
+  padding: var(--space-5);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  display: flex;
+  gap: var(--space-4);
+  align-items: flex-start;
+}
+
+@media (min-width: 900px) {
+  .securityCard:hover {
+    border-color: var(--color-border-strong);
+    box-shadow: var(--shadow-xs);
+  }
+}
+
+.securityIcon {
+  flex-shrink: 0;
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-md);
+  background: var(--color-bg-muted);
+  color: var(--color-text-secondary);
+}
+
+.securityTitle {
+  margin: 0 0 var(--space-2);
+  font-size: max(16px, var(--text-md));
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.securityText {
+  margin: 0;
+  font-size: max(15px, var(--text-base));
+  color: var(--color-text-secondary);
+  line-height: 1.6;
+}
+
+.plansLoading {
+  padding: var(--space-8);
+  text-align: center;
+  font-size: max(15px, var(--text-base));
+  color: var(--color-text-muted);
+}
+
+.upgradeError {
+  margin-top: var(--space-3);
+  color: var(--color-danger);
+  font-size: max(14px, var(--text-sm));
+}

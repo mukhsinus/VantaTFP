@@ -1,0 +1,63 @@
+import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
+const icon = {
+    dashboard: (_jsxs("svg", { width: "16", height: "16", viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 1.75, children: [_jsx("rect", { x: "3", y: "3", width: "7", height: "7", rx: "1" }), _jsx("rect", { x: "14", y: "3", width: "7", height: "7", rx: "1" }), _jsx("rect", { x: "3", y: "14", width: "7", height: "7", rx: "1" }), _jsx("rect", { x: "14", y: "14", width: "7", height: "7", rx: "1" })] })),
+    tasks: (_jsxs("svg", { width: "16", height: "16", viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 1.75, children: [_jsx("path", { d: "M9 11l3 3L22 4" }), _jsx("path", { d: "M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11" })] })),
+    employees: (_jsxs("svg", { width: "16", height: "16", viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 1.75, children: [_jsx("path", { d: "M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" }), _jsx("circle", { cx: "9", cy: "7", r: "4" }), _jsx("path", { d: "M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" })] })),
+    kpi: (_jsx("svg", { width: "16", height: "16", viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 1.75, children: _jsx("polyline", { points: "22 12 18 12 15 21 9 3 6 12 2 12" }) })),
+    payroll: (_jsxs("svg", { width: "16", height: "16", viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 1.75, children: [_jsx("rect", { x: "2", y: "5", width: "20", height: "14", rx: "2" }), _jsx("path", { d: "M2 10h20" }), _jsx("path", { d: "M12 15h.01" })] })),
+    reports: (_jsxs("svg", { width: "16", height: "16", viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 1.75, children: [_jsx("path", { d: "M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" }), _jsx("path", { d: "M14 2v6h6" }), _jsx("path", { d: "M16 13H8M16 17H8M10 9H8" })] })),
+    billing: (_jsxs("svg", { width: "16", height: "16", viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 1.75, children: [_jsx("rect", { x: "2", y: "5", width: "20", height: "14", rx: "2" }), _jsx("path", { d: "M2 10h20" }), _jsx("path", { d: "M7 15h3" })] })),
+    settings: (_jsxs("svg", { width: "16", height: "16", viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 1.75, children: [_jsx("circle", { cx: "12", cy: "12", r: "3" }), _jsx("path", { d: "M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z" })] })),
+};
+const NAV_BY_ROLE = {
+    ADMIN: [
+        { to: '/dashboard', label: 'Dashboard', icon: icon.dashboard },
+        { to: '/employees', label: 'Employees', icon: icon.employees },
+        { to: '/tasks', label: 'Tasks', icon: icon.tasks },
+        { to: '/kpi', label: 'KPI', icon: icon.kpi },
+        { to: '/payroll', label: 'Payroll', icon: icon.payroll },
+        { to: '/reports', label: 'Reports', icon: icon.reports },
+        { to: '/billing', label: 'Billing', icon: icon.billing },
+        { to: '/settings', label: 'Settings', icon: icon.settings },
+    ],
+    MANAGER: [
+        { to: '/dashboard', label: 'Dashboard', icon: icon.dashboard },
+        { to: '/employees', label: 'Employees', icon: icon.employees },
+        { to: '/tasks', label: 'Team Tasks', icon: icon.tasks },
+        { to: '/kpi', label: 'Team KPI', icon: icon.kpi },
+        { to: '/reports', label: 'Reports', icon: icon.reports },
+        { to: '/settings', label: 'Settings', icon: icon.settings },
+    ],
+    EMPLOYEE: [
+        { to: '/tasks', label: 'My Tasks', icon: icon.tasks },
+        { to: '/kpi', label: 'My KPI', icon: icon.kpi },
+        { to: '/payroll', label: 'My Payroll', icon: icon.payroll },
+        { to: '/settings', label: 'Settings', icon: icon.settings },
+    ],
+};
+const ALLOWED_ROLES_BY_ROUTE = {
+    '/dashboard': ['ADMIN', 'MANAGER'],
+    '/employees': ['ADMIN', 'MANAGER'],
+    '/tasks': ['ADMIN', 'MANAGER', 'EMPLOYEE'],
+    '/kpi': ['ADMIN', 'MANAGER', 'EMPLOYEE'],
+    '/payroll': ['ADMIN', 'EMPLOYEE'],
+    '/reports': ['ADMIN', 'MANAGER'],
+    '/billing': ['ADMIN'],
+    '/settings': ['ADMIN', 'MANAGER', 'EMPLOYEE'],
+};
+export function getNavByRole(role) {
+    return NAV_BY_ROLE[role] ?? NAV_BY_ROLE.EMPLOYEE;
+}
+export function canAccessRoute(role, path) {
+    const basePath = `/${path.split('/').filter(Boolean)[0] ?? ''}`;
+    const allowed = ALLOWED_ROLES_BY_ROUTE[basePath];
+    if (!allowed)
+        return true;
+    return allowed.includes(role);
+}
+export function getHomeRouteByRole(role) {
+    const nav = NAV_BY_ROLE[role];
+    if (!nav?.length)
+        return '/tasks';
+    return nav[0]?.to ?? '/tasks';
+}

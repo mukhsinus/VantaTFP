@@ -1,57 +1,82 @@
 import React from 'react';
 import { createBrowserRouter, Navigate } from 'react-router-dom';
 import { AppLayout } from './layouts/AppLayout';
+import { AdminLayout } from './layouts/AdminLayout';
 import { AuthGuard } from './guards/AuthGuard';
+import { RoleGuard } from './guards/RoleGuard';
+import { HomeRedirect } from './guards/HomeRedirect';
 import { SuperAdminGuard } from './guards/SuperAdminGuard';
+import { TenantRouteGuard } from './guards/TenantRouteGuard';
+import { WildcardRedirect } from './guards/WildcardRedirect';
 import { LoginPage } from '@pages/login/LoginPage';
 import { DashboardPage } from '@pages/dashboard/DashboardPage';
 import { TasksPage } from '@pages/tasks/TasksPage';
 import { EmployeesPage } from '@pages/employees/EmployeesPage';
 import { KpiPage } from '@pages/kpi/KpiPage';
 import { PayrollPage } from '@pages/payroll/PayrollPage';
+import { ReportsPage } from '@pages/reports/ReportsPage';
+import { BillingPage } from '@pages/billing/BillingPage';
 import { SettingsPage } from '@pages/settings/SettingsPage';
-import { SuperAdminDashboard } from '@pages/superadmin/SuperAdminDashboard';
+import { AdminDashboardPage } from '@pages/admin/AdminDashboardPage';
+import { AdminTenantsPage } from '@pages/admin/AdminTenantsPage';
+import { AdminUsersPage } from '@pages/admin/AdminUsersPage';
+import { AdminSubscriptionsPage } from '@pages/admin/AdminSubscriptionsPage';
+import { ProjectsPage } from '@pages/projects/ProjectsPage';
+import { DocumentsPage } from '@pages/documents/DocumentsPage';
+import { AutomationsPage } from '@pages/automations/AutomationsPage';
+import { TemplatesPage } from '@pages/templates/TemplatesPage';
 
 export const router = createBrowserRouter([
-  // ── Public routes ────────────────────────────────────────────────────────
   {
     path: '/login',
     element: <LoginPage />,
   },
 
-  // ── Super Admin routes (exclusive, no sidebar layout) ────────────────────
   {
-    path: '/superadmin',
-    element: (
-      <SuperAdminGuard>
-        <SuperAdminDashboard />
-      </SuperAdminGuard>
-    ),
-  },
-
-  // ── Protected routes (AuthGuard → AppLayout → page) ──────────────────────
-  {
-    element: <AuthGuard />,       // handles hydration check + redirect
+    element: <AuthGuard />,
     children: [
       {
-        path: '/',
-        element: <AppLayout />,   // sidebar + topbar shell
+        path: 'admin',
+        element: <SuperAdminGuard />,
         children: [
-          { index: true,           element: <Navigate to="/dashboard" replace /> },
-          { path: 'dashboard',     element: <DashboardPage /> },
-          { path: 'tasks',         element: <TasksPage /> },
-          { path: 'employees',     element: <EmployeesPage /> },
-          { path: 'kpi',           element: <KpiPage /> },
-          { path: 'payroll',       element: <PayrollPage /> },
-          { path: 'settings',      element: <SettingsPage /> },
+          {
+            element: <AdminLayout />,
+            children: [
+              { index: true, element: <Navigate to="dashboard" replace /> },
+              { path: 'dashboard', element: <AdminDashboardPage /> },
+              { path: 'tenants', element: <AdminTenantsPage /> },
+              { path: 'users', element: <AdminUsersPage /> },
+              { path: 'subscriptions', element: <AdminSubscriptionsPage /> },
+            ],
+          },
         ],
       },
-    ],
-  },
 
-  // ── 404 fallback ──────────────────────────────────────────────────────────
-  {
-    path: '*',
-    element: <Navigate to="/dashboard" replace />,
+      {
+        element: <TenantRouteGuard />,
+        children: [
+          {
+            element: <AppLayout />,
+            children: [
+              { index: true, element: <HomeRedirect /> },
+              { path: 'dashboard', element: <RoleGuard path="/dashboard"><DashboardPage /></RoleGuard> },
+              { path: 'tasks', element: <RoleGuard path="/tasks"><TasksPage /></RoleGuard> },
+              { path: 'employees', element: <RoleGuard path="/employees"><EmployeesPage /></RoleGuard> },
+              { path: 'kpi', element: <RoleGuard path="/kpi"><KpiPage /></RoleGuard> },
+              { path: 'payroll', element: <RoleGuard path="/payroll"><PayrollPage /></RoleGuard> },
+              { path: 'reports', element: <RoleGuard path="/reports"><ReportsPage /></RoleGuard> },
+              { path: 'billing', element: <RoleGuard path="/billing"><BillingPage /></RoleGuard> },
+              { path: 'projects', element: <RoleGuard path="/projects"><ProjectsPage /></RoleGuard> },
+              { path: 'documents', element: <RoleGuard path="/documents"><DocumentsPage /></RoleGuard> },
+              { path: 'automations', element: <RoleGuard path="/automations"><AutomationsPage /></RoleGuard> },
+              { path: 'templates', element: <RoleGuard path="/templates"><TemplatesPage /></RoleGuard> },
+              { path: 'settings', element: <RoleGuard path="/settings"><SettingsPage /></RoleGuard> },
+            ],
+          },
+        ],
+      },
+
+      { path: '*', element: <WildcardRedirect /> },
+    ],
   },
 ]);

@@ -1,0 +1,14 @@
+.wrap {
+  position: fixed;
+  z-index: 350;
+  pointer-events: none;
+  right: max(16px, env(safe-area-inset-right));
+  bottom: calc(72px + 16px + env(safe-area-inset-bottom, 0px));
+}
+
+@media (min-width: 768px) {
+  .wrap {
+    right: max(24px, env(safe-area-inset-right));
+    bottom: max(24px, env(safe-area-inset-bottom));
+  }
+}

@@ -1,58 +1,21 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
-import { ZodError } from 'zod';
-import { ApplicationError } from '../utils/application-error.js';
-
-interface ErrorResponse {
-  statusCode: number;
-  errorCode: string;
-  message: string;
-  details?: unknown;
-}
 
 /**
- * Centralized error handler registered on the Fastify instance.
- * All unhandled errors bubble up here — controllers never catch errors directly.
+ * Verbose error handler for debugging: logs full error and returns message + stack in the body.
+ * Replaces structured envelopes while diagnosing 500s.
  */
 export function registerErrorHandler(app: FastifyInstance): void {
   app.setErrorHandler(
-    (error: Error, request: FastifyRequest, reply: FastifyReply) => {
-      request.log.error({ err: error }, 'Unhandled error');
+    (error: Error & { statusCode?: number }, _request: FastifyRequest, reply: FastifyReply) => {
+      console.error('FULL ERROR:', error);
+      console.error('STACK:', error.stack);
 
-      if (error instanceof ApplicationError) {
-        const response: ErrorResponse = {
-          statusCode: error.statusCode,
-          errorCode: error.errorCode,
-          message: error.message,
-        };
-        return reply.status(error.statusCode).send(response);
-      }
+      const statusCode = error.statusCode || 500;
 
-      if (error instanceof ZodError) {
-        const response: ErrorResponse = {
-          statusCode: 422,
-          errorCode: 'VALIDATION_ERROR',
-          message: 'Validation failed',
-          details: error.flatten().fieldErrors,
-        };
-        return reply.status(422).send(response);
-      }
-
-      // Fastify validation errors (JSON schema)
-      if ('statusCode' in error && (error as { statusCode?: number }).statusCode === 400) {
-        const response: ErrorResponse = {
-          statusCode: 400,
-          errorCode: 'BAD_REQUEST',
-          message: error.message,
-        };
-        return reply.status(400).send(response);
-      }
-
-      const response: ErrorResponse = {
-        statusCode: 500,
-        errorCode: 'INTERNAL_ERROR',
-        message: 'An unexpected error occurred',
-      };
-      return reply.status(500).send(response);
+      return reply.status(statusCode).send({
+        message: error.message,
+        stack: error.stack,
+      });
     }
   );
 }

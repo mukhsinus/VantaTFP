@@ -80,6 +80,8 @@
       "employees": "Employees",
       "kpi": "KPI",
       "payroll": "Payroll",
+      "reports": "Reports",
+      "billing": "Billing",
       "settings": "Settings",
       "logout": "Sign out"
     },
@@ -106,6 +108,8 @@
     "employees": "Employees",
     "kpi": "KPI",
     "payroll": "Payroll",
+    "reports": "Reports",
+    "billing": "Billing",
     "settings": "Settings",
     "logout": "Sign out"
   },
@@ -411,6 +415,28 @@
   },
   "employees": {
     "title": "Employees",
+    "filters": {
+      "all": "All"
+    },
+    "sheet": {
+      "actionsTitle": "Actions",
+      "changeRoleTitle": "Change role"
+    },
+    "confirm": {
+      "deactivateTitle": "Deactivate member?",
+      "deactivateBody": "They will lose access to this workspace. You can invite them again later if needed.",
+      "removeTitle": "Remove from workspace?",
+      "removeBody": "They will be removed from the team and will no longer have access to this workspace."
+    },
+    "ownerLockedHint": "The workspace owner cannot be deactivated or reassigned.",
+    "roles": {
+      "owner": "Owner",
+      "manager": "Manager",
+      "employee": "Employee"
+    },
+    "toast": {
+      "roleUpdated": "Role updated for {{email}}"
+    },
     "active": "active",
     "total": "total",
     "invite": "Invite Employee",
@@ -421,7 +447,10 @@
       "description": "Try adjusting your filters or invite your first team member."
     },
     "actions": {
+      "openMenu": "Open actions",
+      "changeRole": "Change role",
       "deactivate": "Deactivate",
+      "remove": "Remove",
       "readonly": "You don't have permission to manage this user.",
       "self": "You cannot update your own role here."
     },
@@ -440,7 +469,7 @@
         "nameRequired": "First name and last name are required.",
         "emailRequired": "Email is required.",
         "passwordShort": "Password must be at least 8 characters.",
-        "managerRole": "Managers can only create EMPLOYEE users."
+        "managerRole": "Managers can only invite employees."
       }
     },
     "card": {
@@ -516,6 +545,20 @@
       "description": "Create your first payroll entry to get started."
     }
   },
+  "reports": {
+    "title": "Reports",
+    "subtitle": "Generate and export KPI, payroll, and task reports"
+  },
+  "billing": {
+    "title": "Billing",
+    "subtitle": "Current plan and subscription limits",
+    "trial": {
+      "bannerDays": "Free trial — {{count}} days left",
+      "bannerLastDay": "Free trial — ends today",
+      "expiredMessage": "Your trial has expired. Upgrade to continue.",
+      "upgradeCta": "Upgrade"
+    }
+  },
   "settings": {
     "title": "Settings",
     "subtitle": "Manage your account and workspace preferences",
@@ -563,6 +606,19 @@
       "newPassword": "New Password",
       "confirmPassword": "Confirm New Password",
       "update": "Update Password"
+    },
+    "feedback": {
+      "profileSaved": "Profile saved",
+      "workspaceSaved": "Workspace name saved",
+      "notificationsSaved": "Notification preferences saved",
+      "passwordUpdated": "Password updated",
+      "validation": "Please fill in all required fields",
+      "passwordTooShort": "New password must be at least 6 characters",
+      "passwordMismatch": "New password and confirmation do not match",
+      "workspaceNameTooShort": "Workspace name must be at least 2 characters",
+      "workspaceOwnerOnly": "Only the workspace owner (admin) can rename the organization.",
+      "saveFailed": "Could not save changes",
+      "loadFailed": "Could not load settings"
     }
   }
   ,

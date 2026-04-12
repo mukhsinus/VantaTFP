@@ -1,4 +1,6 @@
 import { Pool } from 'pg';
+import { enforceTenantScope } from '../../shared/repository/tenant-enforcement.js';
+import { getPublicTableExists } from '../../shared/db/public-table-exists.js';
 
 export interface KpiRecord {
   id: string;
@@ -24,12 +26,53 @@ export interface KpiProgressRecord {
   created_at: Date;
 }
 
+export interface CalculatedKpiRecord {
+  tasks_completed: number;
+  tasks_on_time: number;
+  tasks_overdue: number;
+  score: number;
+}
+
+export interface KpiRecordCacheRow {
+  id: string;
+  tenant_id: string;
+  user_id: string;
+  period_start: Date;
+  period_end: Date;
+  tasks_completed: number;
+  tasks_on_time: number;
+  tasks_overdue: number;
+  score: number;
+  created_at: Date;
+  updated_at: Date;
+}
+
 export class KpiRepository {
   constructor(private readonly db: Pool) {}
 
+  private scoped(sql: string, tenantId: string): string {
+    return enforceTenantScope(sql, tenantId);
+  }
+
+  hasKpisTable(): Promise<boolean> {
+    return getPublicTableExists(this.db, 'kpis');
+  }
+
+  hasKpiProgressTable(): Promise<boolean> {
+    return getPublicTableExists(this.db, 'kpi_progress');
+  }
+
+  hasKpiRecordsTable(): Promise<boolean> {
+    return getPublicTableExists(this.db, 'kpi_records');
+  }
+
   async findAllByTenant(tenantId: string): Promise<KpiRecord[]> {
+    if (!(await this.hasKpisTable())) {
+      return [];
+    }
     const result = await this.db.query<KpiRecord>(
-      `
+      this.scoped(
+        `
       SELECT
         id,
         tenant_id,
@@ -46,6 +89,8 @@ export class KpiRepository {
       WHERE tenant_id = $1 AND is_active = TRUE
       ORDER BY created_at DESC
       `,
+        tenantId
+      ),
       [tenantId]
     );
     return result.rows;
@@ -56,9 +101,13 @@ export class KpiRepository {
     page: number = 1,
     limit: number = 20
   ): Promise<KpiRecord[]> {
+    if (!(await this.hasKpisTable())) {
+      return [];
+    }
     const offset = (page - 1) * limit;
     const result = await this.db.query<KpiRecord>(
-      `
+      this.scoped(
+        `
       SELECT
         id,
         tenant_id,
@@ -76,26 +125,38 @@ export class KpiRepository {
       ORDER BY created_at DESC
       LIMIT $2 OFFSET $3
       `,
+        tenantId
+      ),
       [tenantId, limit, offset]
     );
     return result.rows;
   }
 
   async countByTenant(tenantId: string): Promise<number> {
+    if (!(await this.hasKpisTable())) {
+      return 0;
+    }
     const result = await this.db.query<{ count: string }>(
-      `
+      this.scoped(
+        `
       SELECT COUNT(*) as count
       FROM kpis
       WHERE tenant_id = $1 AND is_active = TRUE
       `,
+        tenantId
+      ),
       [tenantId]
     );
     return parseInt(result.rows[0].count, 10);
   }
 
   async findByIdAndTenant(kpiId: string, tenantId: string): Promise<KpiRecord | null> {
+    if (!(await this.hasKpisTable())) {
+      return null;
+    }
     const result = await this.db.query<KpiRecord>(
-      `
+      this.scoped(
+        `
       SELECT
         id,
         tenant_id,
@@ -112,25 +173,355 @@ export class KpiRepository {
       WHERE id = $1 AND tenant_id = $2 AND is_active = TRUE
       LIMIT 1
       `,
+        tenantId
+      ),
       [kpiId, tenantId]
     );
     return result.rows[0] ?? null;
   }
 
-  async create(data: Omit<KpiRecord, 'id' | 'created_at' | 'updated_at'>): Promise<KpiRecord> {
-    const result = await this.db.query<KpiRecord>(
-      `
-      INSERT INTO kpis (
+  async findProgressByKpi(kpiId: string, tenantId: string): Promise<KpiProgressRecord[]> {
+    if (!(await this.hasKpiProgressTable())) {
+      return [];
+    }
+    const result = await this.db.query<KpiProgressRecord>(
+      this.scoped(
+        `
+      SELECT
+        id,
+        kpi_id,
+        tenant_id,
+        actual_value,
+        recorded_at,
+        notes,
+        created_at
+      FROM kpi_progress
+      WHERE kpi_id = $1 AND tenant_id = $2
+      ORDER BY recorded_at DESC
+      `,
+        tenantId
+      ),
+      [kpiId, tenantId]
+    );
+    return result.rows;
+  }
+
+  /**
+   * Core KPI task metrics (completed in period, on-time vs late completion, performance %).
+   * Single assignee — used by cache upsert and `/calculate/:userId`.
+   */
+  async calculateKpiFromTasks(
+    tenantId: string,
+    userId: string,
+    periodStart: Date,
+    periodEnd: Date
+  ): Promise<CalculatedKpiRecord> {
+    return this.calculateKpiFromTasksForAssignees(
+      tenantId,
+      [userId],
+      periodStart,
+      periodEnd
+    );
+  }
+
+  /**
+   * Same calculation as {@link calculateKpiFromTasks}, pooled across assignees (one query).
+   */
+  async calculateKpiFromTasksForAssignees(
+    tenantId: string,
+    assigneeIds: string[],
+    periodStart: Date,
+    periodEnd: Date
+  ): Promise<CalculatedKpiRecord> {
+    if (assigneeIds.length === 0) {
+      return {
+        tasks_completed: 0,
+        tasks_on_time: 0,
+        tasks_overdue: 0,
+        score: 0,
+      };
+    }
+
+    const result = await this.db.query<CalculatedKpiRecord>(
+      this.scoped(
+        `
+      SELECT
+        COUNT(*)::int AS tasks_completed,
+        COUNT(*) FILTER (
+          WHERE deadline IS NOT NULL
+            AND completed_at <= deadline
+        )::int AS tasks_on_time,
+        COUNT(*) FILTER (
+          WHERE deadline IS NOT NULL
+            AND completed_at > deadline
+        )::int AS tasks_overdue,
+        CASE
+          WHEN COUNT(*) = 0 THEN 0::double precision
+          ELSE ROUND(
+            (
+              COUNT(*) FILTER (
+                WHERE deadline IS NOT NULL
+                  AND completed_at <= deadline
+              )::numeric
+              / COUNT(*)::numeric
+            ) * 100,
+            2
+          )::double precision
+        END AS score
+      FROM tasks
+      WHERE tenant_id = $1
+        AND assignee_id = ANY($2::uuid[])
+        AND status = 'DONE'
+        AND completed_at IS NOT NULL
+        AND completed_at >= $3
+        AND completed_at <= $4
+      `,
+        tenantId
+      ),
+      [tenantId, assigneeIds, periodStart, periodEnd]
+    );
+
+    return (
+      result.rows[0] ?? {
+        tasks_completed: 0,
+        tasks_on_time: 0,
+        tasks_overdue: 0,
+        score: 0,
+      }
+    );
+  }
+
+  /**
+   * Tasks still open at period end with deadline before period end (pro analytics; does not affect score).
+   */
+  async countOpenOverdueTasksForAssignees(
+    tenantId: string,
+    assigneeIds: string[],
+    periodEnd: Date
+  ): Promise<number> {
+    if (assigneeIds.length === 0) {
+      return 0;
+    }
+
+    const result = await this.db.query<{ n: string }>(
+      this.scoped(
+        `
+      SELECT COUNT(*)::text AS n
+      FROM tasks
+      WHERE tenant_id = $1
+        AND assignee_id = ANY($2::uuid[])
+        AND status <> 'DONE'
+        AND deadline IS NOT NULL
+        AND (COALESCE(is_overdue, FALSE) = TRUE OR deadline < $3)
+      `,
+        tenantId
+      ),
+      [tenantId, assigneeIds, periodEnd]
+    );
+
+    return Number(result.rows[0]?.n ?? 0);
+  }
+
+  async countOpenOverdueTasksGroupedByAssignee(
+    tenantId: string,
+    assigneeIds: string[],
+    periodEnd: Date
+  ): Promise<Map<string, number>> {
+    const map = new Map<string, number>();
+    if (assigneeIds.length === 0) {
+      return map;
+    }
+
+    const result = await this.db.query<{ assignee_id: string; n: string }>(
+      this.scoped(
+        `
+      SELECT assignee_id, COUNT(*)::text AS n
+      FROM tasks
+      WHERE tenant_id = $1
+        AND assignee_id = ANY($2::uuid[])
+        AND status <> 'DONE'
+        AND deadline IS NOT NULL
+        AND (COALESCE(is_overdue, FALSE) = TRUE OR deadline < $3)
+      GROUP BY assignee_id
+      `,
+        tenantId
+      ),
+      [tenantId, assigneeIds, periodEnd]
+    );
+
+    for (const row of result.rows) {
+      map.set(row.assignee_id, Number(row.n));
+    }
+    return map;
+  }
+
+  async isDirectReport(
+    tenantId: string,
+    managerId: string,
+    userId: string
+  ): Promise<boolean> {
+    const result = await this.db.query<{ ok: boolean }>(
+      this.scoped(
+        `
+      SELECT EXISTS(
+        SELECT 1
+        FROM users
+        WHERE tenant_id = $1
+          AND id = $2
+          AND manager_id = $3
+          AND is_active = TRUE
+      ) AS ok
+      `,
+        tenantId
+      ),
+      [tenantId, userId, managerId]
+    );
+    return Boolean(result.rows[0]?.ok);
+  }
+
+  async resolveAnalyticsAssigneeIds(params: {
+    tenantId: string;
+    userId?: string;
+    teamId?: string;
+  }): Promise<string[]> {
+    if (params.userId && params.teamId) {
+      const result = await this.db.query<{ id: string }>(
+        this.scoped(
+          `
+        SELECT u.id
+        FROM users u
+        WHERE u.tenant_id = $1
+          AND u.id = $2
+          AND u.manager_id = $3
+          AND u.is_active = TRUE
+        LIMIT 1
+        `,
+          params.tenantId
+        ),
+        [params.tenantId, params.userId, params.teamId]
+      );
+      return result.rows[0] ? [result.rows[0].id] : [];
+    }
+
+    if (params.userId) {
+      const result = await this.db.query<{ id: string }>(
+        this.scoped(
+          `
+        SELECT id
+        FROM users
+        WHERE tenant_id = $1
+          AND id = $2
+          AND is_active = TRUE
+        LIMIT 1
+        `,
+          params.tenantId
+        ),
+        [params.tenantId, params.userId]
+      );
+      return result.rows[0] ? [result.rows[0].id] : [];
+    }
+
+    if (params.teamId) {
+      const result = await this.db.query<{ id: string }>(
+        this.scoped(
+          `
+        SELECT u.id
+        FROM users u
+        INNER JOIN users m ON m.id = u.manager_id AND m.tenant_id = u.tenant_id
+        WHERE u.tenant_id = $1
+          AND u.manager_id = $2
+          AND u.is_active = TRUE
+          AND m.is_active = TRUE
+        ORDER BY u.created_at ASC
+        `,
+          params.tenantId
+        ),
+        [params.tenantId, params.teamId]
+      );
+      return result.rows.map((r) => r.id);
+    }
+
+    const result = await this.db.query<{ id: string }>(
+      this.scoped(
+        `
+      SELECT id
+      FROM users
+      WHERE tenant_id = $1
+        AND is_active = TRUE
+      ORDER BY created_at ASC
+      `,
+        params.tenantId
+      ),
+      [params.tenantId]
+    );
+    return result.rows.map((r) => r.id);
+  }
+
+  async findKpiRecordsForUsersAndPeriod(
+    tenantId: string,
+    userIds: string[],
+    periodStart: Date,
+    periodEnd: Date
+  ): Promise<KpiRecordCacheRow[]> {
+    if (userIds.length === 0) {
+      return [];
+    }
+    if (!(await this.hasKpiRecordsTable())) {
+      return [];
+    }
+
+    const result = await this.db.query<KpiRecordCacheRow>(
+      this.scoped(
+        `
+      SELECT
         id,
         tenant_id,
-        name,
-        description,
-        target_value,
-        unit,
-        period,
-        assignee_id,
-        created_by,
-        is_active,
+        user_id,
+        period_start,
+        period_end,
+        tasks_completed,
+        tasks_on_time,
+        tasks_overdue,
+        score,
+        created_at,
+        updated_at
+      FROM kpi_records
+      WHERE tenant_id = $1
+        AND user_id = ANY($2::uuid[])
+        AND period_start = $3
+        AND period_end = $4
+      `,
+        tenantId
+      ),
+      [tenantId, userIds, periodStart, periodEnd]
+    );
+
+    return result.rows;
+  }
+
+  async upsertKpiRecordCache(params: {
+    tenantId: string;
+    userId: string;
+    periodStart: Date;
+    periodEnd: Date;
+    calculated: CalculatedKpiRecord;
+  }): Promise<KpiRecordCacheRow | null> {
+    if (!(await this.hasKpiRecordsTable())) {
+      return null;
+    }
+    const result = await this.db.query<KpiRecordCacheRow>(
+      this.scoped(
+        `
+      INSERT INTO kpi_records (
+        id,
+        tenant_id,
+        user_id,
+        period_start,
+        period_end,
+        tasks_completed,
+        tasks_on_time,
+        tasks_overdue,
+        score,
         created_at,
         updated_at
       )
@@ -144,164 +535,83 @@ export class KpiRepository {
         $6,
         $7,
         $8,
-        TRUE,
         NOW(),
         NOW()
       )
+      ON CONFLICT (user_id, period_start, period_end)
+      DO UPDATE SET
+        tasks_completed = EXCLUDED.tasks_completed,
+        tasks_on_time = EXCLUDED.tasks_on_time,
+        tasks_overdue = EXCLUDED.tasks_overdue,
+        score = EXCLUDED.score,
+        tenant_id = EXCLUDED.tenant_id,
+        updated_at = NOW()
       RETURNING
         id,
         tenant_id,
-        name,
-        description,
-        target_value,
-        unit,
-        period,
-        assignee_id,
-        created_by,
+        user_id,
+        period_start,
+        period_end,
+        tasks_completed,
+        tasks_on_time,
+        tasks_overdue,
+        score,
         created_at,
         updated_at
       `,
+        params.tenantId
+      ),
       [
-        data.tenant_id,
-        data.name,
-        data.description,
-        data.target_value,
-        data.unit,
-        data.period,
-        data.assignee_id,
-        data.created_by,
+        params.tenantId,
+        params.userId,
+        params.periodStart,
+        params.periodEnd,
+        params.calculated.tasks_completed,
+        params.calculated.tasks_on_time,
+        params.calculated.tasks_overdue,
+        params.calculated.score,
       ]
     );
-    return result.rows[0];
+
+    return result.rows[0] ?? null;
   }
 
-  async update(
-    kpiId: string,
+  async findKpiRecordByUserAndPeriod(
     tenantId: string,
-    data: Partial<Pick<KpiRecord, 'name' | 'description' | 'target_value' | 'unit' | 'period'>>
-  ): Promise<KpiRecord> {
-    const updates: string[] = [];
-    const values: any[] = [];
-    let paramIndex = 1;
-
-    if (data.name !== undefined) {
-      updates.push(`name = $${paramIndex++}`);
-      values.push(data.name);
+    userId: string,
+    periodStart: Date,
+    periodEnd: Date
+  ): Promise<KpiRecordCacheRow | null> {
+    if (!(await this.hasKpiRecordsTable())) {
+      return null;
     }
-    if (data.description !== undefined) {
-      updates.push(`description = $${paramIndex++}`);
-      values.push(data.description);
-    }
-    if (data.target_value !== undefined) {
-      updates.push(`target_value = $${paramIndex++}`);
-      values.push(data.target_value);
-    }
-    if (data.unit !== undefined) {
-      updates.push(`unit = $${paramIndex++}`);
-      values.push(data.unit);
-    }
-    if (data.period !== undefined) {
-      updates.push(`period = $${paramIndex++}`);
-      values.push(data.period);
-    }
-
-    updates.push(`updated_at = NOW()`);
-    values.push(kpiId);
-    values.push(tenantId);
-
-    const query = `
-      UPDATE kpis
-      SET ${updates.join(', ')}
-      WHERE id = $${paramIndex + 1} AND tenant_id = $${paramIndex + 2}
-      RETURNING
-        id,
-        tenant_id,
-        name,
-        description,
-        target_value,
-        unit,
-        period,
-        assignee_id,
-        created_by,
-        created_at,
-        updated_at
-    `;
-
-    const result = await this.db.query<KpiRecord>(query, values);
-    return result.rows[0];
-  }
-
-  async delete(kpiId: string, tenantId: string): Promise<void> {
-    await this.db.query(
-      `
-      UPDATE kpis
-      SET is_active = FALSE, updated_at = NOW()
-      WHERE id = $1 AND tenant_id = $2
-      `,
-      [kpiId, tenantId]
-    );
-  }
-
-  async recordProgress(
-    data: Omit<KpiProgressRecord, 'id' | 'created_at'>
-  ): Promise<KpiProgressRecord> {
-    const result = await this.db.query<KpiProgressRecord>(
-      `
-      INSERT INTO kpi_progress (
-        id,
-        kpi_id,
-        tenant_id,
-        actual_value,
-        recorded_at,
-        notes,
-        created_at
-      )
-      VALUES (
-        gen_random_uuid(),
-        $1,
-        $2,
-        $3,
-        $4,
-        $5,
-        NOW()
-      )
-      RETURNING
-        id,
-        kpi_id,
-        tenant_id,
-        actual_value,
-        recorded_at,
-        notes,
-        created_at
-      `,
-      [
-        data.kpi_id,
-        data.tenant_id,
-        data.actual_value,
-        data.recorded_at ?? new Date(),
-        data.notes,
-      ]
-    );
-    return result.rows[0];
-  }
-
-  async findProgressByKpi(kpiId: string, tenantId: string): Promise<KpiProgressRecord[]> {
-    const result = await this.db.query<KpiProgressRecord>(
-      `
+    const result = await this.db.query<KpiRecordCacheRow>(
+      this.scoped(
+        `
       SELECT
         id,
-        kpi_id,
         tenant_id,
-        actual_value,
-        recorded_at,
-        notes,
-        created_at
-      FROM kpi_progress
-      WHERE kpi_id = $1 AND tenant_id = $2
-      ORDER BY recorded_at DESC
+        user_id,
+        period_start,
+        period_end,
+        tasks_completed,
+        tasks_on_time,
+        tasks_overdue,
+        score,
+        created_at,
+        updated_at
+      FROM kpi_records
+      WHERE tenant_id = $1
+        AND user_id = $2
+        AND period_start = $3
+        AND period_end = $4
+      LIMIT 1
       `,
-      [kpiId, tenantId]
+        tenantId
+      ),
+      [tenantId, userId, periodStart, periodEnd]
     );
-    return result.rows;
+
+    return result.rows[0] ?? null;
   }
 }

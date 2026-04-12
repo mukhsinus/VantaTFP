@@ -1,4 +1,5 @@
-import { Pool } from 'pg';
+import { Pool, PoolClient } from 'pg';
+import { getAuthSchemaCaps } from '../auth/auth-schema-caps.js';
 
 export interface UserRecord {
   id: string;
@@ -18,6 +19,10 @@ export class UsersRepository {
   constructor(private readonly db: Pool) {}
 
   async findAllActiveByTenant(tenantId: string): Promise<UserRecord[]> {
+    const caps = await getAuthSchemaCaps(this.db);
+    const systemRoleSql = caps.usersSystemRoleColumn
+      ? `COALESCE(system_role::text, 'user')`
+      : `'user'::text`;
     const result = await this.db.query<UserRecord>(
       `
       SELECT
@@ -35,6 +40,7 @@ export class UsersRepository {
       FROM users
       WHERE tenant_id = $1
         AND is_active = TRUE
+        AND ${systemRoleSql} IS DISTINCT FROM 'super_admin'
       ORDER BY created_at DESC
       `,
       [tenantId]
@@ -48,6 +54,10 @@ export class UsersRepository {
     page: number = 1,
     limit: number = 20
   ): Promise<UserRecord[]> {
+    const caps = await getAuthSchemaCaps(this.db);
+    const systemRoleSql = caps.usersSystemRoleColumn
+      ? `COALESCE(system_role::text, 'user')`
+      : `'user'::text`;
     const offset = (page - 1) * limit;
     const result = await this.db.query<UserRecord>(
       `
@@ -66,6 +76,7 @@ export class UsersRepository {
       FROM users
       WHERE tenant_id = $1
         AND is_active = TRUE
+        AND ${systemRoleSql} IS DISTINCT FROM 'super_admin'
       ORDER BY created_at DESC
       LIMIT $2 OFFSET $3
       `,
@@ -76,11 +87,17 @@ export class UsersRepository {
   }
 
   async countActiveByTenant(tenantId: string): Promise<number> {
+    const caps = await getAuthSchemaCaps(this.db);
+    const systemRoleSql = caps.usersSystemRoleColumn
+      ? `COALESCE(system_role::text, 'user')`
+      : `'user'::text`;
     const result = await this.db.query<{ count: string }>(
       `
       SELECT COUNT(*) as count
       FROM users
-      WHERE tenant_id = $1 AND is_active = TRUE
+      WHERE tenant_id = $1
+        AND is_active = TRUE
+        AND ${systemRoleSql} IS DISTINCT FROM 'super_admin'
       `,
       [tenantId]
     );
@@ -113,7 +130,15 @@ export class UsersRepository {
     return result.rows[0] ?? null;
   }
 
-  async findByEmail(email: string): Promise<UserRecord | null> {
+  async findByEmail(email: string, tenantId?: string): Promise<UserRecord | null> {
+    const values: string[] = [email];
+    let whereClause = 'LOWER(email) = LOWER($1)';
+
+    if (tenantId) {
+      values.push(tenantId);
+      whereClause += ' AND tenant_id = $2';
+    }
+
     const result = await this.db.query<UserRecord>(
       `
       SELECT
@@ -129,17 +154,20 @@ export class UsersRepository {
         created_at,
         updated_at
       FROM users
-      WHERE LOWER(email) = LOWER($1)
+      WHERE ${whereClause}
       LIMIT 1
       `,
-      [email]
+      values
     );
 
     return result.rows[0] ?? null;
   }
 
-  async create(data: Omit<UserRecord, 'id' | 'created_at' | 'updated_at'>): Promise<UserRecord> {
-    const result = await this.db.query<UserRecord>(
+  async create(
+    data: Omit<UserRecord, 'id' | 'created_at' | 'updated_at'>,
+    executor: Pick<Pool, 'query'> | Pick<PoolClient, 'query'> = this.db
+  ): Promise<UserRecord> {
+    const result = await executor.query<UserRecord>(
       `
       INSERT INTO users (
         id,
@@ -284,6 +312,142 @@ export class UsersRepository {
       [userId, tenantId]
     );
 
+    return (result.rowCount ?? 0) > 0;
+  }
+
+  /** Session profile for GET /users/me (any active user, including platform super_admin). */
+  async findMeProfile(userId: string): Promise<{
+    id: string;
+    tenant_id: string | null;
+    email: string;
+    first_name: string;
+    last_name: string;
+    role: 'ADMIN' | 'MANAGER' | 'EMPLOYEE';
+    system_role: string;
+    tenant_name: string | null;
+    notification_preferences: unknown;
+  } | null> {
+    const caps = await getAuthSchemaCaps(this.db);
+    const systemRoleSql = caps.usersSystemRoleColumn
+      ? `COALESCE(u.system_role::text, 'user')`
+      : `'user'::text`;
+
+    const result = await this.db.query<{
+      id: string;
+      tenant_id: string | null;
+      email: string;
+      first_name: string;
+      last_name: string;
+      role: 'ADMIN' | 'MANAGER' | 'EMPLOYEE';
+      system_role: string;
+      tenant_name: string | null;
+      notification_preferences: unknown;
+    }>(
+      `
+      SELECT
+        u.id,
+        u.tenant_id,
+        u.email,
+        u.first_name,
+        u.last_name,
+        u.role,
+        ${systemRoleSql} AS system_role,
+        t.name AS tenant_name,
+        COALESCE(u.notification_preferences, '{}'::jsonb) AS notification_preferences
+      FROM users u
+      LEFT JOIN tenants t ON t.id = u.tenant_id
+      WHERE u.id = $1::uuid
+        AND u.is_active = TRUE
+      LIMIT 1
+      `,
+      [userId]
+    );
+
+    return result.rows[0] ?? null;
+  }
+
+  async findActiveUserIdByEmailExcept(
+    email: string,
+    exceptUserId: string
+  ): Promise<string | null> {
+    const result = await this.db.query<{ id: string }>(
+      `
+      SELECT id
+      FROM users
+      WHERE LOWER(email) = LOWER($1)
+        AND id <> $2::uuid
+        AND is_active = TRUE
+      LIMIT 1
+      `,
+      [email, exceptUserId]
+    );
+    return result.rows[0]?.id ?? null;
+  }
+
+  async findPasswordHashByUserId(userId: string): Promise<string | null> {
+    const result = await this.db.query<{ password_hash: string }>(
+      `
+      SELECT password_hash
+      FROM users
+      WHERE id = $1::uuid
+        AND is_active = TRUE
+      LIMIT 1
+      `,
+      [userId]
+    );
+    return result.rows[0]?.password_hash ?? null;
+  }
+
+  async updateSelfProfile(
+    userId: string,
+    data: { email: string; first_name: string; last_name: string }
+  ): Promise<boolean> {
+    const result = await this.db.query(
+      `
+      UPDATE users
+      SET
+        email = $1,
+        first_name = $2,
+        last_name = $3,
+        updated_at = NOW()
+      WHERE id = $4::uuid
+        AND is_active = TRUE
+      `,
+      [data.email, data.first_name, data.last_name, userId]
+    );
+    return (result.rowCount ?? 0) > 0;
+  }
+
+  async updateSelfPassword(userId: string, passwordHash: string): Promise<boolean> {
+    const result = await this.db.query(
+      `
+      UPDATE users
+      SET
+        password_hash = $1,
+        updated_at = NOW()
+      WHERE id = $2::uuid
+        AND is_active = TRUE
+      `,
+      [passwordHash, userId]
+    );
+    return (result.rowCount ?? 0) > 0;
+  }
+
+  async updateNotificationPreferences(
+    userId: string,
+    preferences: Record<string, unknown>
+  ): Promise<boolean> {
+    const result = await this.db.query(
+      `
+      UPDATE users
+      SET
+        notification_preferences = $1::jsonb,
+        updated_at = NOW()
+      WHERE id = $2::uuid
+        AND is_active = TRUE
+      `,
+      [JSON.stringify(preferences), userId]
+    );
     return (result.rowCount ?? 0) > 0;
   }
 }

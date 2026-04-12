@@ -3,9 +3,21 @@ import { persist } from 'zustand/middleware';
 export const useAuthStore = create()(persist((set) => ({
     user: null,
     accessToken: null,
+    refreshToken: null,
+    isSessionLoading: false,
     isHydrated: false,
-    setAuth: (user, accessToken) => set({ user, accessToken }),
-    clearAuth: () => set({ user: null, accessToken: null }),
+    setAuth: (user, accessToken, refreshToken) => set((state) => ({
+        user,
+        accessToken,
+        refreshToken: refreshToken ?? state.refreshToken,
+    })),
+    setUser: (user) => set({ user }),
+    setTokens: (accessToken, refreshToken) => set((state) => ({
+        accessToken,
+        refreshToken: refreshToken ?? state.refreshToken,
+    })),
+    setSessionLoading: (value) => set({ isSessionLoading: value }),
+    clearAuth: () => set({ user: null, accessToken: null, refreshToken: null, isSessionLoading: false }),
     setHydrated: () => set({ isHydrated: true }),
 }), {
     name: 'tfp-auth',
@@ -14,10 +26,11 @@ export const useAuthStore = create()(persist((set) => ({
     partialize: (state) => ({
         user: state.user,
         accessToken: state.accessToken,
+        refreshToken: state.refreshToken,
     }),
-    onRehydrateStorage: () => (state) => {
-        // Called once Zustand has merged the stored values into the store.
-        // If there is nothing in storage, state is still populated with defaults.
-        state?.setHydrated();
+    onRehydrateStorage: () => () => {
+        // Must not rely on the persisted slice carrying action methods — always
+        // flip hydration via `getState()` so AuthGuard never deadlocks on a blank shell.
+        useAuthStore.getState().setHydrated();
     },
 }));

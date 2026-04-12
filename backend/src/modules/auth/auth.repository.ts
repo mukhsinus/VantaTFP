@@ -1,8 +1,10 @@
-import { Pool } from 'pg';
+import { Pool, PoolClient } from 'pg';
+import type { AuthContextRow } from '../../shared/auth/principal.js';
+import { getAuthSchemaCaps } from './auth-schema-caps.js';
 
 export interface UserRecord {
   id: string;
-  tenant_id: string;
+  tenant_id: string | null;
   email: string;
   password_hash: string;
   first_name: string;
@@ -40,16 +42,22 @@ export interface TenantInviteRecord {
 
 export interface UserWithTenantRecord extends UserRecord {
   tenant_name: string | null;
-  tenant_plan?: string | null;
-  is_super_admin?: boolean;
+  system_role: string;
+  tenant_membership_role: string | null;
 }
 
 export class AuthRepository {
   constructor(private readonly db: Pool) {}
 
   async findUserByEmail(email: string): Promise<UserWithTenantRecord | null> {
-    const result = await this.db.query<UserWithTenantRecord>(
-      `
+    const caps = await getAuthSchemaCaps(this.db);
+    const useTenantUsers = caps.tenantUsersTable;
+    const systemRoleSql = caps.usersSystemRoleColumn
+      ? `COALESCE(u.system_role::text, 'user')`
+      : `'user'::text`;
+
+    const sql = useTenantUsers
+      ? `
       SELECT
         u.id,
         u.tenant_id,
@@ -59,18 +67,126 @@ export class AuthRepository {
         u.last_name,
         u.role,
         u.is_active,
-        u.is_super_admin,
         u.created_at,
         u.updated_at,
+        ${systemRoleSql} AS system_role,
         t.name AS tenant_name,
-        t.plan AS tenant_plan
+        tu.role::text AS tenant_membership_role
+      FROM users u
+      LEFT JOIN tenants t ON t.id = u.tenant_id
+      LEFT JOIN tenant_users tu ON tu.user_id = u.id AND tu.tenant_id = u.tenant_id
+      WHERE LOWER(u.email) = LOWER($1)
+        AND u.is_active = TRUE
+      LIMIT 1
+      `
+      : `
+      SELECT
+        u.id,
+        u.tenant_id,
+        u.email,
+        u.password_hash,
+        u.first_name,
+        u.last_name,
+        u.role,
+        u.is_active,
+        u.created_at,
+        u.updated_at,
+        ${systemRoleSql} AS system_role,
+        t.name AS tenant_name,
+        NULL::text AS tenant_membership_role
       FROM users u
       LEFT JOIN tenants t ON t.id = u.tenant_id
       WHERE LOWER(u.email) = LOWER($1)
         AND u.is_active = TRUE
       LIMIT 1
+      `;
+
+    const result = await this.db.query<UserWithTenantRecord>(sql, [email]);
+    return result.rows[0] ?? null;
+  }
+
+  /**
+   * Resolves effective tenant (JWT tenant wins) and membership for auth hydration.
+   */
+  async findAuthContextById(
+    userId: string,
+    jwtTenantId: string | null | undefined
+  ): Promise<AuthContextRow | null> {
+    const caps = await getAuthSchemaCaps(this.db);
+    const useTenantUsers = caps.tenantUsersTable;
+    const systemRoleSql = caps.usersSystemRoleColumn
+      ? `COALESCE(u.system_role::text, 'user')`
+      : `'user'::text`;
+
+    const sql = useTenantUsers
+      ? `
+      SELECT
+        u.id,
+        u.email,
+        ${systemRoleSql} AS system_role,
+        u.role::text AS legacy_role,
+        u.tenant_id AS user_primary_tenant_id,
+        eff.eff_tid AS effective_tenant_id,
+        tu.role::text AS membership_role
+      FROM users u
+      CROSS JOIN LATERAL (
+        SELECT COALESCE(
+          $2::uuid,
+          u.tenant_id,
+          (
+            SELECT tu0.tenant_id
+            FROM tenant_users tu0
+            WHERE tu0.user_id = u.id
+            ORDER BY tu0.created_at ASC, tu0.id ASC
+            LIMIT 1
+          )
+        ) AS eff_tid
+      ) eff
+      LEFT JOIN tenant_users tu
+        ON tu.user_id = u.id
+       AND tu.tenant_id = eff.eff_tid
+      WHERE u.id = $1::uuid
+        AND u.is_active = TRUE
+      LIMIT 1
+      `
+      : `
+      SELECT
+        u.id,
+        u.email,
+        ${systemRoleSql} AS system_role,
+        u.role::text AS legacy_role,
+        u.tenant_id AS user_primary_tenant_id,
+        COALESCE($2::uuid, u.tenant_id) AS effective_tenant_id,
+        NULL::text AS membership_role
+      FROM users u
+      WHERE u.id = $1::uuid
+        AND u.is_active = TRUE
+      LIMIT 1
+      `;
+
+    const result = await this.db.query<AuthContextRow>(sql, [userId, jwtTenantId ?? null]);
+    return result.rows[0] ?? null;
+  }
+
+  async findActiveUserById(userId: string): Promise<UserRecord | null> {
+    const result = await this.db.query<UserRecord>(
+      `
+      SELECT
+        id,
+        tenant_id,
+        email,
+        password_hash,
+        first_name,
+        last_name,
+        role,
+        is_active,
+        created_at,
+        updated_at
+      FROM users
+      WHERE id = $1::uuid AND is_active = TRUE
+      LIMIT 1
       `,
-      [email]
+      [userId]
     );
 
     return result.rows[0] ?? null;
@@ -95,30 +211,6 @@ export class AuthRepository {
       LIMIT 1
       `,
       [userId, tenantId]
-    );
-
-    return result.rows[0] ?? null;
-  }
-
-  async findUserById(userId: string): Promise<UserRecord | null> {
-    const result = await this.db.query<UserRecord>(
-      `
-      SELECT
-        id,
-        tenant_id,
-        email,
-        password_hash,
-        first_name,
-        last_name,
-        role,
-        is_active,
-        created_at,
-        updated_at
-      FROM users
-      WHERE id = $1 AND is_active = TRUE
-      LIMIT 1
-      `,
-      [userId]
     );
 
     return result.rows[0] ?? null;
@@ -150,8 +242,12 @@ export class AuthRepository {
     return result.rows[0] ?? null;
   }
 
-  async markInviteAsUsed(inviteId: string, userId: string): Promise<void> {
-    await this.db.query(
+  async markInviteAsUsed(
+    inviteId: string,
+    userId: string,
+    executor: Pick<Pool, 'query'> | Pick<PoolClient, 'query'> = this.db
+  ): Promise<void> {
+    await executor.query(
       `
       UPDATE tenant_invites
       SET used_at = NOW(), used_by_user_id = $1, updated_at = NOW()
@@ -189,9 +285,10 @@ export class AuthRepository {
   }
 
   async createUser(
-    data: Omit<UserRecord, 'id' | 'created_at' | 'updated_at'>
+    data: Omit<UserRecord, 'id' | 'created_at' | 'updated_at'>,
+    executor: Pick<Pool, 'query'> | Pick<PoolClient, 'query'> = this.db
   ): Promise<UserRecord> {
-    const result = await this.db.query<UserRecord>(
+    const result = await executor.query<UserRecord>(
       `
       INSERT INTO users (
         id,

@@ -21,11 +21,16 @@ export function useLogin() {
             const accessToken = response.accessToken
                 ?? response.access_token
                 ?? response.token;
+            const refreshToken = response.refreshToken
+                ?? response.refresh_token;
             if (!response.user || !accessToken) {
                 setError(i18n.t('errors.auth.unableToSignIn'));
                 return false;
             }
-            setAuth(response.user, accessToken);
+            setAuth({
+                ...response.user,
+                systemRole: response.user.systemRole ?? 'user',
+            }, accessToken, refreshToken ?? null);
             return true;
         }
         catch (err) {

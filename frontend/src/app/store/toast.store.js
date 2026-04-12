@@ -1,8 +1,19 @@
 import { create } from 'zustand';
+function nextToastId() {
+    try {
+        if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+            return crypto.randomUUID();
+        }
+    }
+    catch {
+        /* ignore */
+    }
+    return `t_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`;
+}
 export const useToastStore = create((set) => ({
     toasts: [],
     addToast: (toast) => {
-        const id = crypto.randomUUID();
+        const id = nextToastId();
         set((state) => ({ toasts: [...state.toasts, { ...toast, id }] }));
         // Auto-dismiss after 4 s
         setTimeout(() => {

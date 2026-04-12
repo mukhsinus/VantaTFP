@@ -1,16 +1,13 @@
 import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Button, Badge, Avatar, Card, EmptyState } from '@shared/components/ui';
+import { Button, Badge, Avatar, Card, EmptyState, PageSkeleton } from '@shared/components/ui';
 import { useIsMobile } from '@shared/hooks/useIsMobile';
 import { formatCurrency } from '@shared/utils/currency';
-const mockPayroll = [
-    { id: '1', employeeKey: 'booking.payroll.sample.users.sofiaChen', periodKey: 'booking.payroll.sample.periods.mar2026', baseSalary: 6000, bonuses: 500, deductions: 300, netSalary: 6200, status: 'PAID' },
-    { id: '2', employeeKey: 'booking.payroll.sample.users.jamesPark', periodKey: 'booking.payroll.sample.periods.mar2026', baseSalary: 4500, bonuses: 200, deductions: 225, netSalary: 4475, status: 'APPROVED' },
-    { id: '3', employeeKey: 'booking.payroll.sample.users.amaraDiallo', periodKey: 'booking.payroll.sample.periods.mar2026', baseSalary: 4200, bonuses: 0, deductions: 210, netSalary: 3990, status: 'DRAFT' },
-    { id: '4', employeeKey: 'booking.payroll.sample.users.lucaFerrari', periodKey: 'booking.payroll.sample.periods.mar2026', baseSalary: 5500, bonuses: 750, deductions: 275, netSalary: 5975, status: 'APPROVED' },
-    { id: '5', employeeKey: 'booking.payroll.sample.users.mariaSantos', periodKey: 'booking.payroll.sample.periods.mar2026', baseSalary: 3800, bonuses: 0, deductions: 0, netSalary: 3800, status: 'CANCELLED' },
-];
+import { usePayroll } from '@features/payroll/hooks/usePayroll';
+import { useApprovePayroll } from '@features/payroll/hooks/useApprovePayroll';
+import { PayrollRulesPanel } from '@features/payroll/components/PayrollRulesPanel';
+import { useCurrentUser } from '@shared/hooks/useCurrentUser';
 const statusVariant = {
     PAID: 'success',
     APPROVED: 'accent',
@@ -20,6 +17,12 @@ const statusVariant = {
 export function PayrollPage() {
     const { t, i18n } = useTranslation();
     const isMobile = useIsMobile();
+    const { role } = useCurrentUser();
+    const isAdmin = role === 'ADMIN';
+    const title = role === 'EMPLOYEE' ? 'My Payroll' : t('payroll.title');
+    const subtitle = role === 'EMPLOYEE' ? 'Your payroll statements and status.' : t('payroll.subtitle');
+    const { payroll, isLoading, isError } = usePayroll();
+    const { approvePayroll, isPending } = useApprovePayroll();
     const localeBase = (i18n.resolvedLanguage ?? i18n.language ?? 'ru').split('-')[0];
     const locale = localeBase === 'ru' || localeBase === 'uz' || localeBase === 'en' ? localeBase : 'en';
     const [statusFilter, setStatusFilter] = useState('ALL');
@@ -34,14 +37,19 @@ export function PayrollPage() {
             return t('status.paid');
         return t('status.cancelled');
     };
-    const filtered = statusFilter === 'ALL' ? mockPayroll : mockPayroll.filter((p) => p.status === statusFilter);
+    const filtered = statusFilter === 'ALL' ? payroll : payroll.filter((p) => p.status === statusFilter);
     const totalNet = filtered.reduce((sum, p) => sum + p.netSalary, 0);
-    return (_jsxs("div", { style: { display: 'flex', flexDirection: 'column', gap: isMobile ? 14 : 20, width: '100%', maxWidth: '100%' }, children: [_jsxs("div", { style: { display: 'flex', justifyContent: 'space-between', alignItems: isMobile ? 'flex-start' : 'center', flexDirection: isMobile ? 'column' : 'row', gap: 10 }, children: [_jsxs("div", { children: [_jsx("h2", { style: { fontSize: 'var(--text-2xl)', fontWeight: 700, color: 'var(--color-text-primary)' }, children: t('payroll.title') }), _jsx("p", { style: { fontSize: 'var(--text-sm)', color: 'var(--color-text-secondary)', marginTop: 4 }, children: t('payroll.subtitle') })] }), _jsxs("div", { style: { display: 'flex', gap: 8 }, children: [_jsx(Button, { variant: "secondary", size: "sm", children: t('common.export') }), _jsx(Button, { variant: "primary", size: "sm", leftIcon: _jsx("svg", { width: "13", height: "13", viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 2.5, children: _jsx("path", { d: "M12 5v14M5 12h14" }) }), children: t('payroll.create') })] })] }), _jsx("div", { style: { display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(4, 1fr)', gap: 12 }, children: [
+    if (isLoading)
+        return _jsx(PageSkeleton, {});
+    if (isError) {
+        return (_jsx(EmptyState, { title: t('errors.loadFailed.title'), description: t('errors.loadFailed.description') }));
+    }
+    return (_jsxs("div", { style: { display: 'flex', flexDirection: 'column', gap: isMobile ? 14 : 20, width: '100%', maxWidth: '100%' }, children: [_jsx("div", { style: { display: 'flex', justifyContent: 'space-between', alignItems: isMobile ? 'flex-start' : 'center', flexDirection: isMobile ? 'column' : 'row', gap: 10 }, children: _jsxs("div", { children: [_jsx("h2", { style: { fontSize: 'var(--text-2xl)', fontWeight: 700, color: 'var(--color-text-primary)' }, children: title }), _jsx("p", { style: { fontSize: 'var(--text-sm)', color: 'var(--color-text-secondary)', marginTop: 4 }, children: subtitle })] }) }), _jsx("div", { style: { display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(4, 1fr)', gap: 12 }, children: [
                     { label: t('payroll.stats.totalNet'), value: formatCurrency(totalNet, locale), accent: 'var(--color-accent)' },
-                    { label: t('payroll.stats.paid'), value: String(mockPayroll.filter((p) => p.status === 'PAID').length), accent: 'var(--color-success)' },
-                    { label: t('payroll.stats.pending'), value: String(mockPayroll.filter((p) => p.status === 'APPROVED').length), accent: 'var(--color-warning)' },
-                    { label: t('payroll.stats.drafts'), value: String(mockPayroll.filter((p) => p.status === 'DRAFT').length), accent: 'var(--color-gray-400)' },
-                ].map((s) => (_jsxs(Card, { children: [_jsx("p", { style: { fontSize: 'var(--text-sm)', color: 'var(--color-text-secondary)', marginBottom: 6 }, children: s.label }), _jsx("p", { style: { fontSize: 'var(--text-2xl)', fontWeight: 700, color: s.accent }, children: s.value })] }, s.label))) }), _jsx("div", { style: {
+                    { label: t('payroll.stats.paid'), value: String(payroll.filter((p) => p.status === 'PAID').length), accent: 'var(--color-success)' },
+                    { label: t('payroll.stats.pending'), value: String(payroll.filter((p) => p.status === 'APPROVED').length), accent: 'var(--color-warning)' },
+                    { label: t('payroll.stats.drafts'), value: String(payroll.filter((p) => p.status === 'DRAFT').length), accent: 'var(--color-gray-400)' },
+                ].map((s) => (_jsxs(Card, { children: [_jsx("p", { style: { fontSize: 'var(--text-sm)', color: 'var(--color-text-secondary)', marginBottom: 6 }, children: s.label }), _jsx("p", { style: { fontSize: 'var(--text-2xl)', fontWeight: 700, color: s.accent }, children: s.value })] }, s.label))) }), isAdmin && _jsx(PayrollRulesPanel, {}), _jsx("div", { style: {
                     width: '100%',
                     maxWidth: '100%',
                     overflowX: isMobile ? 'auto' : 'visible',
@@ -65,13 +73,13 @@ export function PayrollPage() {
                                                     margin: 0,
                                                     fontSize: 'var(--text-sm)',
                                                     color: 'var(--color-text-secondary)',
-                                                }, children: t(entry.periodKey) }), _jsx("p", { style: {
+                                                }, children: formatPeriod(entry.periodStart, entry.periodEnd, locale) }), _jsx("p", { style: {
                                                     margin: '4px 0 0',
                                                     fontSize: 'var(--text-base)',
                                                     fontWeight: 600,
                                                     color: 'var(--color-text-primary)',
                                                     wordBreak: 'break-word',
-                                                }, children: t(entry.employeeKey) })] }), _jsx(Badge, { variant: statusVariant[entry.status], dot: true, children: statusLabel(entry.status) })] }), _jsxs("div", { style: { display: 'flex', flexDirection: 'column', gap: 6 }, children: [_jsx("p", { style: {
+                                                }, children: entry.employeeId })] }), _jsx(Badge, { variant: statusVariant[entry.status], dot: true, children: statusLabel(entry.status) })] }), _jsxs("div", { style: { display: 'flex', flexDirection: 'column', gap: 6 }, children: [_jsx("p", { style: {
                                             margin: 0,
                                             fontSize: 'var(--text-3xl)',
                                             fontWeight: 700,
@@ -82,22 +90,13 @@ export function PayrollPage() {
                                             margin: 0,
                                             fontSize: 'var(--text-sm)',
                                             color: entry.bonuses > 0 ? 'var(--color-success)' : 'var(--color-text-muted)',
-                                        }, children: [t('payroll.table.bonuses'), ": ", entry.bonuses > 0 ? '+' : '', formatCurrency(entry.bonuses, locale)] }), _jsxs("p", { style: { margin: 0, fontSize: 'var(--text-sm)', color: 'var(--color-danger)' }, children: [t('payroll.table.deductions'), ": -", formatCurrency(entry.deductions, locale)] })] }), _jsxs("div", { style: { display: 'flex', flexDirection: 'column', gap: 8, width: '100%' }, children: [entry.status === 'DRAFT' && (_jsx(Button, { variant: "secondary", style: { width: '100%', minHeight: 44 }, children: t('payroll.action.approve') })), entry.status === 'APPROVED' && (_jsx(Button, { variant: "primary", style: { width: '100%', minHeight: 44 }, children: t('payroll.action.pay') }))] })] }) }, entry.id))) })) : (_jsx("div", { style: { width: '100%', maxWidth: '100%' }, children: _jsx("div", { style: {
-                        background: 'var(--color-bg)',
-                        border: '1px solid var(--color-border)',
-                        borderRadius: 'var(--radius-lg)',
-                        overflow: 'hidden',
-                    }, children: _jsxs("table", { style: { width: '100%', borderCollapse: 'collapse' }, children: [_jsx("thead", { children: _jsx("tr", { style: { background: 'var(--color-bg-subtle)', borderBottom: '1px solid var(--color-border)' }, children: [t('payroll.table.employee'), t('payroll.table.period'), t('payroll.table.baseSalary'), t('payroll.table.bonuses'), t('payroll.table.deductions'), t('payroll.table.net'), t('payroll.table.status'), ''].map((h) => (_jsx("th", { style: {
-                                            padding: '10px 16px',
-                                            fontSize: 'var(--text-xs)',
-                                            fontWeight: 600,
-                                            color: 'var(--color-text-secondary)',
-                                            textAlign: 'left',
-                                            textTransform: 'uppercase',
-                                            letterSpacing: '0.04em',
-                                            whiteSpace: 'nowrap',
-                                        }, children: h }, h))) }) }), _jsx("tbody", { children: filtered.map((entry) => (_jsxs("tr", { style: {
-                                        borderBottom: '1px solid var(--color-border)',
-                                        transition: 'background var(--transition-fast)',
-                                    }, onMouseEnter: (e) => (e.currentTarget.style.background = 'var(--color-bg-subtle)'), onMouseLeave: (e) => (e.currentTarget.style.background = 'transparent'), children: [_jsx("td", { style: { padding: '12px 16px' }, children: _jsxs("div", { style: { display: 'flex', alignItems: 'center', gap: 8 }, children: [_jsx(Avatar, { name: t(entry.employeeKey), size: "xs" }), _jsx("span", { style: { fontSize: 'var(--text-sm)', fontWeight: 500, color: 'var(--color-text-primary)' }, children: t(entry.employeeKey) })] }) }), _jsx("td", { style: { padding: '12px 16px' }, children: _jsx("span", { style: { fontSize: 'var(--text-sm)', color: 'var(--color-text-secondary)' }, children: t(entry.periodKey) }) }), _jsx("td", { style: { padding: '12px 16px' }, children: _jsx("span", { style: { fontSize: 'var(--text-sm)', color: 'var(--color-text-primary)', fontFamily: 'var(--font-mono)' }, children: formatCurrency(entry.baseSalary, locale) }) }), _jsx("td", { style: { padding: '12px 16px' }, children: _jsxs("span", { style: { fontSize: 'var(--text-sm)', color: entry.bonuses > 0 ? 'var(--color-success)' : 'var(--color-text-muted)', fontFamily: 'var(--font-mono)' }, children: [entry.bonuses > 0 ? '+' : '', formatCurrency(entry.bonuses, locale)] }) }), _jsx("td", { style: { padding: '12px 16px' }, children: _jsxs("span", { style: { fontSize: 'var(--text-sm)', color: 'var(--color-danger)', fontFamily: 'var(--font-mono)' }, children: ["-", formatCurrency(entry.deductions, locale)] }) }), _jsx("td", { style: { padding: '12px 16px' }, children: _jsx("span", { style: { fontSize: 'var(--text-sm)', fontWeight: 700, color: 'var(--color-text-primary)', fontFamily: 'var(--font-mono)' }, children: formatCurrency(entry.netSalary, locale) }) }), _jsx("td", { style: { padding: '12px 16px' }, children: _jsx(Badge, { variant: statusVariant[entry.status], dot: true, children: statusLabel(entry.status) }) }), _jsxs("td", { style: { padding: '12px 16px' }, children: [entry.status === 'DRAFT' && (_jsx(Button, { variant: "secondary", size: "sm", children: t('payroll.action.approve') })), entry.status === 'APPROVED' && (_jsx(Button, { variant: "primary", size: "sm", children: t('payroll.action.pay') }))] })] }, entry.id))) })] }) }) }))] }));
+                                        }, children: [t('payroll.table.bonuses'), ": ", entry.bonuses > 0 ? '+' : '', formatCurrency(entry.bonuses, locale)] }), _jsxs("p", { style: { margin: 0, fontSize: 'var(--text-sm)', color: 'var(--color-danger)' }, children: [t('payroll.table.deductions'), ": -", formatCurrency(entry.deductions, locale)] })] }), _jsx("div", { style: { display: 'flex', flexDirection: 'column', gap: 8, width: '100%' }, children: isAdmin && entry.status === 'DRAFT' && (_jsx(Button, { variant: "secondary", style: { width: '100%', minHeight: 44 }, onClick: () => approvePayroll(entry.id), disabled: isPending, children: t('payroll.action.approve') })) })] }) }, entry.id))) })) : (_jsx("div", { className: "responsive-grid", style: { gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))' }, children: filtered.map((entry) => (_jsx(Card, { children: _jsxs("div", { style: { display: 'flex', flexDirection: 'column', gap: 12 }, children: [_jsxs("div", { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10 }, children: [_jsxs("div", { style: { display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }, children: [_jsx(Avatar, { name: entry.employeeId, size: "xs" }), _jsx("span", { style: { fontSize: 'var(--text-sm)', fontWeight: 600, color: 'var(--color-text-primary)' }, children: entry.employeeId })] }), _jsx(Badge, { variant: statusVariant[entry.status], dot: true, children: statusLabel(entry.status) })] }), _jsx("p", { style: { margin: 0, fontSize: 'var(--text-sm)', color: 'var(--color-text-secondary)' }, children: formatPeriod(entry.periodStart, entry.periodEnd, locale) }), _jsx("p", { style: { margin: 0, fontSize: 'var(--text-xl)', fontWeight: 700, fontFamily: 'var(--font-mono)' }, children: formatCurrency(entry.netSalary, locale) }), _jsxs("div", { style: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }, children: [_jsxs("p", { style: { margin: 0, fontSize: 'var(--text-sm)', color: 'var(--color-text-secondary)' }, children: [t('payroll.table.baseSalary'), ": ", formatCurrency(entry.baseSalary, locale)] }), _jsxs("p", { style: { margin: 0, fontSize: 'var(--text-sm)', color: entry.bonuses > 0 ? 'var(--color-success)' : 'var(--color-text-secondary)' }, children: [t('payroll.table.bonuses'), ": ", entry.bonuses > 0 ? '+' : '', formatCurrency(entry.bonuses, locale)] }), _jsxs("p", { style: { margin: 0, fontSize: 'var(--text-sm)', color: 'var(--color-danger)' }, children: [t('payroll.table.deductions'), ": -", formatCurrency(entry.deductions, locale)] })] }), isAdmin && entry.status === 'DRAFT' && (_jsx(Button, { variant: "secondary", size: "sm", onClick: () => approvePayroll(entry.id), disabled: isPending, loading: isPending, children: t('payroll.action.approve') }))] }) }, entry.id))) }))] }));
+}
+function formatPeriod(periodStart, periodEnd, locale) {
+    const start = new Date(periodStart);
+    const end = new Date(periodEnd);
+    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+        return `${periodStart} - ${periodEnd}`;
+    }
+    return `${start.toLocaleDateString(locale)} - ${end.toLocaleDateString(locale)}`;
 }

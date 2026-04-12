@@ -7,6 +7,9 @@ import { CreateTaskModal } from '@features/tasks/components/CreateTaskModal';
 import { usePermissions } from '@shared/hooks/useCanPerform';
 import { useIsMobile } from '@shared/hooks/useIsMobile';
 import type { TaskUiModel, TaskStatus, TaskPriority } from '@entities/task/task.types';
+import { TASK_STATUS_ALLOWED_NEXT } from '@entities/task/task.transitions';
+import { useBilling } from '@features/billing/hooks/useBilling';
+import { useCurrentUser } from '@shared/hooks/useCurrentUser';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -42,11 +45,23 @@ export function TasksPage() {
   const isMobile = useIsMobile();
   const [view, setView] = useState<ViewMode>('board');
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const { role } = useCurrentUser();
+  const taskTitle = role === 'EMPLOYEE' ? 'My Tasks' : role === 'MANAGER' ? 'Team Tasks' : t('tasks.title');
+  const canSwitchView = role !== 'EMPLOYEE';
 
-  const { tasks, total, isLoading, isError } = useTasks();
+
+  const { tasks, total, isLoading, isError, refetch } = useTasks();
+  const { data: billing } = useBilling();
   const { can } = usePermissions();
 
   const overdueTasks = tasks.filter((task) => task.overdue);
+  const taskLimitReached =
+    billing &&
+    billing.plan !== 'platform' &&
+    billing.tasks_limit !== null &&
+    billing.tasks_limit !== undefined
+      ? total >= billing.tasks_limit
+      : false;
 
   if (isLoading) return <PageSkeleton />;
 
@@ -55,7 +70,7 @@ export function TasksPage() {
       <EmptyState
         title={t('errors.loadFailed.title')}
         description={t('errors.loadFailed.description')}
-        action={{ label: t('common.actions.retry'), onClick: () => window.location.reload() }}
+        action={{ label: t('common.actions.retry'), onClick: () => void refetch() }}
         icon={
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5}>
             <circle cx="12" cy="12" r="10" /><path d="M12 8v4M12 16h.01" />
@@ -67,12 +82,12 @@ export function TasksPage() {
 
   return (
     <>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: isMobile ? 14 : 20 }}>
+      <div className="page-container" style={{ display: 'flex', flexDirection: 'column', gap: isMobile ? 14 : 20 }}>
         {/* Header */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: isMobile ? 'flex-start' : 'center', gap: isMobile ? 10 : 0 }}>
           <div>
             <h2 style={{ fontSize: isMobile ? 'var(--text-xl)' : 'var(--text-2xl)', fontWeight: 700, color: 'var(--color-text-primary)' }}>
-              {t('tasks.title')}
+              {taskTitle}
             </h2>
             <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-secondary)', marginTop: 4 }}>
               {total} {t('tasks.total')}
@@ -89,7 +104,7 @@ export function TasksPage() {
 
           {!isMobile && <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             {/* View toggle */}
-            <div
+            {canSwitchView && <div
               style={{
                 display: 'flex',
                 background: 'var(--color-bg-muted)',
@@ -118,13 +133,14 @@ export function TasksPage() {
                   {v === 'board' ? t('tasks.view.board') : t('tasks.view.list')}
                 </button>
               ))}
-            </div>
+            </div>}
 
             {can('task:create') && (
               <Button
                 variant="primary"
                 size="sm"
                 onClick={() => setShowCreateModal(true)}
+                disabled={taskLimitReached}
                 leftIcon={
                   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
                     <path d="M12 5v14M5 12h14" />
@@ -136,6 +152,14 @@ export function TasksPage() {
             )}
           </div>}
         </div>
+
+        {taskLimitReached && (
+          <Card style={{ borderColor: 'var(--color-warning-border)', background: 'var(--color-warning-subtle)' }}>
+            <p style={{ margin: 0, color: 'var(--color-warning)', fontSize: 'var(--text-sm)', fontWeight: 600 }}>
+              {t('billing.limitReached', { defaultValue: 'Task limit reached for your current plan.' })}
+            </p>
+          </Card>
+        )}
 
         {/* Overdue banner */}
         {overdueTasks.length > 0 && (
@@ -175,7 +199,7 @@ export function TasksPage() {
               </svg>
             }
           />
-        ) : isMobile ? (
+        ) : isMobile || role === 'EMPLOYEE' ? (
           <MobileTasksList tasks={tasks} />
         ) : view === 'board' ? (
           <BoardView tasks={tasks} />
@@ -187,6 +211,7 @@ export function TasksPage() {
       {isMobile && can('task:create') && (
         <button
           onClick={() => setShowCreateModal(true)}
+          disabled={taskLimitReached}
           style={{
             position: 'fixed',
             left: 12,
@@ -202,6 +227,7 @@ export function TasksPage() {
             fontWeight: 600,
             boxShadow: 'var(--shadow-lg)',
             cursor: 'pointer',
+            opacity: taskLimitReached ? 0.6 : 1,
           }}
         >
           + {t('tasks.create')}
@@ -231,7 +257,12 @@ function MobileTaskCard({ task }: { task: TaskUiModel }) {
   const { updateStatus } = useUpdateTaskStatus();
   const { can } = usePermissions();
 
-  const statusOptions = STATUS_COLUMNS.map((col) => ({ value: col.id, label: t(col.labelKey) }));
+  const allowedNext = TASK_STATUS_ALLOWED_NEXT[task.status] ?? [];
+  const optionIds = new Set<TaskStatus>([task.status, ...allowedNext]);
+  const statusOptions = STATUS_COLUMNS.filter((col) => optionIds.has(col.id)).map((col) => ({
+    value: col.id,
+    label: t(col.labelKey),
+  }));
 
   return (
     <Card style={{ width: '100%' }}>
@@ -259,7 +290,11 @@ function MobileTaskCard({ task }: { task: TaskUiModel }) {
           label={t('common.fields.status')}
           value={task.status}
           options={statusOptions}
-          onChange={(e) => updateStatus({ taskId: task.id, status: e.target.value as TaskStatus, taskTitle: task.title })}
+          onChange={(e) => {
+            const next = e.target.value as TaskStatus;
+            if (next === task.status) return;
+            updateStatus({ taskId: task.id, status: next, taskTitle: task.title });
+          }}
         />
       )}
     </Card>
@@ -365,8 +400,9 @@ function TaskCard({ task, canChangeStatus }: { task: TaskUiModel; canChangeStatu
         <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
           <Badge variant={PRIORITY_VARIANT[task.priority]}>{t(PRIORITY_LABEL_KEY[task.priority])}</Badge>
 
-          {/* Status action menu — hidden for roles without task:changeStatus */}
-          {canChangeStatus && <div style={{ position: 'relative' }}>
+          {/* Status menu only when at least one valid transition exists (e.g. not from DONE). */}
+          {canChangeStatus && (TASK_STATUS_ALLOWED_NEXT[task.status] ?? []).length > 0 && (
+          <div style={{ position: 'relative' }}>
             <button
               onClick={(e) => { e.stopPropagation(); setMenuOpen((o) => !o); }}
               style={{
@@ -411,7 +447,10 @@ function TaskCard({ task, canChangeStatus }: { task: TaskUiModel; canChangeStatu
                 <p style={{ padding: '6px 10px 4px', fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                   {t('tasks.moveTo')}
                 </p>
-                {STATUS_COLUMNS.filter((col) => col.id !== task.status).map((col) => (
+                {(TASK_STATUS_ALLOWED_NEXT[task.status] ?? [])
+                  .map((targetId) => STATUS_COLUMNS.find((c) => c.id === targetId))
+                  .filter((col): col is (typeof STATUS_COLUMNS)[number] => Boolean(col))
+                  .map((col) => (
                   <button
                     key={col.id}
                     onClick={(e) => {
@@ -442,7 +481,8 @@ function TaskCard({ task, canChangeStatus }: { task: TaskUiModel; canChangeStatu
                 ))}
               </div>
             )}
-          </div>}
+          </div>
+          )}
         </div>
       </div>
 
@@ -492,186 +532,7 @@ function TaskCard({ task, canChangeStatus }: { task: TaskUiModel; canChangeStatu
 // ─── List view ────────────────────────────────────────────────────────────────
 
 function ListView({ tasks }: { tasks: TaskUiModel[] }) {
-  const { t } = useTranslation();
-  const { updateStatus } = useUpdateTaskStatus();
-  const { can } = usePermissions();
-  const canChangeStatus = can('task:changeStatus');
-
-  return (
-    <Card padding="none">
-      <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-        <thead>
-          <tr style={{ background: 'var(--color-bg-subtle)', borderBottom: '1px solid var(--color-border)' }}>
-            {[
-              t('tasks.col.title'),
-              t('tasks.col.assignee'),
-              t('tasks.col.priority'),
-              t('tasks.col.due'),
-              t('tasks.col.status'),
-            ].map((h) => (
-              <th
-                key={h}
-                style={{
-                  padding: '10px 16px',
-                  fontSize: 'var(--text-xs)',
-                  fontWeight: 600,
-                  color: 'var(--color-text-secondary)',
-                  textAlign: 'left',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.04em',
-                }}
-              >
-                {h}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {tasks.map((task) => (
-            <ListRow
-              key={task.id}
-              task={task}
-              canChangeStatus={canChangeStatus}
-              onStatusChange={(status) =>
-                updateStatus({ taskId: task.id, status, taskTitle: task.title })
-              }
-            />
-          ))}
-        </tbody>
-      </table>
-    </Card>
-  );
-}
-
-function ListRow({
-  task,
-  canChangeStatus,
-  onStatusChange,
-}: {
-  task: TaskUiModel;
-  canChangeStatus: boolean;
-  onStatusChange: (status: TaskStatus) => void;
-}) {
-  const { t } = useTranslation();
-  const [statusMenuOpen, setStatusMenuOpen] = useState(false);
-
-  return (
-    <tr
-      style={{
-        borderBottom: '1px solid var(--color-border)',
-        background: task.overdue ? 'var(--color-danger-subtle)' : 'transparent',
-        transition: 'background var(--transition-fast)',
-      }}
-      onMouseEnter={(e) => {
-        if (!task.overdue) (e.currentTarget as HTMLElement).style.background = 'var(--color-bg-subtle)';
-      }}
-      onMouseLeave={(e) => {
-        (e.currentTarget as HTMLElement).style.background =
-          task.overdue ? 'var(--color-danger-subtle)' : 'transparent';
-      }}
-    >
-      {/* Title */}
-      <td style={{ padding: '12px 16px' }}>
-        <p style={{ fontSize: 'var(--text-sm)', fontWeight: 500, color: 'var(--color-text-primary)' }}>
-          {task.title}
-        </p>
-        {task.description && (
-          <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 280 }}>
-            {task.description}
-          </p>
-        )}
-      </td>
-
-      {/* Assignee */}
-      <td style={{ padding: '12px 16px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <Avatar name={task.assignee} size="xs" />
-          <span style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-secondary)' }}>
-            {task.assignee}
-          </span>
-        </div>
-      </td>
-
-      {/* Priority */}
-      <td style={{ padding: '12px 16px' }}>
-        <Badge variant={PRIORITY_VARIANT[task.priority]}>{t(PRIORITY_LABEL_KEY[task.priority])}</Badge>
-      </td>
-
-      {/* Due date */}
-      <td style={{ padding: '12px 16px' }}>
-        <span
-          style={{
-            fontSize: 'var(--text-sm)',
-            color: task.overdue ? 'var(--color-danger)' : 'var(--color-text-secondary)',
-            fontWeight: task.overdue ? 600 : 400,
-          }}
-        >
-          {task.overdue ? '⚠ ' : ''}{task.dueDate}
-        </span>
-      </td>
-
-      {/* Status — click to change (only if permitted) */}
-      <td style={{ padding: '12px 16px' }}>
-        <div style={{ position: 'relative', display: 'inline-block' }}>
-          <button
-            onClick={() => canChangeStatus && setStatusMenuOpen((o) => !o)}
-            style={{
-              background: 'none',
-              border: 'none',
-              cursor: canChangeStatus ? 'pointer' : 'default',
-              padding: 0,
-            }}
-          >
-            <StatusBadge status={task.status} />
-          </button>
-
-          {statusMenuOpen && (
-            <div
-              style={{
-                position: 'absolute',
-                top: '100%',
-                left: 0,
-                marginTop: 4,
-                background: 'var(--color-bg)',
-                border: '1px solid var(--color-border)',
-                borderRadius: 'var(--radius-lg)',
-                boxShadow: 'var(--shadow-lg)',
-                zIndex: 'var(--z-dropdown)' as React.CSSProperties['zIndex'],
-                overflow: 'hidden',
-                minWidth: 160,
-              }}
-            >
-              {STATUS_COLUMNS.filter((col) => col.id !== task.status).map((col) => (
-                <button
-                  key={col.id}
-                  onClick={() => { onStatusChange(col.id); setStatusMenuOpen(false); }}
-                  style={{
-                    width: '100%',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 8,
-                    padding: '8px 12px',
-                    border: 'none',
-                    background: 'transparent',
-                    cursor: 'pointer',
-                    fontSize: 'var(--text-sm)',
-                    color: 'var(--color-text-primary)',
-                    textAlign: 'left',
-                    transition: 'background var(--transition-fast)',
-                  }}
-                  onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--color-bg-subtle)')}
-                  onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
-                >
-                  <span style={{ width: 7, height: 7, borderRadius: '50%', background: col.color, flexShrink: 0 }} />
-                  {t(col.labelKey)}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-      </td>
-    </tr>
-  );
+  return <MobileTasksList tasks={tasks} />;
 }
 
 function StatusBadge({ status }: { status: TaskStatus }) {
@@ -681,6 +542,7 @@ function StatusBadge({ status }: { status: TaskStatus }) {
     IN_PROGRESS: { labelKey: 'status.inProgress', variant: 'warning'  },
     IN_REVIEW:   { labelKey: 'status.inReview',   variant: 'accent'   },
     DONE:        { labelKey: 'status.done',       variant: 'success'  },
+    CANCELLED:   { labelKey: 'status.cancelled',  variant: 'default'  },
   };
   const { labelKey, variant } = map[status];
   return <Badge variant={variant} dot>{t(labelKey)}</Badge>;

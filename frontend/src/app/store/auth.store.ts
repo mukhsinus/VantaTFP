@@ -5,6 +5,8 @@ import type { CurrentUser } from '@shared/types/auth.types';
 interface AuthState {
   user: CurrentUser | null;
   accessToken: string | null;
+  refreshToken: string | null;
+  isSessionLoading: boolean;
 
   /**
    * Becomes true once Zustand has finished rehydrating from localStorage.
@@ -14,7 +16,10 @@ interface AuthState {
    */
   isHydrated: boolean;
 
-  setAuth:     (user: CurrentUser, accessToken: string) => void;
+  setAuth:     (user: CurrentUser, accessToken: string, refreshToken?: string | null) => void;
+  setUser:     (user: CurrentUser) => void;
+  setTokens:   (accessToken: string, refreshToken?: string | null) => void;
+  setSessionLoading: (value: boolean) => void;
   clearAuth:   () => void;
   setHydrated: () => void;
 }
@@ -24,11 +29,28 @@ export const useAuthStore = create<AuthState>()(
     (set) => ({
       user:        null,
       accessToken: null,
+      refreshToken: null,
+      isSessionLoading: false,
       isHydrated:  false,
 
-      setAuth: (user, accessToken) => set({ user, accessToken }),
+      setAuth: (user, accessToken, refreshToken) =>
+        set((state) => ({
+          user,
+          accessToken,
+          refreshToken: refreshToken ?? state.refreshToken,
+        })),
 
-      clearAuth: () => set({ user: null, accessToken: null }),
+      setUser: (user) => set({ user }),
+
+      setTokens: (accessToken, refreshToken) =>
+        set((state) => ({
+          accessToken,
+          refreshToken: refreshToken ?? state.refreshToken,
+        })),
+
+      setSessionLoading: (value) => set({ isSessionLoading: value }),
+
+      clearAuth: () => set({ user: null, accessToken: null, refreshToken: null, isSessionLoading: false }),
 
       setHydrated: () => set({ isHydrated: true }),
     }),
@@ -40,12 +62,13 @@ export const useAuthStore = create<AuthState>()(
       partialize: (state) => ({
         user:        state.user,
         accessToken: state.accessToken,
+        refreshToken: state.refreshToken,
       }),
 
-      onRehydrateStorage: () => (state) => {
-        // Called once Zustand has merged the stored values into the store.
-        // If there is nothing in storage, state is still populated with defaults.
-        state?.setHydrated();
+      onRehydrateStorage: () => () => {
+        // Must not rely on the persisted slice carrying action methods — always
+        // flip hydration via `getState()` so AuthGuard never deadlocks on a blank shell.
+        useAuthStore.getState().setHydrated();
       },
     }
   )

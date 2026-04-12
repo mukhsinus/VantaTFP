@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Modal, Button, Input, Select } from '@shared/components/ui';
 import type { Role } from '@shared/types/auth.types';
+import type { CreatableTenantInviteRole } from '@entities/user/users.types';
 import { useIsMobile } from '@shared/hooks/useIsMobile';
 import { useCreateUser } from '../hooks/useCreateUser';
 
@@ -14,7 +15,7 @@ interface CreateUserModalProps {
 interface FormState {
   email: string;
   password: string;
-  role: Role;
+  role: CreatableTenantInviteRole;
   firstName: string;
   lastName: string;
 }
@@ -36,12 +37,11 @@ export function CreateUserModal({ isOpen, onClose, creatorRole }: CreateUserModa
 
   const roleOptions = useMemo(() => {
     if (creatorRole === 'MANAGER') {
-      return [{ value: 'EMPLOYEE', label: t('profile.roles.employee') }];
+      return [{ value: 'EMPLOYEE' as const, label: t('employees.roles.employee') }];
     }
     return [
-      { value: 'ADMIN', label: t('profile.roles.admin') },
-      { value: 'MANAGER', label: t('profile.roles.manager') },
-      { value: 'EMPLOYEE', label: t('profile.roles.employee') },
+      { value: 'MANAGER' as const, label: t('employees.roles.manager') },
+      { value: 'EMPLOYEE' as const, label: t('employees.roles.employee') },
     ];
   }, [creatorRole, t]);
 
@@ -158,7 +158,7 @@ export function CreateUserModal({ isOpen, onClose, creatorRole }: CreateUserModa
         <Select
           label={t('employees.modal.fields.role')}
           value={form.role}
-          onChange={(e) => setField('role', e.target.value as Role)}
+          onChange={(e) => setField('role', e.target.value as CreatableTenantInviteRole)}
           options={roleOptions}
         />
       </form>

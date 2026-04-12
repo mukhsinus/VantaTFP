@@ -14,4 +14,7 @@ async function jwtPlugin(app: FastifyInstance): Promise<void> {
   app.decorate('authenticate', authenticateMiddleware);
 }
 
-export default fastifyPlugin(jwtPlugin, { name: 'jwt', dependencies: [] });
+export default fastifyPlugin(jwtPlugin, {
+  name: 'jwt',
+  dependencies: ['database', 'billing'],
+});

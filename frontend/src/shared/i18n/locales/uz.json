@@ -6,8 +6,14 @@
     "employees": "Xodimlar",
     "kpi": "KPI",
     "payroll": "Ish haqi",
+    "reports": "Hisobotlar",
+    "billing": "Billing",
     "settings": "Sozlamalar",
     "logout": "Chiqish",
+    "projects": "Loyihalar",
+    "documents": "Hujjatlar",
+    "automations": "Avtomatlashtirish",
+    "templates": "Shablonlar",
     "notifications": {
       "title": "Bildirishnomalar"
     },
@@ -237,6 +243,20 @@
       "description": "Boshlash uchun birinchi ish haqi yozuvini yarating."
     }
   },
+  "reports": {
+    "title": "Hisobotlar",
+    "subtitle": "KPI, ish haqi va vazifalar bo'yicha hisobotlarni yaratish va eksport qilish"
+  },
+  "billing": {
+    "title": "Billing",
+    "subtitle": "Joriy tarif va obuna limitlari",
+    "trial": {
+      "bannerDays": "Bepul sinov — {{count}} kun qoldi",
+      "bannerLastDay": "Bepul sinov — bugun tugaydi",
+      "expiredMessage": "Sinov muddati tugadi. Davom etish uchun tarifni yangilang.",
+      "upgradeCta": "Yangilash"
+    }
+  },
   "settings": {
     "title": "Sozlamalar",
     "subtitle": "Akkaunt va ish maydoni sozlamalarini boshqaring",
@@ -278,6 +298,100 @@
       "newPassword": "Yangi parol",
       "confirmPassword": "Yangi parolni tasdiqlang",
       "update": "Parolni yangilash"
+    },
+    "feedback": {
+      "profileSaved": "Profil saqlandi",
+      "workspaceSaved": "Ish maydoni nomi saqlandi",
+      "notificationsSaved": "Bildirishnoma sozlamalari saqlandi",
+      "passwordUpdated": "Parol yangilandi",
+      "validation": "Barcha majburiy maydonlarni to‘ldiring",
+      "passwordTooShort": "Yangi parol kamida 6 belgidan iborat bo‘lishi kerak",
+      "passwordMismatch": "Yangi parol va tasdiq mos kelmaydi",
+      "workspaceNameTooShort": "Nom kamida 2 belgidan iborat bo‘lishi kerak",
+      "workspaceOwnerOnly": "Tashkilot nomini faqat egasi (admin) o‘zgartirishi mumkin.",
+      "saveFailed": "Saqlab bo‘lmadi",
+      "loadFailed": "Sozlamalarni yuklab bo‘lmadi"
+    }  },
+  "projects": {
+    "title": "Loyihalar",
+    "total": "loyihalar",
+    "create": "Yangi loyiha",
+    "empty": {
+      "title": "Hali loyihalar yo'q",
+      "description": "Vazifalar va jamoa ishini tashkil qilish uchun birinchi loyihani yarating."
+    },
+    "disabled": {
+      "title": "Loyihalar o'chirilgan",
+      "description": "Bu funksiya hozirda o'chirilgan. Yoqish uchun administratoringizga murojaat qiling."
+    },
+    "fields": {
+      "name": "Loyiha nomi",
+      "description": "Tavsif",
+      "color": "Rang"
     }
-  }
+  },
+  "documents": {
+    "title": "Hujjatlar",
+    "total": "hujjatlar",
+    "create": "Yangi hujjat",
+    "empty": {
+      "title": "Hali hujjatlar yo'q",
+      "description": "Jamoa bilan bilim almashish uchun birinchi hujjatni yarating."
+    },
+    "disabled": {
+      "title": "Hujjatlar o'chirilgan",
+      "description": "Bu funksiya hozirda o'chirilgan. Yoqish uchun administratoringizga murojaat qiling."
+    },
+    "fields": {
+      "title": "Hujjat sarlavhasi"
+    }
+  },
+  "automations": {
+    "title": "Avtomatlashtirish",
+    "subtitle": "Takroriy vazifalar va jarayonlarni avtomatlashtiring",
+    "create": "Yangi avtomatlashtirish",
+    "active": "Faol",
+    "inactive": "Nofaol",
+    "empty": {
+      "title": "Hali avtomatlashtirish yo'q",
+      "description": "Ish jarayonini optimallashtirish uchun avtomatlashtirish qoidalarini yarating."
+    },
+    "disabled": {
+      "title": "Avtomatlashtirish o'chirilgan",
+      "description": "Bu funksiya hozirda o'chirilgan. Yoqish uchun administratoringizga murojaat qiling."
+    },
+    "fields": {
+      "name": "Qoida nomi",
+      "trigger": "Qachon",
+      "action": "Keyin"
+    },
+    "triggers": {
+      "status_change": "Status o'zgarishi",
+      "assignment": "Vazifa tayinlash",
+      "due_date_passed": "Muddat o'tdi",
+      "field_change": "Maydon qiymati o'zgarishi"
+    },
+    "actions": {
+      "change_status": "Statusni o'zgartirish",
+      "assign_user": "Foydalanuvchini tayinlash",
+      "send_notification": "Bildirishnoma yuborish",
+      "create_task": "Vazifa yaratish"
+    }
+  },
+  "templates": {
+    "title": "Shablonlar",
+    "subtitle": "Jamoa uchun qayta foydalaniladigan vazifa shablonlari",
+    "create": "Yangi shablon",
+    "empty": {
+      "title": "Hali shablonlar yo'q",
+      "description": "Takroriy ishlarni tezlashtirish uchun vazifa shablonlarini yarating."
+    },
+    "disabled": {
+      "title": "Shablonlar o'chirilgan",
+      "description": "Bu funksiya hozirda o'chirilgan. Yoqish uchun administratoringizga murojaat qiling."
+    },
+    "fields": {
+      "name": "Shablon nomi",
+      "description": "Tavsif"
+    }  }
 }
