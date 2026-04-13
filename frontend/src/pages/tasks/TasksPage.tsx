@@ -57,10 +57,10 @@ export function TasksPage() {
   const overdueTasks = tasks.filter((task) => task.overdue);
   const taskLimitReached =
     billing &&
-    billing.plan !== 'platform' &&
-    billing.tasks_limit !== null &&
-    billing.tasks_limit !== undefined
-      ? total >= billing.tasks_limit
+    billing.plan.name !== 'platform' &&
+    billing.limits.tasks !== null &&
+    billing.limits.tasks !== undefined
+      ? total >= billing.limits.tasks
       : false;
 
   if (isLoading) return <PageSkeleton />;

@@ -8,11 +8,12 @@ describe('sortPlans', () => {
     expect(sortPlans([])).toEqual([]);
   });
 
-  it('orders basic, pro, unlimited when all present', () => {
+  it('orders basic, pro, business, enterprise when all present', () => {
     const catalog: BillingPlanCatalogItem[] = [
-      { name: 'unlimited', price: 99 },
-      { name: 'basic', price: 19, users: 5, tasks: 500 },
-      { name: 'pro', price: 49, users: 15, tasks: 5000 },
+      { name: 'enterprise', price: 200 },
+      { name: 'business', price: 50, users: 50, tasks: 2000 },
+      { name: 'basic', price: 5, users: 2, tasks: 50 },
+      { name: 'pro', price: 10, users: 20, tasks: 500 },
     ];
     const sorted = sortPlans(catalog);
     expect(sorted.map((p) => p.name)).toEqual(PLAN_ORDER);

@@ -21,10 +21,7 @@ import { AdminDashboardPage } from '@pages/admin/AdminDashboardPage';
 import { AdminTenantsPage } from '@pages/admin/AdminTenantsPage';
 import { AdminUsersPage } from '@pages/admin/AdminUsersPage';
 import { AdminSubscriptionsPage } from '@pages/admin/AdminSubscriptionsPage';
-import { ProjectsPage } from '@pages/projects/ProjectsPage';
-import { DocumentsPage } from '@pages/documents/DocumentsPage';
-import { AutomationsPage } from '@pages/automations/AutomationsPage';
-import { TemplatesPage } from '@pages/templates/TemplatesPage';
+import { MessagesPage } from '@pages/messages/MessagesPage';
 
 export const router = createBrowserRouter([
   {
@@ -66,11 +63,8 @@ export const router = createBrowserRouter([
               { path: 'payroll', element: <RoleGuard path="/payroll"><PayrollPage /></RoleGuard> },
               { path: 'reports', element: <RoleGuard path="/reports"><ReportsPage /></RoleGuard> },
               { path: 'billing', element: <RoleGuard path="/billing"><BillingPage /></RoleGuard> },
-              { path: 'projects', element: <RoleGuard path="/projects"><ProjectsPage /></RoleGuard> },
-              { path: 'documents', element: <RoleGuard path="/documents"><DocumentsPage /></RoleGuard> },
-              { path: 'automations', element: <RoleGuard path="/automations"><AutomationsPage /></RoleGuard> },
-              { path: 'templates', element: <RoleGuard path="/templates"><TemplatesPage /></RoleGuard> },
               { path: 'settings', element: <RoleGuard path="/settings"><SettingsPage /></RoleGuard> },
+              { path: 'messages', element: <RoleGuard path="/messages"><MessagesPage /></RoleGuard> },
             ],
           },
         ],

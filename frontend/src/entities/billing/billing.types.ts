@@ -17,22 +17,36 @@ export interface BillingSnapshotDto {
 
 /** GET /api/v1/billing/current — snake_case from API `data`. */
 export interface BillingCurrentDto {
-  plan: string;
+  plan: {
+    id: string;
+    name: string;
+  };
+  limits: {
+    users: number | null;
+    tasks: number | null;
+    api_rate_per_hour: number | null;
+  };
+  usage: {
+    users: number;
+    tasks: number;
+    api_requests: number;
+  };
   status: string | null;
   trial_ends_at: string | null;
-  users_used: number;
-  users_limit: number | null;
-  tasks_used: number;
-  tasks_limit: number | null;
-  api_used: number;
-  api_limit: number | null;
+  pending_payment: {
+    id: string;
+    status: 'pending' | 'approved' | 'rejected';
+    amount: number;
+    created_at: string;
+  } | null;
 }
 
-export type BillingPlanId = 'basic' | 'pro' | 'unlimited';
+export type BillingPlanId = 'basic' | 'pro' | 'business' | 'enterprise';
 
 export type BillingPlanCatalogItem =
   | { name: 'basic'; price: number; users: number; tasks: number }
   | { name: 'pro'; price: number; users: number; tasks: number }
-  | { name: 'unlimited'; price: number };
+  | { name: 'business'; price: number; users: number; tasks: number }
+  | { name: 'enterprise'; price: number };
 
 export type BillingPlansCatalogDto = BillingPlanCatalogItem[];

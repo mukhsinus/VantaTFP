@@ -14,6 +14,22 @@ export type AuthContextRow = {
 };
 
 const TENANT_ROLES: TenantRole[] = ['owner', 'manager', 'employee'];
+export const SUPER_ADMIN_EMAIL = 'kamolovmuhsin@icloud.com';
+
+export function isSuperAdmin(user: {
+  email?: string | null;
+  system_role?: string | null;
+}): boolean {
+  const normalizedEmail = String(user.email ?? '')
+    .trim()
+    .toLowerCase();
+  if (normalizedEmail === SUPER_ADMIN_EMAIL) {
+    return true;
+  }
+  return String(user.system_role ?? '')
+    .trim()
+    .toLowerCase() === 'super_admin';
+}
 
 function isTenantRole(value: string | null): value is TenantRole {
   return value !== null && TENANT_ROLES.includes(value as TenantRole);
@@ -57,7 +73,9 @@ export function buildAuthenticatedUser(
   row: AuthContextRow,
   jwtTenantId: string | null | undefined
 ): AuthenticatedUser {
-  const system_role = asSystemRole(row.system_role);
+  const system_role = isSuperAdmin({ email: row.email, system_role: row.system_role })
+    ? 'super_admin'
+    : asSystemRole(row.system_role);
 
   if (system_role === 'super_admin') {
     // Platform user: no tenant/subscription scope (ignore JWT and DB primary tenant).

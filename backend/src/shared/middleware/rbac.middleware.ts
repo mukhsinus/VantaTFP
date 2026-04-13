@@ -52,6 +52,37 @@ function getUser(request: FastifyRequest) {
   return user;
 }
 
+export async function requireAuth(
+  request: FastifyRequest,
+  _reply: FastifyReply
+): Promise<void> {
+  getUser(request);
+}
+
+export async function requireTenant(
+  request: FastifyRequest,
+  _reply: FastifyReply
+): Promise<void> {
+  const user = getUser(request);
+  if (user.system_role === 'super_admin') {
+    return;
+  }
+  const tenantId = request.tenantId ?? user.tenant_id ?? user.tenantId;
+  if (!tenantId) {
+    throw ApplicationError.forbidden('Tenant context required');
+  }
+}
+
+export async function requireSuperAdmin(
+  request: FastifyRequest,
+  _reply: FastifyReply
+): Promise<void> {
+  const user = getUser(request);
+  if (user.system_role !== 'super_admin') {
+    throw ApplicationError.forbidden('Super admin access required');
+  }
+}
+
 /**
  * Requires a platform-level role. `super_admin` bypasses nothing here -- only matches `super_admin`.
  */
@@ -63,6 +94,42 @@ export function requireSystemRole(role: SystemRole) {
     const user = getUser(request);
     if (user.system_role !== role) {
       throw ApplicationError.forbidden(`Requires system role: ${role}`);
+    }
+  };
+}
+
+/**
+ * Policy-first RBAC guard. Checks `can(user, action, resource)` against tenant policy rules.
+ */
+export function requireRole(action: string, resource: string) {
+  return async function rolePolicyGuard(
+    request: FastifyRequest,
+    _reply: FastifyReply
+  ): Promise<void> {
+    const user = getUser(request);
+    if (user.system_role === 'super_admin') {
+      return;
+    }
+
+    const tenantId = request.tenantId ?? user.tenant_id ?? user.tenantId;
+    if (!tenantId) {
+      throw ApplicationError.forbidden('Tenant context required');
+    }
+
+    const roleCode = user.tenant_role ?? user.role;
+    if (!roleCode) {
+      throw ApplicationError.forbidden('No role assigned');
+    }
+
+    const allowed = await request.server.policy.checkPermission(
+      tenantId,
+      roleCode,
+      action,
+      resource
+    );
+
+    if (!allowed) {
+      throw ApplicationError.forbidden(`Permission denied: ${action}:${resource}`);
     }
   };
 }

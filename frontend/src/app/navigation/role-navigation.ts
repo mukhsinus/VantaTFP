@@ -7,35 +7,26 @@ export interface RoleNavItem {
 
 const ADMIN_NAV: RoleNavItem[] = [
   { to: '/dashboard', labelKey: 'nav.overview' },
-  { to: '/projects', labelKey: 'nav.projects' },
   { to: '/employees', labelKey: 'nav.employees' },
   { to: '/tasks', labelKey: 'nav.tasks' },
-  { to: '/documents', labelKey: 'nav.documents' },
   { to: '/kpi', labelKey: 'nav.kpi' },
   { to: '/payroll', labelKey: 'nav.payroll' },
   { to: '/messages', labelKey: 'nav.messages' },
   { to: '/reports', labelKey: 'nav.reports' },
-  { to: '/templates', labelKey: 'nav.templates' },
-  { to: '/automations', labelKey: 'nav.automations' },
   { to: '/billing', labelKey: 'nav.billing' },
 ];
 
 const MANAGER_NAV: RoleNavItem[] = [
   { to: '/dashboard', labelKey: 'nav.overview' },
-  { to: '/projects', labelKey: 'nav.projects' },
   { to: '/employees', labelKey: 'nav.employees' },
   { to: '/tasks', labelKey: 'nav.tasks' },
-  { to: '/documents', labelKey: 'nav.documents' },
   { to: '/kpi', labelKey: 'nav.kpi' },
   { to: '/messages', labelKey: 'nav.messages' },
   { to: '/reports', labelKey: 'nav.reports' },
-  { to: '/templates', labelKey: 'nav.templates' },
 ];
 
 const EMPLOYEE_NAV: RoleNavItem[] = [
   { to: '/tasks', labelKey: 'nav.tasks' },
-  { to: '/projects', labelKey: 'nav.projects' },
-  { to: '/documents', labelKey: 'nav.documents' },
   { to: '/kpi', labelKey: 'nav.kpi' },
   { to: '/messages', labelKey: 'nav.messages' },
 ];

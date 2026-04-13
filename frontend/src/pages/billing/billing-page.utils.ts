@@ -1,6 +1,6 @@
 import type { BillingPlanCatalogItem, BillingPlanId } from '@entities/billing/billing.types';
 
-export const PLAN_ORDER: BillingPlanId[] = ['basic', 'pro', 'unlimited'];
+export const PLAN_ORDER: BillingPlanId[] = ['basic', 'pro', 'business', 'enterprise'];
 
 /**
  * Sort catalog by known tier order; if names differ, keep any valid rows from the API.

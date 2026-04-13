@@ -22,8 +22,67 @@ export interface SubscriptionPlanRow {
 
 type Queryable = Pick<Pool, 'query'> | Pick<PoolClient, 'query'>;
 
+export interface PendingPaymentRequestRow {
+  id: string;
+  status: 'pending' | 'approved' | 'rejected';
+  amount: string;
+  created_at: Date;
+}
+
 export class BillingRepository {
   constructor(private readonly db: Pool) {}
+
+  static isUndefinedTableError(error: unknown, tableName: string): boolean {
+    const pgError = error as { code?: string; message?: string };
+    if (pgError?.code !== '42P01') {
+      return false;
+    }
+    return String(pgError?.message ?? '')
+      .toLowerCase()
+      .includes(tableName.toLowerCase());
+  }
+
+  async hasPaymentRequestsTable(executor: Queryable = this.db): Promise<boolean> {
+    const result = await executor.query<{ exists: boolean }>(
+      `
+      SELECT EXISTS (
+        SELECT 1
+        FROM information_schema.tables
+        WHERE table_schema = 'public'
+          AND table_name = 'payment_requests'
+      ) AS exists
+      `
+    );
+    return result.rows[0]?.exists ?? false;
+  }
+
+  async getPaymentRequestsMissingColumns(
+    executor: Queryable = this.db
+  ): Promise<string[]> {
+    const required = [
+      'id',
+      'tenant_id',
+      'user_id',
+      'plan_id',
+      'amount',
+      'status',
+      'created_at',
+      'updated_at',
+      'confirmed_by',
+      'confirmed_at',
+      'admin_note',
+    ];
+    const result = await executor.query<{ column_name: string }>(
+      `
+      SELECT column_name
+      FROM information_schema.columns
+      WHERE table_schema = 'public'
+        AND table_name = 'payment_requests'
+      `
+    );
+    const have = new Set(result.rows.map((row) => row.column_name));
+    return required.filter((columnName) => !have.has(columnName));
+  }
 
   async withTransaction<T>(fn: (tx: PoolClient) => Promise<T>): Promise<T> {
     const client = await this.db.connect();
@@ -403,12 +462,214 @@ export class BillingRepository {
     return this.incrementUsage(tenantId, periodStart, metric, executor);
   }
 
+  async createPaymentRequest(data: {
+    tenantId: string;
+    userId: string;
+    planId: string;
+    amount: number;
+    executor?: Queryable;
+  }): Promise<PendingPaymentRequestRow> {
+    const executor = data.executor ?? this.db;
+    const result = await executor.query<PendingPaymentRequestRow>(
+      `
+      INSERT INTO payment_requests (
+        tenant_id,
+        user_id,
+        plan_id,
+        amount,
+        status,
+        created_at,
+        updated_at
+      )
+      VALUES ($1, $2, $3, $4, 'pending', NOW(), NOW())
+      RETURNING id, status, amount::text, created_at
+      `,
+      [data.tenantId, data.userId, data.planId, data.amount]
+    );
+    return result.rows[0];
+  }
+
+  async getPlanByName(
+    planName: 'basic' | 'pro' | 'business' | 'enterprise',
+    executor: Queryable = this.db
+  ): Promise<{ id: string; name: string; price: string } | null> {
+    const result = await executor.query<{ id: string; name: string; price: string }>(
+      `
+      SELECT id, name, price::text AS price
+      FROM plans
+      WHERE name = $1
+      LIMIT 1
+      `,
+      [planName]
+    );
+    return result.rows[0] ?? null;
+  }
+
+  async getPlanNameById(
+    planId: string,
+    executor: Queryable = this.db
+  ): Promise<'basic' | 'pro' | 'business' | 'enterprise' | null> {
+    const result = await executor.query<{ name: string }>(
+      `
+      SELECT name
+      FROM plans
+      WHERE id = $1
+      LIMIT 1
+      `,
+      [planId]
+    );
+    const name = result.rows[0]?.name;
+    if (name !== 'basic' && name !== 'pro' && name !== 'business' && name !== 'enterprise') {
+      return null;
+    }
+    return name;
+  }
+
+  async getPendingPaymentRequestForTenant(
+    tenantId: string,
+    executor: Queryable = this.db
+  ): Promise<PendingPaymentRequestRow | null> {
+    const result = await executor.query<PendingPaymentRequestRow>(
+      `
+      SELECT id, status, amount::text, created_at
+      FROM payment_requests
+      WHERE tenant_id = $1
+        AND status = 'pending'
+      ORDER BY created_at DESC
+      LIMIT 1
+      `,
+      [tenantId]
+    );
+    return result.rows[0] ?? null;
+  }
+
+  async getPaymentRequestById(
+    paymentRequestId: string,
+    executor: Queryable = this.db
+  ): Promise<{ id: string; tenant_id: string; plan_id: string; status: string } | null> {
+    const result = await executor.query<{
+      id: string;
+      tenant_id: string;
+      plan_id: string;
+      status: string;
+    }>(
+      `
+      SELECT id, tenant_id, plan_id, status::text AS status
+      FROM payment_requests
+      WHERE id = $1
+      LIMIT 1
+      `,
+      [paymentRequestId]
+    );
+    return result.rows[0] ?? null;
+  }
+
+  async approvePaymentRequest(
+    paymentRequestId: string,
+    approverUserId: string,
+    executor: Queryable = this.db
+  ): Promise<boolean> {
+    const result = await executor.query(
+      `
+      UPDATE payment_requests
+      SET
+        status = 'approved',
+        confirmed_by = $2,
+        confirmed_at = NOW(),
+        updated_at = NOW()
+      WHERE id = $1
+        AND status = 'pending'
+      `,
+      [paymentRequestId, approverUserId]
+    );
+    return (result.rowCount ?? 0) > 0;
+  }
+
+  async rejectPaymentRequest(
+    paymentRequestId: string,
+    approverUserId: string,
+    adminNote?: string,
+    executor: Queryable = this.db
+  ): Promise<boolean> {
+    const result = await executor.query(
+      `
+      UPDATE payment_requests
+      SET
+        status = 'rejected',
+        confirmed_by = $2,
+        confirmed_at = NOW(),
+        admin_note = $3,
+        updated_at = NOW()
+      WHERE id = $1
+        AND status = 'pending'
+      `,
+      [paymentRequestId, approverUserId, adminNote ?? null]
+    );
+    return (result.rowCount ?? 0) > 0;
+  }
+
+  private async tenantColumnExists(
+    columnName: 'plan_id' | 'plan',
+    executor: Queryable = this.db
+  ): Promise<boolean> {
+    const result = await executor.query<{ has_column: boolean }>(
+      `
+      SELECT EXISTS (
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_schema = 'public'
+          AND table_name = 'tenants'
+          AND column_name = $1
+      ) AS has_column
+      `,
+      [columnName]
+    );
+    return result.rows[0]?.has_column ?? false;
+  }
+
+  async syncTenantPlan(tenantId: string, planId: string, executor: Queryable = this.db): Promise<void> {
+    const [hasPlanId, hasPlan] = await Promise.all([
+      this.tenantColumnExists('plan_id', executor),
+      this.tenantColumnExists('plan', executor),
+    ]);
+
+    if (hasPlanId) {
+      await executor.query(
+        `
+        UPDATE tenants
+        SET plan_id = $2, updated_at = NOW()
+        WHERE id = $1
+        `,
+        [tenantId, planId]
+      );
+    }
+
+    if (hasPlan) {
+      await executor.query<{ name: string }>(
+        `
+        UPDATE tenants t
+        SET
+          plan = CASE
+            WHEN p.name = 'basic' THEN 'FREE'
+            WHEN p.name = 'pro' THEN 'PRO'
+            ELSE 'ENTERPRISE'
+          END,
+          updated_at = NOW()
+        FROM plans p
+        WHERE t.id = $1
+          AND p.id = $2
+        `,
+        [tenantId, planId]
+      );
+    }
+  }
+
   /**
    * Switch plan (owner upgrade): sync `plan_id`, denormalized caps, `active`, billing period.
    */
   async upgradeSubscriptionToPlan(
     tenantId: string,
-    planName: 'basic' | 'pro' | 'business' | 'enterprise' | 'unlimited',
+    planName: 'basic' | 'pro' | 'business' | 'enterprise',
     executor: Queryable = this.db
   ): Promise<{ updated: boolean }> {
     const caps = await getBillingSubscriptionCaps(this.db);
@@ -443,7 +704,14 @@ export class BillingRepository {
         `,
         [tenantId, planName]
       );
-      return { updated: (result.rowCount ?? 0) > 0 };
+      const updated = (result.rowCount ?? 0) > 0;
+      if (updated) {
+        const plan = await this.getPlanByName(planName, executor);
+        if (plan) {
+          await this.syncTenantPlan(tenantId, plan.id, executor);
+        }
+      }
+      return { updated };
     }
 
     if (caps.planColumn && caps.maxUsersColumn) {
@@ -465,7 +733,14 @@ export class BillingRepository {
         `,
         [tenantId, planName]
       );
-      return { updated: (result.rowCount ?? 0) > 0 };
+      const updated = (result.rowCount ?? 0) > 0;
+      if (updated) {
+        const plan = await this.getPlanByName(planName, executor);
+        if (plan) {
+          await this.syncTenantPlan(tenantId, plan.id, executor);
+        }
+      }
+      return { updated };
     }
 
     const result = await executor.query(
@@ -481,6 +756,13 @@ export class BillingRepository {
       `,
       [tenantId, planName]
     );
-    return { updated: (result.rowCount ?? 0) > 0 };
+    const updated = (result.rowCount ?? 0) > 0;
+    if (updated) {
+      const plan = await this.getPlanByName(planName, executor);
+      if (plan) {
+        await this.syncTenantPlan(tenantId, plan.id, executor);
+      }
+    }
+    return { updated };
   }
 }

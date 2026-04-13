@@ -4,12 +4,22 @@ import { sendNoContent, sendSuccess } from '../../shared/utils/response.js';
 import { AdminRepository } from './admin.repository.js';
 import { AdminService } from './admin.service.js';
 import { listAuditLogsQuerySchema, updateTenantAdminSchema } from './admin.schema.js';
+import { requireAuth, requireSuperAdmin } from '../../shared/middleware/rbac.middleware.js';
+import { paymentRequestIdParamSchema } from '../payments/payments.schema.js';
+import { PaymentsRepository } from '../payments/payments.repository.js';
+import { PaymentsService } from '../payments/payments.service.js';
+import { BillingRepository } from '../billing/billing.repository.js';
+import { BillingService } from '../billing/billing.service.js';
 
 const APP_STARTED_AT = new Date();
 
 export async function adminRoutes(app: FastifyInstance): Promise<void> {
   const adminRepository = new AdminRepository(app.db);
   const adminService = new AdminService(adminRepository, APP_STARTED_AT);
+  const paymentsRepository = new PaymentsRepository(app.db);
+  const billingRepository = new BillingRepository(app.db);
+  const billingService = new BillingService(billingRepository);
+  const paymentsService = new PaymentsService(paymentsRepository, billingService);
   const authenticate = app.authenticate;
 
   app.get(
@@ -78,6 +88,16 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
     async (request: FastifyRequest, reply: FastifyReply) => {
       const stats = await adminService.getSystemStats(request.user.tenantId);
       return sendSuccess(reply, stats);
+    }
+  );
+
+  app.post(
+    '/payments/:id/approve',
+    { preHandler: [authenticate, requireAuth, requireSuperAdmin] },
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      const { id } = paymentRequestIdParamSchema.parse(request.params);
+      const approved = await paymentsService.confirmPayment(id, request.user.id);
+      return sendSuccess(reply, approved);
     }
   );
 }

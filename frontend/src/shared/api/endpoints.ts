@@ -79,6 +79,10 @@ export const API = {
     subscriptions: '/api/v1/platform/subscriptions',
   },
 
+  admin: {
+    approvePayment: (paymentId: string) => `/api/v1/admin/payments/${paymentId}/approve`,
+  },
+
   featureFlags: {
     list: '/api/v1/feature-flags',
     update: '/api/v1/feature-flags',

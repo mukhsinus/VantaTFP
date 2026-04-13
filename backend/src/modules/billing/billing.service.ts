@@ -403,28 +403,112 @@ export class BillingService {
     const periodStart = utcHourStart();
     const apiUsed = await this.repo.getApiUsageForPeriod(tenantId, periodStart);
 
+    let pendingPayment = null as Awaited<
+      ReturnType<BillingRepository['getPendingPaymentRequestForTenant']>
+    >;
+    try {
+      pendingPayment = await this.repo.getPendingPaymentRequestForTenant(tenantId);
+    } catch (error) {
+      if (!BillingRepository.isUndefinedTableError(error, 'payment_requests')) {
+        throw error;
+      }
+      pendingPayment = null;
+    }
     return {
-      plan: row.subscription_plan_tier,
+      plan: {
+        id: row.plan_id,
+        name: row.subscription_plan_tier,
+      },
+      limits: {
+        users: usersLimit,
+        tasks: limits.tasks,
+        api_rate_per_hour: limits.api_rate_per_hour,
+      },
+      usage: {
+        users: usersUsed,
+        tasks: tasksUsed,
+        api_requests: apiUsed,
+      },
       status: row.subscription_status ?? null,
       trial_ends_at: row.trial_ends_at ? row.trial_ends_at.toISOString() : null,
-      users_used: usersUsed,
-      users_limit: usersLimit,
-      tasks_used: tasksUsed,
-      tasks_limit: limits.tasks,
-      api_used: apiUsed,
-      api_limit: limits.api_rate_per_hour,
+      pending_payment: pendingPayment
+        ? {
+            id: pendingPayment.id,
+            status: pendingPayment.status,
+            amount: Number(pendingPayment.amount),
+            created_at: pendingPayment.created_at.toISOString(),
+          }
+        : null,
     };
   }
 
-  async upgradeSubscriptionPlan(
+  async createUpgradePaymentRequest(
     tenantId: string,
-    plan: 'basic' | 'pro' | 'business' | 'enterprise' | 'unlimited'
-  ): Promise<void> {
-    await this.repo.ensureDefaultSubscription(tenantId);
-    const { updated } = await this.repo.upgradeSubscriptionToPlan(tenantId, plan);
-    if (!updated) {
+    userId: string,
+    plan: 'basic' | 'pro' | 'business' | 'enterprise'
+  ): Promise<{ id: string; status: 'pending'; amount: number }> {
+    const planRow = await this.repo.getPlanByName(plan);
+    if (!planRow) {
       throw ApplicationError.badRequest('Invalid or unavailable plan');
     }
+
+    const pending = await this.repo.getPendingPaymentRequestForTenant(tenantId);
+    if (pending) {
+      throw ApplicationError.conflict('You already have a pending payment request');
+    }
+
+    const paymentRequest = await this.repo.createPaymentRequest({
+      tenantId,
+      userId,
+      planId: planRow.id,
+      amount: Number(planRow.price),
+    });
+
+    return {
+      id: paymentRequest.id,
+      status: 'pending',
+      amount: Number(paymentRequest.amount),
+    };
+  }
+
+  async approvePaymentRequest(
+    paymentRequestId: string,
+    approverUserId: string
+  ): Promise<void> {
+    await this.repo.withTransaction(async (tx) => {
+      const paymentRequest = await this.repo.getPaymentRequestById(paymentRequestId, tx);
+      if (!paymentRequest) {
+        throw ApplicationError.notFound('Payment request not found');
+      }
+      if (paymentRequest.status !== 'pending') {
+        throw ApplicationError.conflict(`Payment request is already ${paymentRequest.status}`);
+      }
+
+      const approved = await this.repo.approvePaymentRequest(paymentRequestId, approverUserId, tx);
+      if (!approved) {
+        throw ApplicationError.conflict('Payment request could not be approved');
+      }
+
+      const subscriptionUpdate = await this.repo.upgradeSubscriptionToPlan(
+        paymentRequest.tenant_id,
+        await this.resolvePlanNameById(paymentRequest.plan_id, tx),
+        tx
+      );
+      if (!subscriptionUpdate.updated) {
+        throw ApplicationError.badRequest('Could not activate selected plan');
+      }
+    });
+  }
+
+  private async resolvePlanNameById(
+    planId: string,
+    tx?: PoolClient
+  ): Promise<'basic' | 'pro' | 'business' | 'enterprise'> {
+    const plan = await this.repo.getPlanNameById(planId, tx);
+    if (!plan) {
+      throw ApplicationError.badRequest('Invalid plan in payment request');
+    }
+    return plan;
   }
 
   private async getTenantPlanInTx(

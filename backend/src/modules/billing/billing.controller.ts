@@ -1,7 +1,10 @@
 import { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { sendSuccess } from '../../shared/utils/response.js';
-import { requireRoles } from '../../shared/middleware/role-guard.middleware.js';
-import { requireTenantOwnerStrict } from '../../shared/middleware/rbac.middleware.js';
+import {
+  requireAuth,
+  requireTenant,
+  requireTenantOwnerStrict,
+} from '../../shared/middleware/rbac.middleware.js';
 import { tenantContextMiddleware } from '../../shared/middleware/tenant.middleware.js';
 import { ApplicationError } from '../../shared/utils/application-error.js';
 import { BILLING_PLANS_CATALOG } from './billing.service.js';
@@ -12,7 +15,7 @@ export async function billingRoutes(app: FastifyInstance): Promise<void> {
 
   app.get(
     '/snapshot',
-    { preHandler: [authenticate, requireRoles('ADMIN', 'MANAGER', 'EMPLOYEE')] },
+    { preHandler: [authenticate, requireAuth, requireTenant] },
     async (request: FastifyRequest, reply: FastifyReply) => {
       const tenantId = request.user.tenantId;
       if (
@@ -58,7 +61,7 @@ export async function billingRoutes(app: FastifyInstance): Promise<void> {
 
   app.get(
     '/current',
-    { preHandler: [authenticate, requireRoles('ADMIN', 'MANAGER', 'EMPLOYEE')] },
+    { preHandler: [authenticate, requireAuth, requireTenant] },
     async (request: FastifyRequest, reply: FastifyReply) => {
       const tenantId = request.user.tenantId;
       if (
@@ -66,15 +69,20 @@ export async function billingRoutes(app: FastifyInstance): Promise<void> {
         (!tenantId || tenantId.length === 0)
       ) {
         return sendSuccess(reply, {
-          plan: 'platform',
+          plan: { id: 'platform', name: 'platform' },
+          limits: {
+            users: null,
+            tasks: null,
+            api_rate_per_hour: null,
+          },
+          usage: {
+            users: 0,
+            tasks: 0,
+            api_requests: 0,
+          },
           status: null,
           trial_ends_at: null,
-          users_used: 0,
-          users_limit: null,
-          tasks_used: 0,
-          tasks_limit: null,
-          api_used: 0,
-          api_limit: null,
+          pending_payment: null,
         });
       }
       const data = await app.billing.getBillingCurrent(tenantId);
@@ -89,7 +97,7 @@ export async function billingRoutes(app: FastifyInstance): Promise<void> {
   app.post(
     '/upgrade',
     {
-      preHandler: [authenticate, tenantContextMiddleware, requireTenantOwnerStrict()],
+      preHandler: [authenticate, requireAuth, tenantContextMiddleware, requireTenantOwnerStrict()],
     },
     async (request: FastifyRequest, reply: FastifyReply) => {
       const tenantId = request.tenantId ?? request.user.tenant_id ?? request.user.tenantId;
@@ -97,8 +105,15 @@ export async function billingRoutes(app: FastifyInstance): Promise<void> {
         throw ApplicationError.forbidden('Tenant context required');
       }
       const body = billingUpgradeBodySchema.parse(request.body ?? {});
-      await app.billing.upgradeSubscriptionPlan(tenantId, body.plan);
-      return sendSuccess(reply, { ok: true });
+      const paymentRequest = await app.billing.createUpgradePaymentRequest(
+        tenantId,
+        request.user.id,
+        body.plan
+      );
+      return sendSuccess(reply, {
+        ok: true,
+        payment_request: paymentRequest,
+      });
     }
   );
 }

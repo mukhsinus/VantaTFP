@@ -1,6 +1,5 @@
 import { PaymentsRepository } from './payments.repository.js';
 import { ApplicationError } from '../../shared/utils/application-error.js';
-import { BILLING_PLANS_CATALOG } from '../billing/billing.service.js';
 import type { BillingService } from '../billing/billing.service.js';
 import type { CreatePaymentRequestBody } from './payments.schema.js';
 
@@ -16,20 +15,12 @@ export class PaymentsService {
     userId: string,
     body: CreatePaymentRequestBody
   ) {
-    const plan = BILLING_PLANS_CATALOG.find((p) => p.name === body.plan);
-    if (!plan) {
-      throw ApplicationError.badRequest(`Unknown plan: ${body.plan}`);
+    const request = await this.billing.createUpgradePaymentRequest(tenantId, userId, body.plan);
+    const created = await this.repo.findById(request.id, tenantId);
+    if (!created) {
+      throw ApplicationError.internal('Payment request created but could not be loaded');
     }
-
-    const pr = await this.repo.create({
-      tenantId,
-      userId,
-      plan: body.plan,
-      amount: plan.price,
-      proof: body.proof,
-    });
-
-    return pr;
+    return created;
   }
 
   /** List all payment requests for the current tenant. */
@@ -43,7 +34,7 @@ export class PaymentsService {
   }
 
   /** Admin confirms payment -> activates the requested plan. */
-  async confirmPayment(id: string, adminUserId: string, adminNote?: string) {
+  async confirmPayment(id: string, adminUserId: string, _adminNote?: string) {
     const pr = await this.repo.findById(id);
     if (!pr) {
       throw ApplicationError.notFound('Payment request not found');
@@ -52,15 +43,12 @@ export class PaymentsService {
       throw ApplicationError.conflict(`Payment request is already ${pr.status}`);
     }
 
-    const confirmed = await this.repo.confirm(id, adminUserId, adminNote);
-    if (!confirmed) {
-      throw ApplicationError.conflict('Payment request could not be confirmed');
+    await this.billing.approvePaymentRequest(id, adminUserId);
+    const approved = await this.repo.findById(id);
+    if (!approved) {
+      throw ApplicationError.internal('Payment request approved but could not be loaded');
     }
-
-    // Activate the plan for the tenant
-    await this.billing.upgradeSubscriptionPlan(pr.tenant_id, pr.plan as any);
-
-    return confirmed;
+    return approved;
   }
 
   /** Admin rejects payment request. */

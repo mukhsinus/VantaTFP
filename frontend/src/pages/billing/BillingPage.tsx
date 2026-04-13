@@ -8,9 +8,6 @@ import type { BillingCurrentDto, BillingPlanCatalogItem, BillingPlanId } from '@
 import { shouldShowBillingFullSkeleton, sortPlans } from './billing-page.utils';
 import styles from './BillingPage.module.css';
 
-/** API requests/hour label for Basic card (aligns with backend default catalog). */
-const BASIC_PLAN_API_HR = 100;
-
 function trialDaysLeft(trialEndsAt: string | null): number {
   if (!trialEndsAt) return 0;
   const end = new Date(trialEndsAt);
@@ -37,23 +34,23 @@ function formatRenewal(data: BillingCurrentDto, t: (k: string, o?: { defaultValu
 function buildLimitMessages(data: BillingCurrentDto, t: (k: string, o?: { defaultValue?: string }) => string): string[] {
   const msgs: string[] = [];
   if (
-    data.users_limit != null &&
-    data.users_limit > 0 &&
-    data.users_used >= data.users_limit
+    data.limits.users != null &&
+    data.limits.users > 0 &&
+    data.usage.users >= data.limits.users
   ) {
     msgs.push(t('billing.alert.users', { defaultValue: 'User seats limit reached.' }));
   }
   if (
-    data.tasks_limit != null &&
-    data.tasks_limit > 0 &&
-    data.tasks_used >= data.tasks_limit
+    data.limits.tasks != null &&
+    data.limits.tasks > 0 &&
+    data.usage.tasks >= data.limits.tasks
   ) {
     msgs.push(t('billing.alert.tasks', { defaultValue: 'Task limit reached.' }));
   }
   if (
-    data.api_limit != null &&
-    data.api_limit > 0 &&
-    data.api_used >= data.api_limit
+    data.limits.api_rate_per_hour != null &&
+    data.limits.api_rate_per_hour > 0 &&
+    data.usage.api_requests >= data.limits.api_rate_per_hour
   ) {
     msgs.push(t('billing.alert.api', { defaultValue: 'API rate limit reached for this hour.' }));
   }
@@ -135,15 +132,9 @@ function PlanCard({
                 defaultValue: '{{count}} tasks',
               })}
             </li>
-            <li>
-              {t('billing.card.apiHr', {
-                count: BASIC_PLAN_API_HR,
-                defaultValue: '{{count}} API/hr',
-              })}
-            </li>
           </>
         )}
-        {plan.name === 'pro' && (
+        {(plan.name === 'pro' || plan.name === 'business') && (
           <>
             <li>
               {t('billing.card.usersUpTo', {
@@ -159,8 +150,8 @@ function PlanCard({
             </li>
           </>
         )}
-        {plan.name === 'unlimited' && (
-          <li>{t('billing.card.unlimitedLine', { defaultValue: 'Unlimited' })}</li>
+        {plan.name === 'enterprise' && (
+          <li>{t('billing.card.unlimitedLine', { defaultValue: 'Unlimited users and tasks' })}</li>
         )}
       </ul>
       <div className={styles.planCardCta}>
@@ -201,7 +192,7 @@ export function BillingPage() {
     return sortPlans(list as BillingPlanCatalogItem[]);
   }, [plansQuery.data]);
 
-  const currentPlan = billing?.plan?.toLowerCase() as BillingPlanId | 'platform';
+  const currentPlan = billing?.plan?.name?.toLowerCase() as BillingPlanId | 'platform';
   const canUpgrade = isAdmin && !isSuperAdmin;
 
   const limitMessages = useMemo(() => (billing ? buildLimitMessages(billing, t) : []), [billing, t]);
@@ -211,14 +202,14 @@ export function BillingPage() {
     sortedPlans.length > 0 &&
     !plansQuery.isError &&
     !(plansQuery.isFetching && plansQuery.data === undefined) &&
-    billing?.plan?.toLowerCase() !== 'platform';
+    billing?.plan?.name?.toLowerCase() !== 'platform';
 
   const scrollToPlans = useCallback(() => {
     plansAnchorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }, []);
 
   const billingStatusLower = (billing?.status ?? '').toLowerCase();
-  const billingPlanLower = billing?.plan?.toLowerCase() ?? '';
+  const billingPlanLower = billing?.plan?.name?.toLowerCase() ?? '';
   useEffect(() => {
     const lockScroll = billingStatusLower === 'past_due' && billingPlanLower !== 'platform';
     if (!lockScroll) return undefined;
@@ -256,7 +247,8 @@ export function BillingPage() {
   const statusLower = (data.status ?? '').toLowerCase();
   const isTrial = statusLower === 'trial';
   const isPastDue = statusLower === 'past_due';
-  const isPlatform = data.plan.toLowerCase() === 'platform';
+  const isPlatform = data.plan.name.toLowerCase() === 'platform';
+  const pendingApproval = data.pending_payment?.status === 'pending';
   const daysLeft = isTrial && data.trial_ends_at ? trialDaysLeft(data.trial_ends_at) : null;
 
   const trialBannerText =
@@ -338,7 +330,7 @@ export function BillingPage() {
                 const id = plan.name as BillingPlanId;
                 const isCurrent = !isPlatform && currentPlan === id;
                 const isPro = id === 'pro';
-                const disabled = upgrade.isPending || isCurrent || isPlatform || !canUpgrade;
+                const disabled = upgrade.isPending || isCurrent || isPlatform || !canUpgrade || pendingApproval;
                 return (
                   <PlanCard
                     key={plan.name}
@@ -353,6 +345,11 @@ export function BillingPage() {
                 );
               })}
             </div>
+          )}
+          {pendingApproval && (
+            <p className={styles.plansLoading} role="status">
+              {t('billing.pendingApproval', { defaultValue: 'Waiting for approval from super admin.' })}
+            </p>
           )}
           {!plansQuery.isFetching && !plansQuery.isError && sortedPlans.length === 0 && (
             <div className={styles.plansLoading} role="status">
@@ -372,24 +369,24 @@ export function BillingPage() {
           <h2 id="current-plan-heading" className={styles.currentPanelTitle}>
             {t('billing.section.current', { defaultValue: 'Current plan' })}
           </h2>
-          <p className={styles.planNameDisplay}>{isPlatform ? 'Platform' : data.plan}</p>
+          <p className={styles.planNameDisplay}>{isPlatform ? 'Platform' : data.plan.name}</p>
 
           <ProgressRow
             label={t('billing.usage.users', { defaultValue: 'Users' })}
-            used={data.users_used}
-            limit={isPlatform ? null : data.users_limit}
+            used={data.usage.users}
+            limit={isPlatform ? null : data.limits.users}
             t={t}
           />
           <ProgressRow
             label={t('billing.usage.tasks', { defaultValue: 'Tasks' })}
-            used={data.tasks_used}
-            limit={isPlatform ? null : data.tasks_limit}
+            used={data.usage.tasks}
+            limit={isPlatform ? null : data.limits.tasks}
             t={t}
           />
           <ProgressRow
             label={t('billing.usage.api', { defaultValue: 'API (this hour)' })}
-            used={data.api_used}
-            limit={isPlatform ? null : data.api_limit}
+            used={data.usage.api_requests}
+            limit={isPlatform ? null : data.limits.api_rate_per_hour}
             t={t}
           />
 

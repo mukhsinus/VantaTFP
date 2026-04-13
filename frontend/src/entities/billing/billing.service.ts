@@ -18,6 +18,8 @@ export const billingService = {
   getPlans: (): Promise<BillingPlansCatalogDto> =>
     apiClient.get<BillingPlansCatalogDto>(API.billing.plans),
 
-  upgrade: (plan: BillingPlanId): Promise<{ ok: boolean }> =>
-    apiClient.post<{ ok: boolean }>(API.billing.upgrade, { plan }),
+  upgrade: (plan: BillingPlanId): Promise<{
+    ok: boolean;
+    payment_request: { id: string; status: 'pending'; amount: number };
+  }> => apiClient.post(API.billing.upgrade, { plan }),
 };

@@ -6,7 +6,7 @@ import { AuthenticatedUser, Role } from '../../shared/types/common.types.js';
 import { validatePassword } from '../../shared/utils/password-validator.js';
 import type { BillingService } from '../billing/billing.service.js';
 import { parseJwtTenantIdFromPayload } from '../../shared/auth/jwt-tenant.js';
-import { buildAuthenticatedUser } from '../../shared/auth/principal.js';
+import { buildAuthenticatedUser, isSuperAdmin } from '../../shared/auth/principal.js';
 import type { EmployeesRepository } from '../employees/employees.repository.js';
 
 export interface TokenPair {
@@ -265,19 +265,19 @@ export class AuthService {
   }
 
   private buildAuthResponse(user: UserWithTenantRecord): AuthSuccessResponse {
-    const isSuperAdmin = user.system_role === 'super_admin';
+    const userIsSuperAdmin = isSuperAdmin({ email: user.email, system_role: user.system_role });
     const principal = buildAuthenticatedUser(
       {
         id: user.id,
         email: user.email,
         system_role: user.system_role,
         legacy_role: user.role,
-        user_primary_tenant_id: isSuperAdmin ? null : user.tenant_id,
-        effective_tenant_id: isSuperAdmin ? null : user.tenant_id,
-        membership_role: isSuperAdmin ? null : user.tenant_membership_role,
+        user_primary_tenant_id: userIsSuperAdmin ? null : user.tenant_id,
+        effective_tenant_id: userIsSuperAdmin ? null : user.tenant_id,
+        membership_role: userIsSuperAdmin ? null : user.tenant_membership_role,
         tenant_plan: null,
       },
-      isSuperAdmin ? null : user.tenant_id
+      userIsSuperAdmin ? null : user.tenant_id
     );
 
     const jwtPayload: JwtPrincipalPayload = {

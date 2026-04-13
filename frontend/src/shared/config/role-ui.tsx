@@ -8,6 +8,11 @@ export interface NavItemConfig {
 }
 
 const icon = {
+  messages: (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75}>
+      <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />
+    </svg>
+  ),
   dashboard: (
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75}>
       <rect x="3" y="3" width="7" height="7" rx="1" />
@@ -61,64 +66,35 @@ const icon = {
       <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z" />
     </svg>
   ),
-  projects: (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75}>
-      <path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z" />
-    </svg>
-  ),
-  documents: (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75}>
-      <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
-      <path d="M14 2v6h6" />
-    </svg>
-  ),
-  automations: (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75}>
-      <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
-    </svg>
-  ),
-  templates: (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75}>
-      <rect x="3" y="3" width="18" height="18" rx="2" />
-      <path d="M3 9h18" />
-      <path d="M9 21V9" />
-    </svg>
-  ),
 };
 
 const NAV_BY_ROLE: Record<Role, NavItemConfig[]> = {
   ADMIN: [
-    { to: '/dashboard', label: 'nav.dashboard', icon: icon.dashboard },
-    { to: '/projects', label: 'nav.projects', icon: icon.projects },
-    { to: '/employees', label: 'nav.employees', icon: icon.employees },
-    { to: '/tasks', label: 'nav.tasks', icon: icon.tasks },
-    { to: '/documents', label: 'nav.documents', icon: icon.documents },
-    { to: '/kpi', label: 'nav.kpi', icon: icon.kpi },
-    { to: '/payroll', label: 'nav.payroll', icon: icon.payroll },
-    { to: '/reports', label: 'nav.reports', icon: icon.reports },
-    { to: '/templates', label: 'nav.templates', icon: icon.templates },
-    { to: '/automations', label: 'nav.automations', icon: icon.automations },
-    { to: '/billing', label: 'nav.billing', icon: icon.billing },
-    { to: '/settings', label: 'nav.settings', icon: icon.settings },
+    { to: '/dashboard', label: 'Dashboard', icon: icon.dashboard },
+    { to: '/employees', label: 'Employees', icon: icon.employees },
+    { to: '/tasks', label: 'Tasks', icon: icon.tasks },
+    { to: '/kpi', label: 'KPI', icon: icon.kpi },
+    { to: '/payroll', label: 'Payroll', icon: icon.payroll },
+    { to: '/messages', label: 'Messages', icon: icon.messages },
+    { to: '/reports', label: 'Reports', icon: icon.reports },
+    { to: '/billing', label: 'Billing', icon: icon.billing },
+    { to: '/settings', label: 'Settings', icon: icon.settings },
   ],
   MANAGER: [
-    { to: '/dashboard', label: 'nav.dashboard', icon: icon.dashboard },
-    { to: '/projects', label: 'nav.projects', icon: icon.projects },
-    { to: '/employees', label: 'nav.employees', icon: icon.employees },
-    { to: '/tasks', label: 'nav.tasks', icon: icon.tasks },
-    { to: '/documents', label: 'nav.documents', icon: icon.documents },
-    { to: '/kpi', label: 'nav.kpi', icon: icon.kpi },
-    { to: '/reports', label: 'nav.reports', icon: icon.reports },
-    { to: '/templates', label: 'nav.templates', icon: icon.templates },
-    { to: '/settings', label: 'nav.settings', icon: icon.settings },
+    { to: '/dashboard', label: 'Dashboard', icon: icon.dashboard },
+    { to: '/employees', label: 'Employees', icon: icon.employees },
+    { to: '/tasks', label: 'Team Tasks', icon: icon.tasks },
+    { to: '/kpi', label: 'Team KPI', icon: icon.kpi },
+    { to: '/messages', label: 'Messages', icon: icon.messages },
+    { to: '/reports', label: 'Reports', icon: icon.reports },
+    { to: '/settings', label: 'Settings', icon: icon.settings },
   ],
   EMPLOYEE: [
-    { to: '/tasks', label: 'nav.tasks', icon: icon.tasks },
-    { to: '/projects', label: 'nav.projects', icon: icon.projects },
-    { to: '/documents', label: 'nav.documents', icon: icon.documents },
-    { to: '/kpi', label: 'nav.kpi', icon: icon.kpi },
-    { to: '/payroll', label: 'nav.payroll', icon: icon.payroll },
-    { to: '/settings', label: 'nav.settings', icon: icon.settings },
+    { to: '/tasks', label: 'My Tasks', icon: icon.tasks },
+    { to: '/kpi', label: 'My KPI', icon: icon.kpi },
+    { to: '/payroll', label: 'My Payroll', icon: icon.payroll },
+    { to: '/messages', label: 'Messages', icon: icon.messages },
+    { to: '/settings', label: 'Settings', icon: icon.settings },
   ],
 };
 
@@ -128,13 +104,10 @@ const ALLOWED_ROLES_BY_ROUTE: Record<string, Role[]> = {
   '/tasks': ['ADMIN', 'MANAGER', 'EMPLOYEE'],
   '/kpi': ['ADMIN', 'MANAGER', 'EMPLOYEE'],
   '/payroll': ['ADMIN', 'EMPLOYEE'],
+  '/messages': ['ADMIN', 'MANAGER', 'EMPLOYEE'],
   '/reports': ['ADMIN', 'MANAGER'],
   '/billing': ['ADMIN'],
   '/settings': ['ADMIN', 'MANAGER', 'EMPLOYEE'],
-  '/projects': ['ADMIN', 'MANAGER', 'EMPLOYEE'],
-  '/documents': ['ADMIN', 'MANAGER', 'EMPLOYEE'],
-  '/automations': ['ADMIN'],
-  '/templates': ['ADMIN', 'MANAGER'],
 };
 
 export function getNavByRole(role: Role): NavItemConfig[] {
