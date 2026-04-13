@@ -94,12 +94,6 @@ export const API = {
     banUser: (userId: string) => `/api/v1/admin/users/${userId}/ban`,
   },
 
-  featureFlags: {
-    list: '/api/v1/feature-flags',
-    update: '/api/v1/feature-flags',
-    bulk: '/api/v1/feature-flags/bulk',
-  },
-
   projects: {
     list: '/api/v1/projects',
     detail: (projectId: string) => `/api/v1/projects/${projectId}`,

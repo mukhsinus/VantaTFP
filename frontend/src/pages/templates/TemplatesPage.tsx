@@ -4,13 +4,11 @@ import { EmptyState, Button, Skeleton, Input } from '@shared/components/ui';
 import { useTemplates, useCreateTemplate, useDeleteTemplate } from '@features/templates/hooks/useTemplates';
 import { usePermissions } from '@shared/hooks/useCanPerform';
 import { useIsMobile } from '@shared/hooks/useIsMobile';
-import { useFeature } from '@app/store/feature-flags.store';
 import type { TemplateApiDto } from '@entities/template/template.types';
 
 export function TemplatesPage() {
   const { t } = useTranslation();
   const isMobile = useIsMobile();
-  const enabled = useFeature('templates');
   const { can } = usePermissions();
   const { data: templates = [], isLoading } = useTemplates();
   const createTemplate = useCreateTemplate();
@@ -31,15 +29,6 @@ export function TemplatesPage() {
     setFormDescription('');
     setShowForm(false);
   };
-
-  if (!enabled) {
-    return (
-      <EmptyState
-        title={t('templates.disabled.title')}
-        description={t('templates.disabled.description')}
-      />
-    );
-  }
 
   if (isLoading) {
     return (

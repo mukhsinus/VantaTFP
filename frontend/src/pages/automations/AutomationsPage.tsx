@@ -4,7 +4,6 @@ import { EmptyState, Button, Skeleton } from '@shared/components/ui';
 import { useAutomations, useCreateAutomation, useDeleteAutomation } from '@features/automations/hooks/useAutomations';
 import { usePermissions } from '@shared/hooks/useCanPerform';
 import { useIsMobile } from '@shared/hooks/useIsMobile';
-import { useFeature } from '@app/store/feature-flags.store';
 import type { AutomationApiDto } from '@entities/automation/automation.types';
 
 const TRIGGER_TYPES = ['status_change', 'assignment', 'due_date_passed', 'field_change'] as const;
@@ -13,7 +12,6 @@ const ACTION_TYPES = ['change_status', 'assign_user', 'send_notification', 'crea
 export function AutomationsPage() {
   const { t } = useTranslation();
   const isMobile = useIsMobile();
-  const enabled = useFeature('automations');
   const { can } = usePermissions();
   const { data: automationsResponse, isLoading } = useAutomations();
   const automations = automationsResponse?.data ?? [];
@@ -38,15 +36,6 @@ export function AutomationsPage() {
     setFormName('');
     setShowForm(false);
   };
-
-  if (!enabled) {
-    return (
-      <EmptyState
-        title={t('automations.disabled.title')}
-        description={t('automations.disabled.description')}
-      />
-    );
-  }
 
   if (isLoading) {
     return (

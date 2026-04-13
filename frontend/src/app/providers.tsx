@@ -8,7 +8,6 @@ import {
 } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { ApiError } from '@shared/api/client';
-import { useFeatureFlagsStore } from '@app/store/feature-flags.store';
 import { authApi } from '@entities/auth/auth.api';
 import { useAuthStore } from '@app/store/auth.store';
 import { toast } from '@app/store/toast.store';
@@ -335,20 +334,6 @@ function AuthQueryResetOnLogout() {
   return null;
 }
 
-/** Loads feature flags after the user session is available. */
-function FeatureFlagsBootstrap() {
-  const accessToken = useAuthStore((s) => s.accessToken);
-  const loadFlags = useFeatureFlagsStore((s) => s.loadFlags);
-
-  useEffect(() => {
-    if (accessToken) {
-      void loadFlags();
-    }
-  }, [accessToken, loadFlags]);
-
-  return null;
-}
-
 export function Providers({ children }: ProvidersProps) {
   return (
     <QueryClientProvider client={queryClient}>
@@ -356,7 +341,6 @@ export function Providers({ children }: ProvidersProps) {
         <AuthPersistHydrationBridge />
         <AuthQueryResetOnLogout />
         <AuthSessionBootstrap />
-        <FeatureFlagsBootstrap />
         {children}
       </BackendStartupGate>
       {import.meta.env.DEV && <ReactQueryDevtools initialIsOpen={false} />}

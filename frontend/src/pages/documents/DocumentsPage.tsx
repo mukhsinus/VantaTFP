@@ -4,13 +4,11 @@ import { Input, EmptyState, Button, Skeleton } from '@shared/components/ui';
 import { useDocuments, useCreateDocument, useDeleteDocument } from '@features/documents/hooks/useDocuments';
 import { usePermissions } from '@shared/hooks/useCanPerform';
 import { useIsMobile } from '@shared/hooks/useIsMobile';
-import { useFeature } from '@app/store/feature-flags.store';
 import type { DocumentApiDto } from '@entities/document/document.types';
 
 export function DocumentsPage() {
   const { t } = useTranslation();
   const isMobile = useIsMobile();
-  const enabled = useFeature('documents');
   const { can } = usePermissions();
   const { data: documentsResponse, isLoading } = useDocuments();
   const documents = documentsResponse?.data ?? [];
@@ -33,15 +31,6 @@ export function DocumentsPage() {
     setFormTitle('');
     setShowForm(false);
   };
-
-  if (!enabled) {
-    return (
-      <EmptyState
-        title={t('documents.disabled.title')}
-        description={t('documents.disabled.description')}
-      />
-    );
-  }
 
   if (isLoading) {
     return (

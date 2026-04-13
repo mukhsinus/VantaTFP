@@ -4,13 +4,11 @@ import { Input, EmptyState, Button, Skeleton } from '@shared/components/ui';
 import { useProjects, useCreateProject, useDeleteProject } from '@features/projects/hooks/useProjects';
 import { usePermissions } from '@shared/hooks/useCanPerform';
 import { useIsMobile } from '@shared/hooks/useIsMobile';
-import { useFeature } from '@app/store/feature-flags.store';
 import type { ProjectApiDto } from '@entities/project/project.types';
 
 export function ProjectsPage() {
   const { t } = useTranslation();
   const isMobile = useIsMobile();
-  const enabled = useFeature('projects');
   const { can } = usePermissions();
   const { data: projectsResponse, isLoading } = useProjects();
   const projects = projectsResponse?.data ?? [];
@@ -36,15 +34,6 @@ export function ProjectsPage() {
     setFormDescription('');
     setShowForm(false);
   };
-
-  if (!enabled) {
-    return (
-      <EmptyState
-        title={t('projects.disabled.title')}
-        description={t('projects.disabled.description')}
-      />
-    );
-  }
 
   if (isLoading) {
     return (

@@ -4,18 +4,8 @@ import { useTranslation } from 'react-i18next';
 import { Avatar } from '@shared/components/ui';
 import { useAuthStore } from '@app/store/auth.store';
 import { useSidebarStore } from '@app/store/sidebar.store';
-import { useFeatureFlagsStore } from '@app/store/feature-flags.store';
 import { getNavByRole } from '@shared/config/role-ui';
-import type { FeatureKey } from '@entities/feature-flags/feature-flags.types';
 import styles from './Sidebar.module.css';
-
-/** Maps route paths to feature flag keys. Routes not listed are always visible. */
-const ROUTE_FEATURE_MAP: Record<string, FeatureKey> = {
-  '/projects': 'projects',
-  '/documents': 'documents',
-  '/automations': 'automations',
-  '/templates': 'templates',
-};
 
 export function Sidebar() {
   const { t } = useTranslation();
@@ -25,12 +15,7 @@ export function Sidebar() {
   const navigate = useNavigate();
   const isCollapsed = useSidebarStore((s) => s.isCollapsed);
   const toggleCollapsed = useSidebarStore((s) => s.toggleCollapsed);
-  const isFeatureEnabled = useFeatureFlagsStore((s) => s.isEnabled);
-  const allNavItems = user ? getNavByRole(user.role) : [];
-  const navItems = allNavItems.filter((item) => {
-    const featureKey = ROUTE_FEATURE_MAP[item.to];
-    return !featureKey || isFeatureEnabled(featureKey);
-  });
+  const navItems = user ? getNavByRole(user.role) : [];
 
   const sidebarWidth = isCollapsed ? 64 : 224;
 
