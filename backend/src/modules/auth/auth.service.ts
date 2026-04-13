@@ -58,7 +58,7 @@ export class AuthService {
   ) {}
 
   async login(payload: LoginRequest): Promise<AuthSuccessResponse> {
-    let user: { id: string; tenant_id: string | null; password_hash: string } | null = null;
+    let user: { id: string; tenant_id: string | null; password_hash: string; role?: string | null } | null = null;
 
     if (payload.email) {
       user = await this.authRepository.findUserByEmail(payload.email);
@@ -77,6 +77,10 @@ export class AuthService {
 
     if (!isPasswordValid) {
       throw ApplicationError.unauthorized('Invalid credentials');
+    }
+
+    if (payload.email && String(user.role ?? '').toUpperCase() === 'EMPLOYEE') {
+      throw ApplicationError.unauthorized('Employees must sign in with phone and password');
     }
 
     return this.buildAuthResponse(user.id, user.tenant_id);

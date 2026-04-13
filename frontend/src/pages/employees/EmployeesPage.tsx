@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Input, EmptyState } from '@shared/components/ui';
+import { Input, EmptyState, Button } from '@shared/components/ui';
 import { useEmployees } from '@features/employees/hooks/useEmployees';
 import { useDeleteEmployee } from '@features/employees/hooks/useDeleteEmployee';
 import { CreateUserModal } from '@features/users/components/CreateUserModal';
@@ -8,6 +8,7 @@ import { usePermissions } from '@shared/hooks/useCanPerform';
 import { useCurrentUser } from '@shared/hooks/useCurrentUser';
 import { useIsMobile } from '@shared/hooks/useIsMobile';
 import { ApiError } from '@shared/api/client';
+import { useBilling } from '@features/billing/hooks/useBilling';
 import type { TenantRole } from '@entities/employees/employees.types';
 import type { EmployeeUiModel } from '@entities/employees/employees.types';
 import { EmployeeCard } from '@features/employees/components/EmployeeCard';
@@ -26,6 +27,9 @@ export function EmployeesPage() {
   const { can } = usePermissions();
   const { role: currentRole, user: currentUser } = useCurrentUser();
   const { deleteEmployeeAsync, isPending: isRemoving } = useDeleteEmployee();
+  const canAddEmployeeByRole =
+    String(currentRole ?? '').toUpperCase() === 'ADMIN' || String(currentRole ?? '').toUpperCase() === 'OWNER';
+  const { data: billing } = useBilling({ enabled: canAddEmployeeByRole });
 
   const [search, setSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState<RoleFilter>('ALL');
@@ -44,7 +48,15 @@ export function EmployeesPage() {
     });
   }, [employees, search, roleFilter]);
 
-  const showFab = can('employee:invite');
+  const isEmployeeLimitReached = Boolean(
+    billing &&
+      billing.limits.users != null &&
+      billing.limits.users > 0 &&
+      billing.usage.users >= billing.limits.users
+  );
+  const showAddEmployeeButton = canAddEmployeeByRole;
+  const disableAddEmployee = showAddEmployeeButton && isEmployeeLimitReached;
+  const showFab = can('employee:invite') && !disableAddEmployee;
 
   const handleConfirmRemoval = async () => {
     if (!confirmRemoval) return;
@@ -86,19 +98,42 @@ export function EmployeesPage() {
             : undefined,
         }}
       >
-        <div>
-          <h2
-            style={{
-              fontSize: isMobile ? 'var(--text-xl)' : 'var(--text-2xl)',
-              fontWeight: 700,
-              color: 'var(--color-text-primary)',
-            }}
-          >
-            {t('employees.title')}
-          </h2>
-          <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-secondary)', marginTop: 4 }}>
-            {employees.length} {t('employees.total')}
-          </p>
+        <div
+          style={{
+            display: 'flex',
+            alignItems: isMobile ? 'stretch' : 'flex-start',
+            justifyContent: 'space-between',
+            gap: 10,
+            flexDirection: isMobile ? 'column' : 'row',
+          }}
+        >
+          <div>
+            <h2
+              style={{
+                fontSize: isMobile ? 'var(--text-xl)' : 'var(--text-2xl)',
+                fontWeight: 700,
+                color: 'var(--color-text-primary)',
+              }}
+            >
+              {t('employees.title')}
+            </h2>
+            <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-secondary)', marginTop: 4 }}>
+              {employees.length} {t('employees.total')}
+            </p>
+          </div>
+
+          {showAddEmployeeButton ? (
+            <Button
+              variant="primary"
+              size={isMobile ? 'lg' : 'sm'}
+              onClick={() => setShowCreateModal(true)}
+              disabled={disableAddEmployee}
+              title={disableAddEmployee ? 'Employee limit reached for current plan' : undefined}
+              style={isMobile ? { width: '100%' } : undefined}
+            >
+              + Add employee
+            </Button>
+          ) : null}
         </div>
 
         <div style={{ display: 'flex', gap: 10, alignItems: 'stretch', flexDirection: isMobile ? 'column' : 'row' }}>
@@ -154,7 +189,11 @@ export function EmployeesPage() {
           <EmptyState
             title={t('employees.empty.title')}
             description={t('employees.empty.description')}
-            action={can('employee:invite') ? { label: t('employees.invite'), onClick: () => setShowCreateModal(true) } : undefined}
+            action={
+              showAddEmployeeButton && !disableAddEmployee
+                ? { label: '+ Add employee', onClick: () => setShowCreateModal(true) }
+                : undefined
+            }
           />
         ) : (
           <div

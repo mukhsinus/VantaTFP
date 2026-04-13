@@ -26,3 +26,18 @@ export interface EmployeeUiModel {
   /** Short label derived from email (before @). */
   displayName: string;
 }
+
+export interface CreateEmployeePayload {
+  phone: string;
+  name?: string;
+  roleDescription?: string;
+  password: string;
+  role: 'manager' | 'employee';
+}
+
+export interface CreateEmployeeApiDto {
+  id: string;
+  phone: string;
+  name: string | null;
+  role: TenantRole;
+}

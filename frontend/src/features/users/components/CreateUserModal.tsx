@@ -2,7 +2,6 @@ import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Modal, Button, Input, Select } from '@shared/components/ui';
 import type { Role } from '@shared/types/auth.types';
-import type { CreatableTenantInviteRole } from '@entities/user/users.types';
 import { useIsMobile } from '@shared/hooks/useIsMobile';
 import { useCreateUser } from '../hooks/useCreateUser';
 
@@ -13,19 +12,19 @@ interface CreateUserModalProps {
 }
 
 interface FormState {
-  email: string;
+  phone: string;
   password: string;
-  role: CreatableTenantInviteRole;
-  firstName: string;
-  lastName: string;
+  role: 'manager' | 'employee';
+  name: string;
+  roleDescription: string;
 }
 
 const INITIAL_FORM: FormState = {
-  email: '',
+  phone: '',
   password: '',
-  role: 'EMPLOYEE',
-  firstName: '',
-  lastName: '',
+  role: 'employee',
+  name: '',
+  roleDescription: '',
 };
 
 export function CreateUserModal({ isOpen, onClose, creatorRole }: CreateUserModalProps) {
@@ -37,11 +36,11 @@ export function CreateUserModal({ isOpen, onClose, creatorRole }: CreateUserModa
 
   const roleOptions = useMemo(() => {
     if (creatorRole === 'MANAGER') {
-      return [{ value: 'EMPLOYEE' as const, label: t('employees.roles.employee') }];
+      return [{ value: 'employee' as const, label: t('employees.roles.employee') }];
     }
     return [
-      { value: 'MANAGER' as const, label: t('employees.roles.manager') },
-      { value: 'EMPLOYEE' as const, label: t('employees.roles.employee') },
+      { value: 'manager' as const, label: t('employees.roles.manager') },
+      { value: 'employee' as const, label: t('employees.roles.employee') },
     ];
   }, [creatorRole, t]);
 
@@ -56,19 +55,15 @@ export function CreateUserModal({ isOpen, onClose, creatorRole }: CreateUserModa
   };
 
   const validate = (): boolean => {
-    if (!form.firstName.trim() || !form.lastName.trim()) {
-      setError(t('employees.modal.errors.nameRequired'));
-      return false;
-    }
-    if (!form.email.trim()) {
+    if (!form.phone.trim()) {
       setError(t('employees.modal.errors.emailRequired'));
       return false;
     }
-    if (form.password.length < 8) {
+    if (form.password.length < 4) {
       setError(t('employees.modal.errors.passwordShort'));
       return false;
     }
-    if (creatorRole === 'MANAGER' && form.role !== 'EMPLOYEE') {
+    if (creatorRole === 'MANAGER' && form.role !== 'employee') {
       setError(t('employees.modal.errors.managerRole'));
       return false;
     }
@@ -82,11 +77,11 @@ export function CreateUserModal({ isOpen, onClose, creatorRole }: CreateUserModa
 
     try {
       await createUser({
-        email: form.email.trim(),
+        phone: form.phone.trim(),
         password: form.password,
         role: form.role,
-        firstName: form.firstName.trim(),
-        lastName: form.lastName.trim(),
+        name: form.name.trim() || undefined,
+        roleDescription: form.roleDescription.trim() || undefined,
       });
       handleClose();
     } catch {
@@ -128,24 +123,13 @@ export function CreateUserModal({ isOpen, onClose, creatorRole }: CreateUserModa
           </div>
         )}
 
-        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 10 }}>
-          <Input
-            label={t('employees.modal.fields.firstName')}
-            value={form.firstName}
-            onChange={(e) => setField('firstName', e.target.value)}
-          />
-          <Input
-            label={t('employees.modal.fields.lastName')}
-            value={form.lastName}
-            onChange={(e) => setField('lastName', e.target.value)}
-          />
-        </div>
+        <Input label={t('employees.modal.fields.firstName')} value={form.name} onChange={(e) => setField('name', e.target.value)} />
 
         <Input
-          label={t('employees.modal.fields.email')}
-          type="email"
-          value={form.email}
-          onChange={(e) => setField('email', e.target.value)}
+          label="Phone"
+          type="tel"
+          value={form.phone}
+          onChange={(e) => setField('phone', e.target.value)}
         />
 
         <Input
@@ -155,10 +139,16 @@ export function CreateUserModal({ isOpen, onClose, creatorRole }: CreateUserModa
           onChange={(e) => setField('password', e.target.value)}
         />
 
+        <Input
+          label="Role description (optional)"
+          value={form.roleDescription}
+          onChange={(e) => setField('roleDescription', e.target.value)}
+        />
+
         <Select
           label={t('employees.modal.fields.role')}
           value={form.role}
-          onChange={(e) => setField('role', e.target.value as CreatableTenantInviteRole)}
+          onChange={(e) => setField('role', e.target.value as FormState['role'])}
           options={roleOptions}
         />
       </form>

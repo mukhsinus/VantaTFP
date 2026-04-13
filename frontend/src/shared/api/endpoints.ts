@@ -21,6 +21,7 @@ export const API = {
 
   employees: {
     list: '/api/v1/employees',
+    create: '/api/v1/employees/create',
     detail: (userId: string) => `/api/v1/employees/${userId}`,
     patchRole: (userId: string) => `/api/v1/employees/${userId}/role`,
   },

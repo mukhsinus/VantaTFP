@@ -72,6 +72,10 @@ export class EmployeesService {
     if (!tenantId) {
       throw ApplicationError.badRequest('Missing tenant context');
     }
+    const hasPhoneColumn = await this.employeesRepository.hasPhoneColumn();
+    if (!hasPhoneColumn) {
+      throw ApplicationError.badRequest('Phone-based employee accounts are not available until DB phone column is added');
+    }
 
     if (this.billing) {
       await this.billing.assertCanAddUser(tenantId);

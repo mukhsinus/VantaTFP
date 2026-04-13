@@ -48,7 +48,7 @@ export async function employeesRoutes(app: FastifyInstance): Promise<void> {
   /** Employer/manager creates a new employee (phone-based, no self-registration) */
   app.post(
     '/create',
-    { preHandler: [authenticate, requireOwner()] },
+    { preHandler: [authenticate, requireManagerOrAbove()] },
     async (request: FastifyRequest, reply: FastifyReply) => {
       const tenantId = request.tenantId;
       if (!tenantId) {

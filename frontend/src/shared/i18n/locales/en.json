@@ -449,14 +449,14 @@
       "fields": {
         "firstName": "First name",
         "lastName": "Last name",
-        "email": "Email",
+        "email": "Phone",
         "password": "Password",
         "role": "Role"
       },
       "errors": {
         "nameRequired": "First name and last name are required.",
-        "emailRequired": "Email is required.",
-        "passwordShort": "Password must be at least 8 characters.",
+        "emailRequired": "Phone is required.",
+        "passwordShort": "Password must be at least 4 characters.",
         "managerRole": "Managers can only invite employees."
       }
     },

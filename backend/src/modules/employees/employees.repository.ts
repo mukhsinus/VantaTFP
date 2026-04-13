@@ -15,6 +15,11 @@ export interface EmployeeListRow {
 export class EmployeesRepository {
   constructor(private readonly db: Pool) {}
 
+  async hasPhoneColumn(): Promise<boolean> {
+    const caps = await getAuthSchemaCaps(this.db);
+    return caps.usersPhoneColumn;
+  }
+
   /**
    * Active tenant members from `users` + `tenant_users`, excluding platform super_admin.
    * Role falls back to legacy `users.role` when `tenant_users` is missing.

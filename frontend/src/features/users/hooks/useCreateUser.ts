@@ -1,7 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { usersApi } from '@entities/user/users.api';
-import { mapUserDtoToUiModel } from '@entities/user/users.mapper';
-import type { CreateUserPayload, UserUiModel } from '@entities/user/users.types';
+import { employeesApi } from '@entities/employees/employees.api';
+import type { CreateEmployeePayload } from '@entities/employees/employees.types';
 import { toast } from '@app/store/toast.store';
 import { ApiError } from '@shared/api/client';
 import i18n from '@shared/i18n/i18n';
@@ -9,7 +8,7 @@ import { usersKeys } from './users.query-keys';
 import { employeesKeys } from '@features/employees/hooks/employees.query-keys';
 
 interface UseCreateUserResult {
-  createUser: (payload: CreateUserPayload) => Promise<UserUiModel>;
+  createUser: (payload: CreateEmployeePayload) => Promise<void>;
   isPending: boolean;
 }
 
@@ -17,14 +16,11 @@ export function useCreateUser(): UseCreateUserResult {
   const queryClient = useQueryClient();
 
   const mutation = useMutation({
-    mutationFn: usersApi.createUser,
-    onSuccess: (dto) => {
+    mutationFn: employeesApi.create,
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: usersKeys.lists() });
       queryClient.invalidateQueries({ queryKey: employeesKeys.lists() });
-      toast.success(
-        i18n.t('errors.user.created'),
-        i18n.t('errors.user.addedDescription', { fullName: `${dto.firstName} ${dto.lastName}` })
-      );
+      toast.success(i18n.t('errors.user.created'));
     },
     onError: (error: unknown) => {
       if (error instanceof ApiError) {
@@ -36,7 +32,9 @@ export function useCreateUser(): UseCreateUserResult {
   });
 
   return {
-    createUser: async (payload) => mapUserDtoToUiModel(await mutation.mutateAsync(payload)),
+    createUser: async (payload) => {
+      await mutation.mutateAsync(payload);
+    },
     isPending: mutation.isPending,
   };
 }
