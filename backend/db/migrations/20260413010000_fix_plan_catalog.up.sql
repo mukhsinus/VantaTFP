@@ -1,6 +1,9 @@
 -- Update plan catalog to match spec: Basic $5, Pro $10, Business $50, Enterprise $200
 -- Trial: 15 days (per spec)
 
+ALTER TABLE plans
+ADD COLUMN IF NOT EXISTS price NUMERIC(10, 2);
+
 -- Remove old plans that don't match spec
 DELETE FROM plans WHERE name NOT IN ('basic', 'pro', 'business', 'enterprise');
 

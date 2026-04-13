@@ -32,6 +32,7 @@ export interface PendingPaymentRequestRow {
 
 export class BillingRepository {
   constructor(private readonly db: Pool) {}
+  private plansPriceColumnCache: boolean | null = null;
 
   static isUndefinedTableError(error: unknown, tableName: string): boolean {
     const pgError = error as { code?: string; message?: string };
@@ -498,10 +499,18 @@ export class BillingRepository {
   async getPlanByName(
     planName: 'basic' | 'pro' | 'business' | 'enterprise',
     executor: Queryable = this.db
-  ): Promise<{ id: string; name: string; price: string } | null> {
-    const result = await executor.query<{ id: string; name: string; price: string }>(
-      `
+  ): Promise<{ id: string; name: string; price: string | null } | null> {
+    const hasPrice = await this.hasPlansPriceColumn(executor);
+    const result = await executor.query<{ id: string; name: string; price: string | null }>(
+      hasPrice
+        ? `
       SELECT id, name, price::text AS price
+      FROM plans
+      WHERE name = $1
+      LIMIT 1
+      `
+        : `
+      SELECT id, name, NULL::text AS price
       FROM plans
       WHERE name = $1
       LIMIT 1
@@ -509,6 +518,25 @@ export class BillingRepository {
       [planName]
     );
     return result.rows[0] ?? null;
+  }
+
+  private async hasPlansPriceColumn(executor: Queryable = this.db): Promise<boolean> {
+    if (this.plansPriceColumnCache !== null) {
+      return this.plansPriceColumnCache;
+    }
+    const result = await executor.query<{ exists: boolean }>(
+      `
+      SELECT EXISTS (
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_schema = 'public'
+          AND table_name = 'plans'
+          AND column_name = 'price'
+      ) AS exists
+      `
+    );
+    this.plansPriceColumnCache = Boolean(result.rows[0]?.exists);
+    return this.plansPriceColumnCache;
   }
 
   async getPlanNameById(

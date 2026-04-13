@@ -455,6 +455,11 @@ export class BillingService {
     if (!planRow) {
       throw ApplicationError.badRequest('Invalid or unavailable plan');
     }
+    const catalogPlan = BILLING_PLANS_CATALOG.find((entry) => entry.name === plan);
+    if (!catalogPlan) {
+      throw ApplicationError.badRequest('Invalid or unavailable plan');
+    }
+    const amount = planRow.price !== null ? Number(planRow.price) : catalogPlan.price;
 
     const pending = await this.repo.getPendingPaymentRequestForTenant(tenantId);
     if (pending) {
@@ -465,7 +470,7 @@ export class BillingService {
       tenantId,
       userId,
       planId: planRow.id,
-      amount: Number(planRow.price),
+      amount,
     });
 
     return {
