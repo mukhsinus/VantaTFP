@@ -42,7 +42,9 @@ export function EmployeesPage() {
 
   const filtered = useMemo(() => {
     return employees.filter((e) => {
-      const matchSearch = `${e.displayName} ${e.email}`.toLowerCase().includes(search.toLowerCase());
+      const matchSearch = `${e.displayName} ${e.email} ${e.phone ?? ''}`
+        .toLowerCase()
+        .includes(search.toLowerCase());
       const matchRole = roleFilter === 'ALL' || e.role === roleFilter;
       return matchSearch && matchRole;
     });

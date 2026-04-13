@@ -1,6 +1,6 @@
 import bcrypt from 'bcrypt';
 import { EmployeesRepository } from './employees.repository.js';
-import type { TenantMembershipRole } from './employees.repository.js';
+import type { EmployeeListRow, TenantMembershipRole } from './employees.repository.js';
 import { UsersRepository } from '../users/users.repository.js';
 import { ApplicationError } from '../../shared/utils/application-error.js';
 import { Role } from '../../shared/types/common.types.js';
@@ -11,6 +11,8 @@ import type { BillingService } from '../billing/billing.service.js';
 export interface EmployeeResponse {
   id: string;
   email: string;
+  phone: string | null;
+  displayName: string;
   role: TenantRole;
   isOwner: boolean;
 }
@@ -26,10 +28,34 @@ export interface EmployeeListResponse {
   };
 }
 
-function toEmployeeResponse(row: { id: string; email: string; role: TenantMembershipRole }): EmployeeResponse {
+function buildEmployeeDisplayName(
+  row: Pick<EmployeeListRow, 'email' | 'first_name' | 'last_name' | 'phone'>
+): string {
+  const fn = String(row.first_name ?? '').trim();
+  const ln = String(row.last_name ?? '').trim();
+  const full = `${fn} ${ln}`.trim();
+  if (full) return full;
+  const ph = String(row.phone ?? '').trim();
+  if (ph) return ph;
+  const email = row.email ?? '';
+  if (email.toLowerCase().endsWith('@employee.tfp.internal')) {
+    const local = email.split('@')[0] ?? '';
+    const parts = local.split('.');
+    if (parts.length >= 3 && parts[0]?.toLowerCase() === 'e') {
+      const tail = parts[parts.length - 1]?.trim();
+      if (tail) return tail;
+    }
+  }
+  const beforeAt = email.split('@')[0]?.trim();
+  return beforeAt || email;
+}
+
+function toEmployeeResponse(row: EmployeeListRow): EmployeeResponse {
   return {
     id: row.id,
     email: row.email,
+    phone: row.phone,
+    displayName: buildEmployeeDisplayName(row),
     role: row.role,
     isOwner: row.role === 'owner',
   };
@@ -163,6 +189,9 @@ export class EmployeesService {
     return toEmployeeResponse({
       id: updated.id,
       email: updated.email,
+      first_name: updated.first_name,
+      last_name: updated.last_name,
+      phone: null,
       role: next,
     });
   }

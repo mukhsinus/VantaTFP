@@ -45,7 +45,7 @@ export function RoleChangeBottomSheet({ employee, onClose }: RoleChangeBottomShe
       isOpen={isOpen}
       onClose={onClose}
       title={t('employees.sheet.changeRoleTitle')}
-      subtitle={employee?.email}
+      subtitle={employee?.phone?.trim() || employee?.email}
       footerClassName={sheetStyles.footerStack}
       footer={
         <>

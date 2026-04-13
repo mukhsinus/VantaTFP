@@ -54,7 +54,7 @@ export function EmployeeCard({ employee, currentUserId, onOpenRoleSheet, onReque
               <p className={styles.name}>{employee.displayName}</p>
               <Badge variant={roleVariant[employee.role]}>{roleLabel}</Badge>
             </div>
-            <p className={styles.email}>{employee.email}</p>
+            <p className={styles.email}>{employee.phone?.trim() || employee.email}</p>
           </div>
         </div>
         {showMenu ? (

@@ -4,14 +4,25 @@ import type { EmployeeUiModel } from '@entities/employees/employees.types';
 import { useAuthStore } from '@app/store/auth.store';
 import { employeesKeys } from './employees.query-keys';
 
-function toUi(dto: { id: string; email: string; role: EmployeeUiModel['role']; isOwner: boolean }): EmployeeUiModel {
-  const local = dto.email.split('@')[0]?.trim() || dto.email;
+function toUi(dto: {
+  id: string;
+  email: string;
+  displayName?: string;
+  phone?: string | null;
+  role: EmployeeUiModel['role'];
+  isOwner: boolean;
+}): EmployeeUiModel {
+  const displayName =
+    (dto.displayName && dto.displayName.trim()) ||
+    (dto.phone && dto.phone.trim()) ||
+    (dto.email.split('@')[0]?.trim() || dto.email);
   return {
     id: dto.id,
     email: dto.email,
+    phone: dto.phone ?? null,
     role: dto.role,
     isOwner: dto.isOwner,
-    displayName: local,
+    displayName,
   };
 }
 

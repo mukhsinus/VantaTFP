@@ -31,7 +31,7 @@ export function EmployeeActionsSheet({
       isOpen={isOpen}
       onClose={onClose}
       title={t('employees.sheet.actionsTitle')}
-      subtitle={employee?.email}
+      subtitle={employee?.phone?.trim() || employee?.email}
     >
       <div className={styles.list}>
         {canChangeRole ? (

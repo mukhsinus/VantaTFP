@@ -9,15 +9,47 @@ export type TenantMembershipRole = 'owner' | 'manager' | 'employee';
 export interface EmployeeListRow {
   id: string;
   email: string;
+  first_name: string | null;
+  last_name: string | null;
+  phone: string | null;
   role: TenantMembershipRole;
+}
+
+/**
+ * Some databases still have `users.email NOT NULL`. Employees authenticate by phone only;
+ * we persist a unique synthetic email so constraints hold without exposing email login.
+ */
+function buildPlaceholderEmployeeEmail(tenantId: string, phone: string): string {
+  const tenant = tenantId.replace(/-/g, '').toLowerCase();
+  const local =
+    phone
+      .trim()
+      .replace(/\s+/g, '')
+      .replace(/[^a-zA-Z0-9._+-]/g, '')
+      .slice(0, 48) || 'phone';
+  return `e.${tenant}.${local}@employee.tfp.internal`.toLowerCase();
 }
 
 export class EmployeesRepository {
   constructor(private readonly db: Pool) {}
 
+  /**
+   * Always checks the database directly — do not use {@link getAuthSchemaCaps} here,
+   * because that cache can lag behind DDL and would incorrectly block employee creation.
+   */
   async hasPhoneColumn(): Promise<boolean> {
-    const caps = await getAuthSchemaCaps(this.db);
-    return caps.usersPhoneColumn;
+    const r = await this.db.query<{ ph: boolean }>(
+      `
+      SELECT EXISTS (
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_schema = 'public'
+          AND table_name = 'users'
+          AND column_name = 'phone'
+      ) AS ph
+      `
+    );
+    return Boolean(r.rows[0]?.ph);
   }
 
   /**
@@ -36,11 +68,16 @@ export class EmployeesRepository {
       ? `COALESCE(u.system_role::text, 'user')`
       : `'user'::text`;
 
+    const phoneExpr = caps.usersPhoneColumn ? 'u.phone::text' : 'NULL::text';
+
     const sql = caps.tenantUsersTable
       ? `
       SELECT
         u.id,
         u.email,
+        u.first_name::text AS first_name,
+        u.last_name::text AS last_name,
+        ${phoneExpr} AS phone,
         (
           COALESCE(
             tu.role::text,
@@ -64,6 +101,9 @@ export class EmployeesRepository {
       SELECT
         u.id,
         u.email,
+        u.first_name::text AS first_name,
+        u.last_name::text AS last_name,
+        ${phoneExpr} AS phone,
         (
           CASE UPPER(TRIM(u.role::text))
             WHEN 'ADMIN' THEN 'owner'
@@ -164,6 +204,7 @@ export class EmployeesRepository {
     executor: Queryable = this.db
   ): Promise<{ id: string; phone: string; name: string | null; role: TenantMembershipRole }> {
     const caps = await getAuthSchemaCaps(this.db);
+    const placeholderEmail = buildPlaceholderEmployeeEmail(data.tenantId, data.phone);
     const firstName = data.name ? data.name.split(' ')[0] : 'Employee';
     const lastName = data.name ? data.name.split(' ').slice(1).join(' ') || '' : '';
     const legacyRole = data.role === 'manager' ? 'MANAGER' : 'EMPLOYEE';
@@ -173,40 +214,65 @@ export class EmployeesRepository {
       userResult = await executor.query<{ id: string }>(
         `
         INSERT INTO users (
-          id, tenant_id, phone, first_name, last_name, role, system_role,
+          id, tenant_id, email, phone, first_name, last_name, role, system_role,
           password_hash, role_description, is_active, created_at, updated_at
         )
         VALUES (
-          gen_random_uuid(), $1, $2, $3, $4, $5::text::"user_role_enum",
-          'user', $6, $7, TRUE, NOW(), NOW()
+          gen_random_uuid(), $1, $2, $3, $4, $5, $6::text::"user_role_enum",
+          'user', $7, $8, TRUE, NOW(), NOW()
         )
         RETURNING id
         `,
-        [data.tenantId, data.phone, firstName, lastName, legacyRole, data.passwordHash, data.roleDescription]
+        [
+          data.tenantId,
+          placeholderEmail,
+          data.phone,
+          firstName,
+          lastName,
+          legacyRole,
+          data.passwordHash,
+          data.roleDescription,
+        ]
       ).catch(async () => {
         return executor.query<{ id: string }>(
           `
           INSERT INTO users (
-            id, tenant_id, phone, first_name, last_name, role, system_role,
+            id, tenant_id, email, phone, first_name, last_name, role, system_role,
             password_hash, is_active, created_at, updated_at
           )
-          VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, 'user', $6, TRUE, NOW(), NOW())
+          VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6, 'user', $7, TRUE, NOW(), NOW())
           RETURNING id
           `,
-          [data.tenantId, data.phone, firstName, lastName, legacyRole, data.passwordHash]
+          [
+            data.tenantId,
+            placeholderEmail,
+            data.phone,
+            firstName,
+            lastName,
+            legacyRole,
+            data.passwordHash,
+          ]
         );
       });
     } else {
       userResult = await executor.query<{ id: string }>(
         `
         INSERT INTO users (
-          id, tenant_id, phone, first_name, last_name, role,
+          id, tenant_id, email, phone, first_name, last_name, role,
           password_hash, is_active, created_at, updated_at
         )
-        VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6, TRUE, NOW(), NOW())
+        VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6, $7, TRUE, NOW(), NOW())
         RETURNING id
         `,
-        [data.tenantId, data.phone, firstName, lastName, legacyRole, data.passwordHash]
+        [
+          data.tenantId,
+          placeholderEmail,
+          data.phone,
+          firstName,
+          lastName,
+          legacyRole,
+          data.passwordHash,
+        ]
       );
     }
 

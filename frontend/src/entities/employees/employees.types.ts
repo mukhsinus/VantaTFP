@@ -3,6 +3,9 @@ export type TenantRole = 'owner' | 'manager' | 'employee';
 export interface EmployeeApiDto {
   id: string;
   email: string;
+  /** Human-readable label from API (name, phone, or email-derived). */
+  displayName?: string;
+  phone?: string | null;
   role: TenantRole;
   isOwner: boolean;
 }
@@ -21,9 +24,10 @@ export interface EmployeeListApiDto {
 export interface EmployeeUiModel {
   id: string;
   email: string;
+  phone?: string | null;
   role: TenantRole;
   isOwner: boolean;
-  /** Short label derived from email (before @). */
+  /** Primary line: name, or phone, or sensible fallback. */
   displayName: string;
 }
 
