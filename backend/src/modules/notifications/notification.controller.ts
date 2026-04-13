@@ -38,8 +38,7 @@ export async function notificationRoutes(app: FastifyInstance): Promise<void> {
     {
       websocket: true,
     },
-    (connection, request) => {
-      const socket = connection.socket;
+    (socket, request) => {
 
       try {
         const query = (request.query ?? {}) as { token?: string };

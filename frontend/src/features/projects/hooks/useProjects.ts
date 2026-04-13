@@ -2,14 +2,16 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { projectApi } from '@entities/project/project.api';
 import type { CreateProjectPayload, UpdateProjectPayload } from '@entities/project/project.types';
 
+type ApiParams = Record<string, string | number | boolean | null | undefined>;
+
 export const projectKeys = {
   all: ['projects'] as const,
   lists: () => [...projectKeys.all, 'list'] as const,
-  list: (params: Record<string, unknown> = {}) => [...projectKeys.lists(), params] as const,
+  list: (params: ApiParams = {}) => [...projectKeys.lists(), params] as const,
   detail: (id: string) => [...projectKeys.all, 'detail', id] as const,
 };
 
-export function useProjects(params: Record<string, unknown> = {}) {
+export function useProjects(params: ApiParams = {}) {
   return useQuery({
     queryKey: projectKeys.list(params),
     queryFn: () => projectApi.list(params),

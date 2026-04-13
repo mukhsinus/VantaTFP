@@ -3,7 +3,7 @@ import { API } from '@shared/api/endpoints';
 import type { ProjectApiDto, ProjectListResponse, CreateProjectPayload, UpdateProjectPayload } from './project.types';
 
 export const projectApi = {
-  list: (params?: Record<string, unknown>): Promise<ProjectListResponse> =>
+  list: (params?: Record<string, string | number | boolean | null | undefined>): Promise<ProjectListResponse> =>
     apiClient.get<ProjectListResponse>(API.projects.list, params),
 
   getById: (projectId: string): Promise<ProjectApiDto> =>

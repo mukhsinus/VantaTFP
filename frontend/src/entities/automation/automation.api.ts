@@ -3,7 +3,7 @@ import { API } from '@shared/api/endpoints';
 import type { AutomationApiDto, AutomationListResponse, CreateAutomationPayload, UpdateAutomationPayload } from './automation.types';
 
 export const automationApi = {
-  list: (params?: Record<string, unknown>): Promise<AutomationListResponse> =>
+  list: (params?: Record<string, string | number | boolean | null | undefined>): Promise<AutomationListResponse> =>
     apiClient.get<AutomationListResponse>(API.automations.list, params),
 
   getById: (ruleId: string): Promise<AutomationApiDto> =>

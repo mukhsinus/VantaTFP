@@ -151,7 +151,7 @@ function SidebarItem({
   return (
     <NavLink
       to={item.to}
-      title={isCollapsed ? item.label : undefined}
+      title={isCollapsed ? t(item.label) : undefined}
       className={`${styles.navItem} ${active ? styles.navItemActive : ''} ${
         isCollapsed ? styles.navItemCollapsed : ''
       }`}
@@ -159,7 +159,7 @@ function SidebarItem({
       <span className={styles.navItemIcon}>{item.icon}</span>
       {!isCollapsed && (
         <>
-          <span className={styles.navItemLabel}>{item.label}</span>
+          <span className={styles.navItemLabel}>{t(item.label)}</span>
           {active && <span className={styles.navItemDot} />}
         </>
       )}

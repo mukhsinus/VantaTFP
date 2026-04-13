@@ -127,7 +127,8 @@ export class AuthRepository {
         u.role::text AS legacy_role,
         u.tenant_id AS user_primary_tenant_id,
         eff.eff_tid AS effective_tenant_id,
-        tu.role::text AS membership_role
+        tu.role::text AS membership_role,
+        t.plan::text AS tenant_plan
       FROM users u
       CROSS JOIN LATERAL (
         SELECT COALESCE(
@@ -145,6 +146,8 @@ export class AuthRepository {
       LEFT JOIN tenant_users tu
         ON tu.user_id = u.id
        AND tu.tenant_id = eff.eff_tid
+      LEFT JOIN tenants t
+        ON t.id = eff.eff_tid
       WHERE u.id = $1::uuid
         AND u.is_active = TRUE
       LIMIT 1
@@ -157,8 +160,11 @@ export class AuthRepository {
         u.role::text AS legacy_role,
         u.tenant_id AS user_primary_tenant_id,
         COALESCE($2::uuid, u.tenant_id) AS effective_tenant_id,
-        NULL::text AS membership_role
+        NULL::text AS membership_role,
+        t.plan::text AS tenant_plan
       FROM users u
+      LEFT JOIN tenants t
+        ON t.id = COALESCE($2::uuid, u.tenant_id)
       WHERE u.id = $1::uuid
         AND u.is_active = TRUE
       LIMIT 1

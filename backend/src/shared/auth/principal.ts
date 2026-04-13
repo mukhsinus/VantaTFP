@@ -10,6 +10,7 @@ export type AuthContextRow = {
   user_primary_tenant_id: string | null;
   effective_tenant_id: string | null;
   membership_role: string | null;
+  tenant_plan: string | null;
 };
 
 const TENANT_ROLES: TenantRole[] = ['owner', 'manager', 'employee'];
@@ -69,6 +70,7 @@ export function buildAuthenticatedUser(
       tenantId: '',
       email: row.email,
       role: 'ADMIN',
+      tenantPlan: null,
     };
   }
 
@@ -100,5 +102,6 @@ export function buildAuthenticatedUser(
     tenantId: effective,
     email: row.email,
     role,
+    tenantPlan: row.tenant_plan ?? null,
   };
 }

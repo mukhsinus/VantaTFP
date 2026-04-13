@@ -209,6 +209,7 @@ export class AuthService {
         user_primary_tenant_id: isSuperAdmin ? null : user.tenant_id,
         effective_tenant_id: isSuperAdmin ? null : user.tenant_id,
         membership_role: isSuperAdmin ? null : user.tenant_membership_role,
+        tenant_plan: null,
       },
       isSuperAdmin ? null : user.tenant_id
     );

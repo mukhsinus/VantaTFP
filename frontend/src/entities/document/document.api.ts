@@ -3,7 +3,7 @@ import { API } from '@shared/api/endpoints';
 import type { DocumentApiDto, DocumentListResponse, CreateDocumentPayload, UpdateDocumentPayload } from './document.types';
 
 export const documentApi = {
-  list: (params?: Record<string, unknown>): Promise<DocumentListResponse> =>
+  list: (params?: Record<string, string | number | boolean | null | undefined>): Promise<DocumentListResponse> =>
     apiClient.get<DocumentListResponse>(API.documents.list, params),
 
   getById: (docId: string): Promise<DocumentApiDto> =>

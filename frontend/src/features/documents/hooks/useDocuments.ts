@@ -2,14 +2,16 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { documentApi } from '@entities/document/document.api';
 import type { CreateDocumentPayload, UpdateDocumentPayload } from '@entities/document/document.types';
 
+type ApiParams = Record<string, string | number | boolean | null | undefined>;
+
 export const documentKeys = {
   all: ['documents'] as const,
   lists: () => [...documentKeys.all, 'list'] as const,
-  list: (params: Record<string, unknown> = {}) => [...documentKeys.lists(), params] as const,
+  list: (params: ApiParams = {}) => [...documentKeys.lists(), params] as const,
   detail: (id: string) => [...documentKeys.all, 'detail', id] as const,
 };
 
-export function useDocuments(params: Record<string, unknown> = {}) {
+export function useDocuments(params: ApiParams = {}) {
   return useQuery({
     queryKey: documentKeys.list(params),
     queryFn: () => documentApi.list(params),

@@ -18,6 +18,8 @@ export interface AuthenticatedUser {
   email: string;
   /** Derived from `tenant_role` for existing policy / `requireRoles`. */
   role: Role;
+  /** Subscription plan of the tenant (e.g. FREE, PRO). */
+  tenantPlan: string | null;
   /** @deprecated use `id` */
   userId: string;
   /** @deprecated use `tenant_id` (empty string when no tenant, e.g. super_admin) */

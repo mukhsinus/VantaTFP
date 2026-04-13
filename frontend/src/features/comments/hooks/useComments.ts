@@ -7,7 +7,7 @@ export const commentKeys = {
   byTask: (taskId: string) => [...commentKeys.all, taskId] as const,
 };
 
-export function useComments(taskId: string, params: Record<string, unknown> = {}) {
+export function useComments(taskId: string, params: Record<string, string | number | boolean | null | undefined> = {}) {
   return useQuery({
     queryKey: [...commentKeys.byTask(taskId), params],
     queryFn: () => commentApi.list(taskId, params),

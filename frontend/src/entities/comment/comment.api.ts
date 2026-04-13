@@ -3,7 +3,7 @@ import { API } from '@shared/api/endpoints';
 import type { CommentApiDto, CommentListResponse, CreateCommentPayload, UpdateCommentPayload } from './comment.types';
 
 export const commentApi = {
-  list: (taskId: string, params?: Record<string, unknown>): Promise<CommentListResponse> =>
+  list: (taskId: string, params?: Record<string, string | number | boolean | null | undefined>): Promise<CommentListResponse> =>
     apiClient.get<CommentListResponse>(API.comments.list(taskId), params),
 
   create: (taskId: string, payload: CreateCommentPayload): Promise<CommentApiDto> =>
