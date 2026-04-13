@@ -1,13 +1,38 @@
 import React from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { platformApi } from '@entities/platform/platform.api';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { adminApi } from '@entities/admin/admin.api';
 import { EmptyState, PageSkeleton } from '@shared/components/ui';
 import { ApiError } from '@shared/api/client';
+import { toast } from '@app/store/toast.store';
+
+const PLAN_OPTIONS: Array<'basic' | 'pro' | 'business' | 'enterprise'> = [
+  'basic',
+  'pro',
+  'business',
+  'enterprise',
+];
 
 export function AdminSubscriptionsPage() {
+  const queryClient = useQueryClient();
   const { data, isLoading, isError, error } = useQuery({
-    queryKey: ['platform', 'subscriptions', 1],
-    queryFn: () => platformApi.listSubscriptions(1, 50),
+    queryKey: ['admin', 'subscriptions', 1],
+    queryFn: () => adminApi.listSubscriptions({ page: 1, limit: 50 }),
+  });
+
+  const [selectedPlans, setSelectedPlans] = React.useState<Record<string, 'basic' | 'pro' | 'business' | 'enterprise'>>({});
+
+  const forcePlanMutation = useMutation({
+    mutationFn: ({ tenantId, plan }: { tenantId: string; plan: 'basic' | 'pro' | 'business' | 'enterprise' }) =>
+      adminApi.setTenantPlan(tenantId, plan),
+    onSuccess: async () => {
+      toast.success('Plan changed');
+      await queryClient.invalidateQueries({ queryKey: ['admin', 'subscriptions'] });
+      await queryClient.invalidateQueries({ queryKey: ['admin', 'tenants'] });
+    },
+    onError: (e) => {
+      const msg = e instanceof ApiError ? e.message : 'Failed to force change plan';
+      toast.error('Plan change failed', msg);
+    },
   });
 
   if (isLoading) return <PageSkeleton />;
@@ -27,18 +52,48 @@ export function AdminSubscriptionsPage() {
               <th style={{ padding: 12 }}>Tenant</th>
               <th style={{ padding: 12 }}>Status</th>
               <th style={{ padding: 12 }}>Plan</th>
-              <th style={{ padding: 12 }}>Tier</th>
-              <th style={{ padding: 12 }}>Max users</th>
+              <th style={{ padding: 12 }}>Limits</th>
+              <th style={{ padding: 12 }}>Force change plan</th>
             </tr>
           </thead>
           <tbody>
             {data?.data.map((s) => (
-              <tr key={s.tenantId} style={{ borderTop: '1px solid var(--color-border)' }}>
-                <td style={{ padding: 12 }}>{s.tenantName}</td>
+              <tr key={s.tenant_id} style={{ borderTop: '1px solid var(--color-border)' }}>
+                <td style={{ padding: 12 }}>{s.tenant}</td>
                 <td style={{ padding: 12 }}>{s.status}</td>
-                <td style={{ padding: 12 }}>{s.planName ?? '—'}</td>
-                <td style={{ padding: 12 }}>{s.planTier ?? '—'}</td>
-                <td style={{ padding: 12 }}>{s.maxUsers ?? '—'}</td>
+                <td style={{ padding: 12 }}>{s.plan ?? '—'}</td>
+                <td style={{ padding: 12 }}>{s.limits ? JSON.stringify(s.limits) : '—'}</td>
+                <td style={{ padding: 12 }}>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <select
+                      value={selectedPlans[s.tenant_id] ?? 'basic'}
+                      onChange={(event) =>
+                        setSelectedPlans((prev) => ({
+                          ...prev,
+                          [s.tenant_id]: event.target.value as 'basic' | 'pro' | 'business' | 'enterprise',
+                        }))
+                      }
+                    >
+                      {PLAN_OPTIONS.map((plan) => (
+                        <option key={plan} value={plan}>
+                          {plan}
+                        </option>
+                      ))}
+                    </select>
+                    <button
+                      type="button"
+                      disabled={forcePlanMutation.isPending}
+                      onClick={() =>
+                        forcePlanMutation.mutate({
+                          tenantId: s.tenant_id,
+                          plan: selectedPlans[s.tenant_id] ?? 'basic',
+                        })
+                      }
+                    >
+                      Force change
+                    </button>
+                  </div>
+                </td>
               </tr>
             ))}
           </tbody>

@@ -80,7 +80,18 @@ export const API = {
   },
 
   admin: {
+    dashboard: '/api/v1/admin/dashboard',
+    payments: '/api/v1/admin/payments',
     approvePayment: (paymentId: string) => `/api/v1/admin/payments/${paymentId}/approve`,
+    rejectPayment: (paymentId: string) => `/api/v1/admin/payments/${paymentId}/reject`,
+    tenants: '/api/v1/admin/tenants',
+    suspendTenant: (tenantId: string) => `/api/v1/admin/tenants/${tenantId}/suspend`,
+    activateTenant: (tenantId: string) => `/api/v1/admin/tenants/${tenantId}/activate`,
+    setTenantPlan: (tenantId: string) => `/api/v1/admin/tenants/${tenantId}/plan`,
+    subscriptions: '/api/v1/admin/subscriptions',
+    users: '/api/v1/admin/users',
+    updateUserRole: (userId: string) => `/api/v1/admin/users/${userId}/role`,
+    banUser: (userId: string) => `/api/v1/admin/users/${userId}/ban`,
   },
 
   featureFlags: {

@@ -17,8 +17,8 @@ export function AdminLayout() {
       <header className={styles.top}>
         <div className={styles.brand}>Platform admin</div>
         <nav className={styles.nav}>
-          <NavLink to="/admin/dashboard" className={navLinkClass}>
-            Dashboard
+          <NavLink to="/admin/payments" className={navLinkClass}>
+            Payments
           </NavLink>
           <NavLink to="/admin/tenants" className={navLinkClass}>
             Tenants
@@ -28,6 +28,9 @@ export function AdminLayout() {
           </NavLink>
           <NavLink to="/admin/subscriptions" className={navLinkClass}>
             Subscriptions
+          </NavLink>
+          <NavLink to="/admin/dashboard" className={navLinkClass}>
+            Dashboard
           </NavLink>
         </nav>
         <Button variant="secondary" size="sm" onClick={() => clearAuth()}>

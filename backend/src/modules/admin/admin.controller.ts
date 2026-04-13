@@ -1,9 +1,16 @@
 import { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
-import { requireRoles } from '../../shared/middleware/role-guard.middleware.js';
 import { sendNoContent, sendSuccess } from '../../shared/utils/response.js';
 import { AdminRepository } from './admin.repository.js';
 import { AdminService } from './admin.service.js';
-import { listAuditLogsQuerySchema, updateTenantAdminSchema } from './admin.schema.js';
+import {
+  adminForceTenantPlanSchema,
+  adminListQuerySchema,
+  adminPaymentListQuerySchema,
+  adminTenantIdParamSchema,
+  adminUserRoleBodySchema,
+  listAuditLogsQuerySchema,
+  updateTenantAdminSchema,
+} from './admin.schema.js';
 import { requireAuth, requireSuperAdmin } from '../../shared/middleware/rbac.middleware.js';
 import { paymentRequestIdParamSchema } from '../payments/payments.schema.js';
 import { PaymentsRepository } from '../payments/payments.repository.js';
@@ -15,16 +22,17 @@ const APP_STARTED_AT = new Date();
 
 export async function adminRoutes(app: FastifyInstance): Promise<void> {
   const adminRepository = new AdminRepository(app.db);
-  const adminService = new AdminService(adminRepository, APP_STARTED_AT);
-  const paymentsRepository = new PaymentsRepository(app.db);
   const billingRepository = new BillingRepository(app.db);
+  const adminService = new AdminService(adminRepository, APP_STARTED_AT, billingRepository);
+  const paymentsRepository = new PaymentsRepository(app.db);
   const billingService = new BillingService(billingRepository);
   const paymentsService = new PaymentsService(paymentsRepository, billingService);
   const authenticate = app.authenticate;
+  const superOnly = [authenticate, requireAuth, requireSuperAdmin];
 
   app.get(
     '/audit-logs',
-    { preHandler: [authenticate, requireRoles('ADMIN', 'MANAGER')] },
+    { preHandler: superOnly },
     async (request: FastifyRequest, reply: FastifyReply) => {
       const query = listAuditLogsQuerySchema.parse(request.query);
       const result = await adminService.listAuditLogs(request.user.tenantId, query);
@@ -34,7 +42,7 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
 
   app.get(
     '/tenant',
-    { preHandler: [authenticate, requireRoles('ADMIN')] },
+    { preHandler: superOnly },
     async (request: FastifyRequest, reply: FastifyReply) => {
       const tenant = await adminService.getTenantManagement(request.user.tenantId);
       return sendSuccess(reply, tenant);
@@ -43,7 +51,7 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
 
   app.patch(
     '/tenant',
-    { preHandler: [authenticate, requireRoles('ADMIN')] },
+    { preHandler: superOnly },
     async (request: FastifyRequest, reply: FastifyReply) => {
       const body = updateTenantAdminSchema.parse(request.body);
       const tenant = await adminService.updateTenantManagement(
@@ -57,7 +65,7 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
 
   app.post(
     '/tenant/deactivate',
-    { preHandler: [authenticate, requireRoles('ADMIN')] },
+    { preHandler: superOnly },
     async (request: FastifyRequest, reply: FastifyReply) => {
       await adminService.deactivateTenant(request.user.tenantId, request.user.userId);
       return sendNoContent(reply);
@@ -66,7 +74,7 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
 
   app.get(
     '/backup-status',
-    { preHandler: [authenticate, requireRoles('ADMIN')] },
+    { preHandler: superOnly },
     async (_request: FastifyRequest, reply: FastifyReply) => {
       const status = await adminService.getBackupStatus();
       return sendSuccess(reply, status);
@@ -75,7 +83,7 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
 
   app.get(
     '/monitoring/health',
-    { preHandler: [authenticate, requireRoles('ADMIN', 'MANAGER')] },
+    { preHandler: superOnly },
     async (request: FastifyRequest, reply: FastifyReply) => {
       const health = await adminService.getSystemHealth(request.user.tenantId);
       return sendSuccess(reply, health);
@@ -84,7 +92,7 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
 
   app.get(
     '/monitoring/stats',
-    { preHandler: [authenticate, requireRoles('ADMIN', 'MANAGER')] },
+    { preHandler: superOnly },
     async (request: FastifyRequest, reply: FastifyReply) => {
       const stats = await adminService.getSystemStats(request.user.tenantId);
       return sendSuccess(reply, stats);
@@ -93,11 +101,122 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
 
   app.post(
     '/payments/:id/approve',
-    { preHandler: [authenticate, requireAuth, requireSuperAdmin] },
+    { preHandler: superOnly },
     async (request: FastifyRequest, reply: FastifyReply) => {
       const { id } = paymentRequestIdParamSchema.parse(request.params);
       const approved = await paymentsService.confirmPayment(id, request.user.id);
       return sendSuccess(reply, approved);
+    }
+  );
+
+  app.post(
+    '/payments/:id/reject',
+    { preHandler: superOnly },
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      const { id } = paymentRequestIdParamSchema.parse(request.params);
+      const rejected = await paymentsService.rejectPayment(id, request.user.id);
+      return sendSuccess(reply, rejected);
+    }
+  );
+
+  app.get(
+    '/payments',
+    { preHandler: superOnly },
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      const query = adminPaymentListQuerySchema.parse(request.query ?? {});
+      const result = await adminService.listPayments(query);
+      return sendSuccess(reply, result);
+    }
+  );
+
+  app.get(
+    '/dashboard',
+    { preHandler: superOnly },
+    async (_request: FastifyRequest, reply: FastifyReply) => {
+      const result = await adminService.getDashboardSummary();
+      return sendSuccess(reply, result);
+    }
+  );
+
+  app.get(
+    '/subscriptions',
+    { preHandler: superOnly },
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      const query = adminListQuerySchema.parse(request.query ?? {});
+      const result = await adminService.listSubscriptions(query);
+      return sendSuccess(reply, result);
+    }
+  );
+
+  app.get(
+    '/tenants',
+    { preHandler: superOnly },
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      const query = adminListQuerySchema.parse(request.query ?? {});
+      const result = await adminService.listTenants(query);
+      return sendSuccess(reply, result);
+    }
+  );
+
+  app.patch(
+    '/tenants/:id/suspend',
+    { preHandler: superOnly },
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      const { id } = adminTenantIdParamSchema.parse(request.params);
+      const result = await adminService.suspendTenant(id);
+      return sendSuccess(reply, result);
+    }
+  );
+
+  app.patch(
+    '/tenants/:id/activate',
+    { preHandler: superOnly },
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      const { id } = adminTenantIdParamSchema.parse(request.params);
+      const result = await adminService.activateTenant(id);
+      return sendSuccess(reply, result);
+    }
+  );
+
+  app.post(
+    '/tenants/:id/plan',
+    { preHandler: superOnly },
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      const { id } = adminTenantIdParamSchema.parse(request.params);
+      const body = adminForceTenantPlanSchema.parse(request.body ?? {});
+      const result = await adminService.forceChangeTenantPlan(id, body.plan);
+      return sendSuccess(reply, result);
+    }
+  );
+
+  app.get(
+    '/users',
+    { preHandler: superOnly },
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      const query = adminListQuerySchema.parse(request.query ?? {});
+      const result = await adminService.listUsers(query);
+      return sendSuccess(reply, result);
+    }
+  );
+
+  app.post(
+    '/users/:id/role',
+    { preHandler: superOnly },
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      const { id } = adminTenantIdParamSchema.parse(request.params);
+      const body = adminUserRoleBodySchema.parse(request.body ?? {});
+      const result = await adminService.updateUserRole(id, body.role);
+      return sendSuccess(reply, result);
+    }
+  );
+
+  app.post(
+    '/users/:id/ban',
+    { preHandler: superOnly },
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      const { id } = adminTenantIdParamSchema.parse(request.params);
+      const result = await adminService.banUser(id);
+      return sendSuccess(reply, result);
     }
   );
 }

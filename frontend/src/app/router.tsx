@@ -21,6 +21,7 @@ import { AdminDashboardPage } from '@pages/admin/AdminDashboardPage';
 import { AdminTenantsPage } from '@pages/admin/AdminTenantsPage';
 import { AdminUsersPage } from '@pages/admin/AdminUsersPage';
 import { AdminSubscriptionsPage } from '@pages/admin/AdminSubscriptionsPage';
+import { AdminPaymentsPage } from '@pages/admin/AdminPaymentsPage';
 import { MessagesPage } from '@pages/messages/MessagesPage';
 
 export const router = createBrowserRouter([
@@ -39,7 +40,8 @@ export const router = createBrowserRouter([
           {
             element: <AdminLayout />,
             children: [
-              { index: true, element: <Navigate to="dashboard" replace /> },
+              { index: true, element: <Navigate to="payments" replace /> },
+              { path: 'payments', element: <AdminPaymentsPage /> },
               { path: 'dashboard', element: <AdminDashboardPage /> },
               { path: 'tenants', element: <AdminTenantsPage /> },
               { path: 'users', element: <AdminUsersPage /> },
