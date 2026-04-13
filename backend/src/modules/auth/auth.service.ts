@@ -1,8 +1,8 @@
 import bcrypt from 'bcrypt';
-import { AuthRepository, UserWithTenantRecord } from './auth.repository.js';
+import { AuthRepository } from './auth.repository.js';
 import { LoginRequest, RegisterRequest, RegisterEmployerRequest } from './auth.schema.js';
 import { ApplicationError } from '../../shared/utils/application-error.js';
-import { AuthenticatedUser, Role } from '../../shared/types/common.types.js';
+import { AuthenticatedUser } from '../../shared/types/common.types.js';
 import { validatePassword } from '../../shared/utils/password-validator.js';
 import type { BillingService } from '../billing/billing.service.js';
 import { parseJwtTenantIdFromPayload } from '../../shared/auth/jwt-tenant.js';
@@ -15,18 +15,31 @@ export interface TokenPair {
 }
 
 export interface AuthUserResponse {
-  userId: string;
-  tenantId: string;
-  tenantName: string;
+  id: string;
   email: string;
-  firstName: string;
-  lastName: string;
-  role: Role;
-  systemRole: 'super_admin' | 'user';
+  first_name: string;
+  last_name: string;
+  system_role: 'super_admin' | 'user';
+}
+
+export interface AuthTenantResponse {
+  id: string;
+  name: string;
+  slug: string;
+  plan_id: string | null;
+  is_active: boolean;
+}
+
+export interface AuthMembershipResponse {
+  user_id: string;
+  tenant_id: string;
+  role: 'ADMIN' | 'EMPLOYEE';
 }
 
 export interface AuthSuccessResponse extends TokenPair {
   user: AuthUserResponse;
+  tenant: AuthTenantResponse | null;
+  memberships: AuthMembershipResponse[];
 }
 
 type JwtPrincipalPayload = AuthenticatedUser & { tokenType?: 'access' | 'refresh' };
@@ -45,7 +58,7 @@ export class AuthService {
   ) {}
 
   async login(payload: LoginRequest): Promise<AuthSuccessResponse> {
-    let user: UserWithTenantRecord | null = null;
+    let user: { id: string; tenant_id: string | null; password_hash: string } | null = null;
 
     if (payload.email) {
       user = await this.authRepository.findUserByEmail(payload.email);
@@ -66,7 +79,7 @@ export class AuthService {
       throw ApplicationError.unauthorized('Invalid credentials');
     }
 
-    return this.buildAuthResponse(user);
+    return this.buildAuthResponse(user.id, user.tenant_id);
   }
 
   /**
@@ -94,39 +107,36 @@ export class AuthService {
     }
 
     const passwordHash = await bcrypt.hash(payload.password, 10);
-    const slug = this.generateSlug(payload.companyName);
+    const companyName = payload.companyName?.trim() || payload.name.trim();
+    const slugBase = this.slugify(companyName);
 
-    const { tenantId, userId } = await this.authRepository.createEmployerWithTenant({
-      companyName: payload.companyName,
-      slug,
-      ownerName: payload.name,
-      email: payload.email ?? null,
-      phone: payload.phone ?? null,
-      passwordHash,
-    });
-
-    // Activate 15-day trial for new tenant
-    await this.billing.ensureSubscriptionForNewTenant(tenantId);
-
-    const identifier = payload.email ?? payload.phone ?? userId;
-    const full = payload.email
-      ? await this.authRepository.findUserByEmail(payload.email)
-      : await this.authRepository.findUserByPhone(payload.phone!);
-
-    if (!full) {
-      throw ApplicationError.internal('Failed to load user after registration');
+    let createdSession: { userId: string; tenantId: string };
+    try {
+      createdSession = await this.authRepository.withTransaction(async (tx) => {
+        const slug = await this.resolveUniqueTenantSlug(slugBase, tx);
+        const created = await this.authRepository.createEmployerWithTenant(
+          {
+            companyName,
+            slug,
+            ownerName: payload.name,
+            email: payload.email ?? null,
+            phone: payload.phone ?? null,
+            passwordHash,
+          },
+          tx
+        );
+        await this.authRepository.ensureDefaultTrialSubscription(created.tenantId, tx);
+        return created;
+      });
+    } catch (error) {
+      const pgError = error as { code?: string };
+      if (pgError?.code === '23505') {
+        throw ApplicationError.conflict('User or tenant already exists');
+      }
+      throw error;
     }
-    return this.buildAuthResponse(full);
-  }
 
-  private generateSlug(name: string): string {
-    const base = name
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/^-|-$/g, '')
-      .slice(0, 50);
-    const suffix = Math.random().toString(36).slice(2, 7);
-    return `${base || 'company'}-${suffix}`;
+    return this.buildAuthResponse(createdSession.userId, createdSession.tenantId);
   }
 
   /** Issue tokens after user row exists (e.g. link-invite acceptance). */
@@ -135,7 +145,7 @@ export class AuthService {
     if (!full) {
       throw ApplicationError.internal('Failed to load user after registration');
     }
-    return this.buildAuthResponse(full);
+    return this.buildAuthResponse(full.id, full.tenant_id);
   }
 
   /**
@@ -217,7 +227,7 @@ export class AuthService {
     if (!full) {
       throw ApplicationError.internal('Failed to load user after registration');
     }
-    return this.buildAuthResponse(full);
+    return this.buildAuthResponse(full.id, full.tenant_id);
   }
 
   /**
@@ -264,21 +274,38 @@ export class AuthService {
     }
   }
 
-  private buildAuthResponse(user: UserWithTenantRecord): AuthSuccessResponse {
-    const userIsSuperAdmin = isSuperAdmin({ email: user.email, system_role: user.system_role });
-    const principal = buildAuthenticatedUser(
-      {
-        id: user.id,
-        email: user.email,
-        system_role: user.system_role,
-        legacy_role: user.role,
-        user_primary_tenant_id: userIsSuperAdmin ? null : user.tenant_id,
-        effective_tenant_id: userIsSuperAdmin ? null : user.tenant_id,
-        membership_role: userIsSuperAdmin ? null : user.tenant_membership_role,
-        tenant_plan: null,
-      },
-      userIsSuperAdmin ? null : user.tenant_id
+  private async buildAuthResponse(
+    userId: string,
+    requestedTenantId: string | null
+  ): Promise<AuthSuccessResponse> {
+    const full = await this.authRepository.getAuthSessionUserById(userId);
+    if (!full) {
+      throw ApplicationError.unauthorized('Invalid user session');
+    }
+    const userIsSuperAdmin = isSuperAdmin({
+      email: full.email,
+      system_role: full.system_role,
+    });
+    const authCtx = await this.authRepository.findAuthContextById(
+      full.id,
+      userIsSuperAdmin ? null : requestedTenantId
     );
+    if (!authCtx) {
+      throw ApplicationError.unauthorized('User context unavailable');
+    }
+    const principal = buildAuthenticatedUser(
+      authCtx,
+      userIsSuperAdmin ? null : requestedTenantId
+    );
+
+    const memberships = userIsSuperAdmin
+      ? []
+      : await this.authRepository.listMembershipsForUser(full.id);
+    const currentTenantId = principal.tenant_id;
+    const tenant =
+      currentTenantId && !userIsSuperAdmin
+        ? await this.authRepository.getTenantById(currentTenantId)
+        : null;
 
     const jwtPayload: JwtPrincipalPayload = {
       ...principal,
@@ -288,15 +315,14 @@ export class AuthService {
       accessToken: this.signAccessToken(jwtPayload, '15m'),
       refreshToken: this.signRefreshToken(jwtPayload, '7d'),
       user: {
-        userId: user.id,
-        tenantId: principal.tenant_id ?? '',
-        tenantName: user.tenant_name ?? '',
-        email: user.email,
-        firstName: user.first_name,
-        lastName: user.last_name,
-        role: principal.role as Role,
-        systemRole: principal.system_role === 'super_admin' ? 'super_admin' : 'user',
+        id: full.id,
+        email: full.email,
+        first_name: full.first_name,
+        last_name: full.last_name,
+        system_role: principal.system_role === 'super_admin' ? 'super_admin' : 'user',
       },
+      tenant,
+      memberships,
     };
   }
 
@@ -321,5 +347,27 @@ export class AuthService {
   private capitalize(value: string): string {
     if (!value) return value;
     return value.charAt(0).toUpperCase() + value.slice(1).toLowerCase();
+  }
+
+  private slugify(name: string): string {
+    const normalized = name
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+      .slice(0, 50);
+    return normalized || 'tenant';
+  }
+
+  private async resolveUniqueTenantSlug(
+    base: string,
+    executor: Parameters<AuthRepository['slugExists']>[1]
+  ): Promise<string> {
+    let candidate = base;
+    let suffix = 1;
+    while (await this.authRepository.slugExists(candidate, executor)) {
+      suffix += 1;
+      candidate = `${base}-${suffix}`;
+    }
+    return candidate;
   }
 }

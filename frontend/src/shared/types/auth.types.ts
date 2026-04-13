@@ -14,3 +14,17 @@ export interface CurrentUser {
   /** Omitted in older persisted sessions; treat missing as `'user'`. */
   systemRole?: SystemRole;
 }
+
+export interface CurrentTenant {
+  id: string;
+  name: string;
+  slug: string;
+  planId: string | null;
+  isActive: boolean;
+}
+
+export interface Membership {
+  userId: string;
+  tenantId: string;
+  role: 'ADMIN' | 'EMPLOYEE';
+}

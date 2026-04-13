@@ -1,21 +1,16 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
+import { errorEnvelope } from '../utils/response.js';
 
-/**
- * Verbose error handler for debugging: logs full error and returns message + stack in the body.
- * Replaces structured envelopes while diagnosing 500s.
- */
 export function registerErrorHandler(app: FastifyInstance): void {
   app.setErrorHandler(
-    (error: Error & { statusCode?: number }, _request: FastifyRequest, reply: FastifyReply) => {
+    (error: Error & { statusCode?: number; code?: string }, _request: FastifyRequest, reply: FastifyReply) => {
       console.error('FULL ERROR:', error);
       console.error('STACK:', error.stack);
 
       const statusCode = error.statusCode || 500;
+      const code = error.code ?? (statusCode >= 500 ? 'INTERNAL_ERROR' : 'REQUEST_ERROR');
 
-      return reply.status(statusCode).send({
-        message: error.message,
-        stack: error.stack,
-      });
+      return reply.status(statusCode).send(errorEnvelope(code, error.message));
     }
   );
 }

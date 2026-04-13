@@ -29,6 +29,8 @@ declare module 'fastify' {
   interface FastifyRequest {
     /** Present after `authenticate` when tenant-scoped; omitted for `super_admin` without acting tenant. */
     tenantId?: string;
+    tenant?: { id: string };
+    membership?: { role: 'ADMIN' | 'EMPLOYEE' };
     idempotencyKey?: string;
   }
 }

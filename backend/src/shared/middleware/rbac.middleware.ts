@@ -101,7 +101,24 @@ export function requireSystemRole(role: SystemRole) {
 /**
  * Policy-first RBAC guard. Checks `can(user, action, resource)` against tenant policy rules.
  */
-export function requireRole(action: string, resource: string) {
+export function requireRole(action: string, resource?: string) {
+  const maybeTenantRole = action;
+  if (!resource) {
+    return async function roleGuard(
+      request: FastifyRequest,
+      _reply: FastifyReply
+    ): Promise<void> {
+      const user = getUser(request);
+      if (user.system_role === 'super_admin') {
+        return;
+      }
+      const membershipRole = user.tenant_role === 'employee' ? 'EMPLOYEE' : 'ADMIN';
+      if (membershipRole !== maybeTenantRole) {
+        throw ApplicationError.forbidden(`Requires role: ${maybeTenantRole}`);
+      }
+    };
+  }
+
   return async function rolePolicyGuard(
     request: FastifyRequest,
     _reply: FastifyReply

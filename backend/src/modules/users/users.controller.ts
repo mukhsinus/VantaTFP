@@ -3,11 +3,14 @@ import { UsersService } from './users.service.js';
 import { UsersRepository } from './users.repository.js';
 import { EmployeesRepository } from '../employees/employees.repository.js';
 import { requireRoles } from '../../shared/middleware/role-guard.middleware.js';
+import { requireOwner } from '../../shared/middleware/rbac.middleware.js';
+import { ApplicationError } from '../../shared/utils/application-error.js';
 import { sendNoContent, sendSuccess, successEnvelope } from '../../shared/utils/response.js';
 import { attachIdempotencyKey } from '../../shared/middleware/idempotency.middleware.js';
 import { IdempotencyService } from '../../shared/idempotency/idempotency.service.js';
 import {
   createUserSchema,
+  inviteUserSchema,
   updateUserSchema,
   userIdParamSchema,
   listUsersQuerySchema,
@@ -119,6 +122,23 @@ export async function usersRoutes(app: FastifyInstance): Promise<void> {
       const { id } = userIdParamSchema.parse(request.params);
       const user = await usersService.getUserById(id, request.user.tenantId);
       return sendSuccess(reply, user);
+    }
+  );
+
+  app.post(
+    '/invite',
+    { preHandler: [authenticate, requireOwner()] },
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      const tenantId = request.user.tenantId;
+      if (!tenantId) {
+        throw ApplicationError.forbidden('Tenant context required');
+      }
+      const body = inviteUserSchema.parse(request.body);
+      const invited = await usersService.inviteUser(tenantId, body, {
+        actorUserId: request.user.userId,
+        actorRole: request.user.role,
+      });
+      return sendSuccess(reply, invited, 201);
     }
   );
 

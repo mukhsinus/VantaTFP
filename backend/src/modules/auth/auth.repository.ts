@@ -46,11 +46,38 @@ export interface UserWithTenantRecord extends UserRecord {
   tenant_membership_role: string | null;
 }
 
+export interface AuthSessionUserRecord {
+  id: string;
+  email: string;
+  first_name: string;
+  last_name: string;
+  system_role: string;
+  tenant_id: string | null;
+}
+
+export interface AuthMembershipRecord {
+  user_id: string;
+  tenant_id: string;
+  role: 'ADMIN' | 'EMPLOYEE';
+}
+
+export interface AuthTenantRecord {
+  id: string;
+  name: string;
+  slug: string;
+  plan_id: string | null;
+  is_active: boolean;
+}
+
 export class AuthRepository {
   constructor(private readonly db: Pool) {}
+  private tenantPlanIdColumnCache: boolean | null = null;
 
   async findUserByPhone(phone: string): Promise<UserWithTenantRecord | null> {
     const caps = await getAuthSchemaCaps(this.db);
+    if (!caps.usersPhoneColumn) {
+      return null;
+    }
     const useTenantUsers = caps.tenantUsersTable;
     const systemRoleSql = caps.usersSystemRoleColumn
       ? `COALESCE(u.system_role::text, 'user')`
@@ -113,81 +140,271 @@ export class AuthRepository {
     email: string | null;
     phone: string | null;
     passwordHash: string;
-  }): Promise<{ tenantId: string; userId: string }> {
+  }, executor: Pick<Pool, 'query'> | Pick<PoolClient, 'query'> = this.db): Promise<{ tenantId: string; userId: string }> {
+    const tenantResult = await executor.query<{ id: string }>(
+      `
+      INSERT INTO tenants (id, name, slug, plan, is_active, created_at, updated_at)
+      VALUES (gen_random_uuid(), $1, $2, 'FREE', TRUE, NOW(), NOW())
+      RETURNING id
+      `,
+      [data.companyName, data.slug]
+    );
+    const tenantId = tenantResult.rows[0].id;
+
+    const caps = await getAuthSchemaCaps(this.db);
+
+      const nameParts = data.ownerName.trim().split(/\s+/);
+    const firstName = nameParts[0] ?? 'Owner';
+    const lastName = nameParts.slice(1).join(' ') || 'Account';
+
+    let userResult: { rows: Array<{ id: string }> };
+    if (caps.usersSystemRoleColumn && caps.usersPhoneColumn) {
+      userResult = await executor.query<{ id: string }>(
+        `
+        INSERT INTO users (
+          id, tenant_id, email, phone, first_name, last_name, role,
+          system_role, password_hash, is_active, created_at, updated_at
+        )
+        VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, 'ADMIN', 'user', $6, TRUE, NOW(), NOW())
+        RETURNING id
+        `,
+        [tenantId, data.email, data.phone, firstName, lastName, data.passwordHash]
+      );
+    } else if (caps.usersSystemRoleColumn && !caps.usersPhoneColumn) {
+      userResult = await executor.query<{ id: string }>(
+        `
+        INSERT INTO users (
+          id, tenant_id, email, first_name, last_name, role,
+          system_role, password_hash, is_active, created_at, updated_at
+        )
+        VALUES (gen_random_uuid(), $1, $2, $3, $4, 'ADMIN', 'user', $5, TRUE, NOW(), NOW())
+        RETURNING id
+        `,
+        [tenantId, data.email, firstName, lastName, data.passwordHash]
+      );
+    } else {
+      userResult = await executor.query<{ id: string }>(
+        `
+        INSERT INTO users (
+          id, tenant_id, email, first_name, last_name, role,
+          password_hash, is_active, created_at, updated_at
+        )
+        VALUES (gen_random_uuid(), $1, $2, $3, $4, 'ADMIN', $5, TRUE, NOW(), NOW())
+        RETURNING id
+        `,
+        [tenantId, data.email, firstName, lastName, data.passwordHash]
+      );
+    }
+    const userId = userResult.rows[0].id;
+
+    if (caps.tenantUsersTable) {
+      await executor.query(
+        `
+        INSERT INTO tenant_users (user_id, tenant_id, role, created_at, updated_at)
+        VALUES ($1::uuid, $2::uuid, 'owner'::tenant_membership_role, NOW(), NOW())
+        ON CONFLICT (user_id, tenant_id) DO UPDATE SET role = 'owner', updated_at = NOW()
+        `,
+        [userId, tenantId]
+      );
+    }
+
+    return { tenantId, userId };
+  }
+
+  async withTransaction<T>(fn: (tx: PoolClient) => Promise<T>): Promise<T> {
     const client = await this.db.connect();
     try {
       await client.query('BEGIN');
-
-      const tenantResult = await client.query<{ id: string }>(
-        `
-        INSERT INTO tenants (id, name, slug, plan, is_active, created_at, updated_at)
-        VALUES (gen_random_uuid(), $1, $2, 'FREE', TRUE, NOW(), NOW())
-        RETURNING id
-        `,
-        [data.companyName, data.slug]
-      );
-      const tenantId = tenantResult.rows[0].id;
-
-      const caps = await getAuthSchemaCaps(this.db);
-
-      const nameParts = data.ownerName.trim().split(/\s+/);
-      const firstName = nameParts[0] ?? 'Owner';
-      const lastName = nameParts.slice(1).join(' ') || 'Account';
-
-      let userResult: { rows: Array<{ id: string }> };
-      if (caps.usersSystemRoleColumn) {
-        userResult = await client.query<{ id: string }>(
-          `
-          INSERT INTO users (
-            id, tenant_id, email, phone, first_name, last_name, role,
-            system_role, is_active, created_at, updated_at
-          )
-          VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, 'ADMIN', 'user', TRUE, NOW(), NOW())
-          RETURNING id
-          `,
-          [tenantId, data.email, data.phone, firstName, lastName]
-        );
-      } else {
-        userResult = await client.query<{ id: string }>(
-          `
-          INSERT INTO users (
-            id, tenant_id, email, phone, first_name, last_name, role,
-            is_active, created_at, updated_at
-          )
-          VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, 'ADMIN', TRUE, NOW(), NOW())
-          RETURNING id
-          `,
-          [tenantId, data.email, data.phone, firstName, lastName]
-        );
-      }
-      const userId = userResult.rows[0].id;
-
-      await client.query(
-        `
-        UPDATE users SET password_hash = $1, updated_at = NOW() WHERE id = $2
-        `,
-        [data.passwordHash, userId]
-      );
-
-      if (caps.tenantUsersTable) {
-        await client.query(
-          `
-          INSERT INTO tenant_users (user_id, tenant_id, role, created_at, updated_at)
-          VALUES ($1::uuid, $2::uuid, 'owner'::tenant_membership_role, NOW(), NOW())
-          ON CONFLICT (user_id, tenant_id) DO UPDATE SET role = 'owner', updated_at = NOW()
-          `,
-          [userId, tenantId]
-        );
-      }
-
+      const result = await fn(client);
       await client.query('COMMIT');
-      return { tenantId, userId };
-    } catch (err) {
+      return result;
+    } catch (error) {
       await client.query('ROLLBACK');
-      throw err;
+      throw error;
     } finally {
       client.release();
     }
+  }
+
+  async slugExists(slug: string, executor: Pick<Pool, 'query'> | Pick<PoolClient, 'query'> = this.db): Promise<boolean> {
+    const result = await executor.query<{ exists: boolean }>(
+      `
+      SELECT EXISTS(
+        SELECT 1 FROM tenants WHERE lower(slug) = lower($1)
+      ) AS exists
+      `,
+      [slug]
+    );
+    return result.rows[0]?.exists ?? false;
+  }
+
+  async ensureDefaultTrialSubscription(
+    tenantId: string,
+    executor: Pick<Pool, 'query'> | Pick<PoolClient, 'query'> = this.db
+  ): Promise<void> {
+    try {
+      await executor.query(
+        `
+        INSERT INTO subscriptions (
+          tenant_id,
+          plan_id,
+          plan,
+          max_users,
+          tasks_limit,
+          api_limit,
+          status,
+          trial_ends_at,
+          current_period_end
+        )
+        SELECT
+          $1,
+          p.id,
+          'basic'::subscription_plan_tier,
+          CASE WHEN (p.limits->>'users') IS NULL OR (p.limits->>'users') = 'null' THEN NULL ELSE (p.limits->>'users')::integer END,
+          CASE WHEN jsonb_typeof(p.limits->'tasks') = 'null' OR (p.limits->>'tasks') IS NULL THEN NULL ELSE (NULLIF(p.limits->>'tasks', 'null'))::integer END,
+          CASE WHEN jsonb_typeof(p.limits->'api_rate_per_hour') = 'null' OR (p.limits->>'api_rate_per_hour') IS NULL THEN NULL ELSE (NULLIF(p.limits->>'api_rate_per_hour', 'null'))::integer END,
+          'trial'::subscription_status,
+          NOW() + INTERVAL '15 days',
+          NOW() + INTERVAL '15 days'
+        FROM plans p
+        WHERE lower(p.name) = 'basic'
+        LIMIT 1
+        ON CONFLICT (tenant_id) DO NOTHING
+        `,
+        [tenantId]
+      );
+    } catch {
+      await executor.query(
+        `
+        INSERT INTO subscriptions (tenant_id, plan_id, status)
+        SELECT $1, p.id, 'active'
+        FROM plans p
+        WHERE lower(p.name) = 'basic'
+        LIMIT 1
+        ON CONFLICT (tenant_id) DO NOTHING
+        `,
+        [tenantId]
+      );
+    }
+  }
+
+  async getAuthSessionUserById(
+    userId: string,
+    executor: Pick<Pool, 'query'> | Pick<PoolClient, 'query'> = this.db
+  ): Promise<AuthSessionUserRecord | null> {
+    const caps = await getAuthSchemaCaps(this.db);
+    const systemRoleSql = caps.usersSystemRoleColumn
+      ? `COALESCE(system_role::text, 'user')`
+      : `'user'::text`;
+    const result = await executor.query<AuthSessionUserRecord>(
+      `
+      SELECT id, email, first_name, last_name, ${systemRoleSql} AS system_role, tenant_id
+      FROM users
+      WHERE id = $1
+        AND is_active = TRUE
+      LIMIT 1
+      `,
+      [userId]
+    );
+    return result.rows[0] ?? null;
+  }
+
+  async listMembershipsForUser(
+    userId: string,
+    executor: Pick<Pool, 'query'> | Pick<PoolClient, 'query'> = this.db
+  ): Promise<AuthMembershipRecord[]> {
+    const caps = await getAuthSchemaCaps(this.db);
+    if (caps.tenantUsersTable) {
+      const result = await executor.query<{
+        user_id: string;
+        tenant_id: string;
+        role: string;
+      }>(
+        `
+        SELECT user_id, tenant_id, role::text AS role
+        FROM tenant_users
+        WHERE user_id = $1
+        ORDER BY created_at ASC
+        `,
+        [userId]
+      );
+      return result.rows.map((row) => ({
+        user_id: row.user_id,
+        tenant_id: row.tenant_id,
+        role: row.role === 'owner' || row.role === 'manager' ? 'ADMIN' : 'EMPLOYEE',
+      }));
+    }
+
+    const fallback = await executor.query<{ id: string; tenant_id: string | null; role: string }>(
+      `
+      SELECT id, tenant_id, role::text AS role
+      FROM users
+      WHERE id = $1
+        AND is_active = TRUE
+      LIMIT 1
+      `,
+      [userId]
+    );
+    const row = fallback.rows[0];
+    if (!row?.tenant_id) return [];
+    return [
+      {
+        user_id: row.id,
+        tenant_id: row.tenant_id,
+        role: row.role === 'ADMIN' || row.role === 'MANAGER' ? 'ADMIN' : 'EMPLOYEE',
+      },
+    ];
+  }
+
+  async getTenantById(
+    tenantId: string,
+    executor: Pick<Pool, 'query'> | Pick<PoolClient, 'query'> = this.db
+  ): Promise<AuthTenantRecord | null> {
+    const hasPlanId = await this.hasTenantsPlanIdColumn(executor);
+    const result = await executor.query<AuthTenantRecord>(
+      hasPlanId
+        ? `
+      SELECT id, name, slug, plan_id, is_active
+      FROM tenants
+      WHERE id = $1
+      LIMIT 1
+      `
+        : `
+      SELECT
+        t.id,
+        t.name,
+        t.slug,
+        s.plan_id,
+        t.is_active
+      FROM tenants t
+      LEFT JOIN subscriptions s ON s.tenant_id = t.id
+      WHERE t.id = $1
+      LIMIT 1
+      `,
+      [tenantId]
+    );
+    return result.rows[0] ?? null;
+  }
+
+  private async hasTenantsPlanIdColumn(
+    executor: Pick<Pool, 'query'> | Pick<PoolClient, 'query'> = this.db
+  ): Promise<boolean> {
+    if (this.tenantPlanIdColumnCache !== null) {
+      return this.tenantPlanIdColumnCache;
+    }
+    const result = await executor.query<{ exists: boolean }>(
+      `
+      SELECT EXISTS (
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_schema = 'public'
+          AND table_name = 'tenants'
+          AND column_name = 'plan_id'
+      ) AS exists
+      `
+    );
+    this.tenantPlanIdColumnCache = Boolean(result.rows[0]?.exists);
+    return this.tenantPlanIdColumnCache;
   }
 
   async findUserByEmail(email: string): Promise<UserWithTenantRecord | null> {

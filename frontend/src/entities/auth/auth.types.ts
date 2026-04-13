@@ -1,5 +1,3 @@
-import type { Role } from '@shared/types/auth.types';
-
 // ─── Request payloads ─────────────────────────────────────────────────────────
 
 export interface LoginPayload {
@@ -27,15 +25,24 @@ export interface LoginApiResponse {
   accessToken: string;
   refreshToken: string;
   user: {
-    userId: string;
-    tenantId: string;
-    tenantName: string;
+    id: string;
     email: string;
-    firstName: string;
-    lastName: string;
-    role: Role;
-    systemRole?: 'super_admin' | 'user';
+    first_name: string;
+    last_name: string;
+    system_role: 'super_admin' | 'user';
   };
+  tenant: {
+    id: string;
+    name: string;
+    slug: string;
+    plan_id: string | null;
+    is_active: boolean;
+  } | null;
+  memberships: Array<{
+    user_id: string;
+    tenant_id: string;
+    role: 'ADMIN' | 'EMPLOYEE';
+  }>;
 }
 
 export interface RefreshApiResponse {

@@ -53,6 +53,10 @@ export async function authenticateMiddleware(
     request.user = buildAuthenticatedUser(ctx, jwtTenantId);
 
     attachTenantContext(request);
+    request.tenant = request.tenantId ? { id: request.tenantId } : undefined;
+    request.membership = request.user.tenant_role
+      ? { role: request.user.tenant_role === 'employee' ? 'EMPLOYEE' : 'ADMIN' }
+      : undefined;
 
     const tenantId = request.tenantId;
     if (tenantId && request.user.system_role !== 'super_admin') {

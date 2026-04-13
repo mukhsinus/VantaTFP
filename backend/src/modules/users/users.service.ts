@@ -1,6 +1,7 @@
 import { UsersRepository } from './users.repository.js';
 import {
   CreateUserDto,
+  InviteUserDto,
   UpdateUserDto,
   type UpdateMyNotificationsDto,
   type UpdateMyPasswordDto,
@@ -291,6 +292,74 @@ export class UsersService {
     );
 
     return this.toUserResponse(created);
+  }
+
+  async inviteUser(
+    tenantId: string,
+    data: InviteUserDto,
+    context: ActorContext
+  ): Promise<UserResponse> {
+    if (context.actorRole !== 'ADMIN') {
+      throw ApplicationError.forbidden('Only tenant admins can invite users');
+    }
+
+    const email = data.email.trim().toLowerCase();
+    const existing = await this.usersRepository.findByEmail(email);
+    let userId: string;
+
+    if (existing) {
+      const profile = await this.usersRepository.findMeProfile(existing.id);
+      if (profile?.system_role === 'super_admin') {
+        throw ApplicationError.forbidden('Cannot assign super admin to tenant membership');
+      }
+      userId = existing.id;
+    } else {
+      if (!data.password) {
+        throw ApplicationError.badRequest('Password is required for new invited users');
+      }
+      const passwordHash = await bcrypt.hash(data.password, 12);
+      const created = await this.usersRepository.create({
+        tenant_id: tenantId,
+        email,
+        password_hash: passwordHash,
+        first_name: data.firstName,
+        last_name: data.lastName,
+        role: data.role === 'ADMIN' ? 'ADMIN' : 'EMPLOYEE',
+        manager_id: null,
+        is_active: true,
+      });
+      userId = created.id;
+    }
+
+    await this.employeesRepository.upsertTenantMembership(
+      userId,
+      tenantId,
+      data.role === 'ADMIN' ? 'owner' : 'employee'
+    );
+
+    if (!existing) {
+      const createdInTenant = await this.usersRepository.findByIdAndTenant(userId, tenantId);
+      if (!createdInTenant) {
+        throw ApplicationError.internal('Invited user could not be loaded');
+      }
+      return this.toUserResponse(createdInTenant);
+    }
+
+    const inTenant = await this.usersRepository.findByIdAndTenant(userId, tenantId);
+    if (inTenant) {
+      return this.toUserResponse(inTenant);
+    }
+    return {
+      id: userId,
+      tenantId,
+      email,
+      firstName: data.firstName,
+      lastName: data.lastName,
+      role: data.role === 'ADMIN' ? 'ADMIN' : 'EMPLOYEE',
+      managerId: null,
+      isActive: true,
+      createdAt: new Date().toISOString(),
+    };
   }
 
   async updateUser(

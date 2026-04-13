@@ -10,7 +10,7 @@ export const employeePasswordSchema = z
 
 export const employerPasswordSchema = z
   .string()
-  .min(8, 'Password must be at least 8 characters');
+  .min(4, 'Password must be at least 4 characters');
 
 export const loginRequestSchema = z
   .object({
@@ -28,7 +28,9 @@ export const registerEmployerSchema = z.object({
   email: z.string().email().optional(),
   phone: z.string().min(4).optional(),
   password: employerPasswordSchema,
-  companyName: z.string().min(1, 'Company name is required').max(255),
+  companyName: z.string().min(1, 'Company name is required').max(255).optional(),
+}).refine((d) => d.email || d.phone, {
+  message: 'Either email or phone is required',
 });
 
 /** Invite-based registration (legacy — kept for backward compatibility) */

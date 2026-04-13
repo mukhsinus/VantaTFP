@@ -1,9 +1,12 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { CurrentUser } from '@shared/types/auth.types';
+import type { CurrentTenant, CurrentUser, Membership } from '@shared/types/auth.types';
 
 interface AuthState {
   user: CurrentUser | null;
+  tenant: CurrentTenant | null;
+  memberships: Membership[];
+  activeTenantId: string | null;
   accessToken: string | null;
   refreshToken: string | null;
   isSessionLoading: boolean;
@@ -17,6 +20,16 @@ interface AuthState {
   isHydrated: boolean;
 
   setAuth:     (user: CurrentUser, accessToken: string, refreshToken?: string | null) => void;
+  setSession:  (
+    session: {
+      user: CurrentUser;
+      tenant: CurrentTenant | null;
+      memberships: Membership[];
+      activeTenantId: string | null;
+    },
+    accessToken: string,
+    refreshToken?: string | null
+  ) => void;
   setUser:     (user: CurrentUser) => void;
   setTokens:   (accessToken: string, refreshToken?: string | null) => void;
   setSessionLoading: (value: boolean) => void;
@@ -28,6 +41,9 @@ export const useAuthStore = create<AuthState>()(
   persist(
     (set) => ({
       user:        null,
+      tenant:      null,
+      memberships: [],
+      activeTenantId: null,
       accessToken: null,
       refreshToken: null,
       isSessionLoading: false,
@@ -36,6 +52,19 @@ export const useAuthStore = create<AuthState>()(
       setAuth: (user, accessToken, refreshToken) =>
         set((state) => ({
           user,
+          tenant: state.tenant,
+          memberships: state.memberships,
+          activeTenantId: state.activeTenantId,
+          accessToken,
+          refreshToken: refreshToken ?? state.refreshToken,
+        })),
+
+      setSession: (session, accessToken, refreshToken) =>
+        set((state) => ({
+          user: session.user,
+          tenant: session.tenant,
+          memberships: session.memberships,
+          activeTenantId: session.activeTenantId,
           accessToken,
           refreshToken: refreshToken ?? state.refreshToken,
         })),
@@ -50,7 +79,16 @@ export const useAuthStore = create<AuthState>()(
 
       setSessionLoading: (value) => set({ isSessionLoading: value }),
 
-      clearAuth: () => set({ user: null, accessToken: null, refreshToken: null, isSessionLoading: false }),
+      clearAuth: () =>
+        set({
+          user: null,
+          tenant: null,
+          memberships: [],
+          activeTenantId: null,
+          accessToken: null,
+          refreshToken: null,
+          isSessionLoading: false,
+        }),
 
       setHydrated: () => set({ isHydrated: true }),
     }),
@@ -61,6 +99,9 @@ export const useAuthStore = create<AuthState>()(
       // and only becomes true after the rehydration callback fires.
       partialize: (state) => ({
         user:        state.user,
+        tenant:      state.tenant,
+        memberships: state.memberships,
+        activeTenantId: state.activeTenantId,
         accessToken: state.accessToken,
         refreshToken: state.refreshToken,
       }),

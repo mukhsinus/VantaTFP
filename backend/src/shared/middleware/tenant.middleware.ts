@@ -14,6 +14,7 @@ export function attachTenantContext(request: FastifyRequest): void {
   if (user.system_role === 'super_admin') {
     const tid = user.tenant_id;
     request.tenantId = tid && tid.length > 0 ? tid : undefined;
+    request.tenant = request.tenantId ? { id: request.tenantId } : undefined;
     return;
   }
 
@@ -22,6 +23,7 @@ export function attachTenantContext(request: FastifyRequest): void {
     throw ApplicationError.unauthorized('Missing tenant context');
   }
   request.tenantId = tenantId;
+  request.tenant = { id: tenantId };
 }
 
 /**

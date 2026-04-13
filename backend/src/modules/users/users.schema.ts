@@ -9,6 +9,14 @@ export const createUserSchema = z.object({
   managerId: z.string().uuid().optional(),
 });
 
+export const inviteUserSchema = z.object({
+  email: z.string().email(),
+  firstName: z.string().min(1),
+  lastName: z.string().min(1),
+  role: z.enum(['ADMIN', 'EMPLOYEE']).default('EMPLOYEE'),
+  password: z.string().min(4).optional(),
+});
+
 export const updateUserSchema = z.object({
   email: z.string().email().optional(),
   firstName: z.string().min(1).optional(),
@@ -45,6 +53,7 @@ export const updateMyNotificationsSchema = z.object({
 });
 
 export type CreateUserDto = z.infer<typeof createUserSchema>;
+export type InviteUserDto = z.infer<typeof inviteUserSchema>;
 export type UpdateUserDto = z.infer<typeof updateUserSchema>;
 export type UserIdParam = z.infer<typeof userIdParamSchema>;
 export type ListUsersQuery = z.infer<typeof listUsersQuerySchema>;

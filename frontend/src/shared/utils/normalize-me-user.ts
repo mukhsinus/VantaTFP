@@ -12,11 +12,17 @@ export function normalizeMeUser(raw: unknown, fallback: CurrentUser | null = nul
   const userId = (value.userId as string | undefined) ?? (value.id as string | undefined);
   const tenantId = (value.tenantId as string | undefined) ?? '';
   const email = value.email as string | undefined;
-  const firstName = value.firstName as string | undefined;
-  const lastName = value.lastName as string | undefined;
+  const firstName =
+    (value.firstName as string | undefined) ?? (value.first_name as string | undefined);
+  const lastName =
+    (value.lastName as string | undefined) ?? (value.last_name as string | undefined);
   const role = value.role as CurrentUser['role'] | undefined;
   const systemRole =
-    value.systemRole !== undefined ? asSystemRole(value.systemRole) : (fallback?.systemRole ?? 'user');
+    value.systemRole !== undefined
+      ? asSystemRole(value.systemRole)
+      : value.system_role !== undefined
+        ? asSystemRole(value.system_role)
+        : (fallback?.systemRole ?? 'user');
 
   if (!userId || !email || !firstName || !lastName || !role) {
     return null;
@@ -29,7 +35,11 @@ export function normalizeMeUser(raw: unknown, fallback: CurrentUser | null = nul
   return {
     userId,
     tenantId,
-    tenantName: (value.tenantName as string | undefined) ?? fallback?.tenantName ?? 'Tenant',
+    tenantName:
+      (value.tenantName as string | undefined)
+      ?? (value.tenant_name as string | undefined)
+      ?? fallback?.tenantName
+      ?? 'Tenant',
     email,
     firstName,
     lastName,

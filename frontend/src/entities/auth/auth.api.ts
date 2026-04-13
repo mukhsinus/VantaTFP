@@ -13,11 +13,11 @@ export const authApi = {
 
   /** Public employer self-registration (creates tenant + owner + 15-day trial). */
   registerEmployer: (payload: RegisterEmployerPayload): Promise<LoginApiResponse> =>
-    apiClient.post<LoginApiResponse>(`${API.auth.login.replace('/login', '/register-employer')}`, payload),
+    apiClient.post<LoginApiResponse>(API.auth.registerEmployer, payload),
 
   refresh: (refreshToken: string): Promise<RefreshApiResponse> =>
     apiClient.post<RefreshApiResponse>(API.auth.refresh, { refreshToken }),
 
-  me: (): Promise<LoginApiResponse['user']> =>
-    apiClient.get<LoginApiResponse['user']>(API.users.me),
+  me: (): Promise<unknown> =>
+    apiClient.get<unknown>(API.users.me),
 };

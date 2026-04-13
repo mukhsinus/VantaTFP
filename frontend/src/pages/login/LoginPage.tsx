@@ -80,7 +80,7 @@ export function LoginPage() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const isAuthenticated = useAuthStore((s) => Boolean(s.user && s.accessToken));
-  const setAuth = useAuthStore((s) => s.setAuth);
+  const setSession = useAuthStore((s) => s.setSession);
 
   const { login, isPending, error, clearError } = useLogin();
 
@@ -149,7 +149,39 @@ export function LoginPage() {
       const refreshToken =
         (response as any).refreshToken ?? (response as any).refresh_token;
       if (response.user && accessToken) {
-        setAuth({ ...response.user, systemRole: response.user.systemRole ?? 'user' }, accessToken, refreshToken ?? null);
+        const primaryMembership = response.memberships?.[0] ?? null;
+        const tenant = response.tenant
+          ? {
+              id: response.tenant.id,
+              name: response.tenant.name,
+              slug: response.tenant.slug,
+              planId: response.tenant.plan_id,
+              isActive: response.tenant.is_active,
+            }
+          : null;
+        setSession(
+          {
+            user: {
+              userId: response.user.id,
+              tenantId: tenant?.id ?? primaryMembership?.tenant_id ?? '',
+              tenantName: tenant?.name ?? 'Platform',
+              email: response.user.email,
+              firstName: response.user.first_name,
+              lastName: response.user.last_name,
+              role: primaryMembership?.role === 'ADMIN' ? 'ADMIN' : 'EMPLOYEE',
+              systemRole: response.user.system_role,
+            },
+            tenant,
+            memberships: (response.memberships ?? []).map((membership) => ({
+              userId: membership.user_id,
+              tenantId: membership.tenant_id,
+              role: membership.role,
+            })),
+            activeTenantId: tenant?.id ?? primaryMembership?.tenant_id ?? null,
+          },
+          accessToken,
+          refreshToken ?? null
+        );
         const u = useAuthStore.getState().user;
         if (u) navigate(resolvePostLoginRedirect(u, searchParams.get('redirect')), { replace: true });
       } else {

@@ -20,16 +20,16 @@ interface UseLoginResult {
  *  3. On error: expose a user-friendly message (no raw API errors to UI)
  */
 export function useLogin(): UseLoginResult {
-  const setAuth = useAuthStore((s) => s.setAuth);
+  const setSession = useAuthStore((s) => s.setSession);
   const [isPending, setIsPending] = useState(false);
   const [error, setError]         = useState<string | null>(null);
 
-  const login = async ({ email, password }: LoginPayload): Promise<boolean> => {
+  const login = async ({ email, phone, password }: LoginPayload): Promise<boolean> => {
     setError(null);
     setIsPending(true);
 
     try {
-      const response = await authApi.login({ email, password });
+      const response = await authApi.login({ email, phone, password });
       const accessToken =
         (response as { accessToken?: string; access_token?: string; token?: string }).accessToken
         ?? (response as { access_token?: string }).access_token
@@ -43,10 +43,38 @@ export function useLogin(): UseLoginResult {
         return false;
       }
 
-      setAuth(
+      const primaryMembership = response.memberships[0] ?? null;
+      const derivedRole = primaryMembership?.role === 'ADMIN' ? 'ADMIN' : 'EMPLOYEE';
+      const resolvedTenant = response.tenant
+        ? {
+            id: response.tenant.id,
+            name: response.tenant.name,
+            slug: response.tenant.slug,
+            planId: response.tenant.plan_id,
+            isActive: response.tenant.is_active,
+          }
+        : null;
+      const resolvedUser = {
+        userId: response.user.id,
+        tenantId: resolvedTenant?.id ?? primaryMembership?.tenant_id ?? '',
+        tenantName: resolvedTenant?.name ?? 'Platform',
+        email: response.user.email,
+        firstName: response.user.first_name,
+        lastName: response.user.last_name,
+        role: derivedRole,
+        systemRole: response.user.system_role,
+      } as const;
+
+      setSession(
         {
-          ...response.user,
-          systemRole: response.user.systemRole ?? 'user',
+          user: resolvedUser,
+          tenant: resolvedTenant,
+          memberships: response.memberships.map((membership) => ({
+            userId: membership.user_id,
+            tenantId: membership.tenant_id,
+            role: membership.role,
+          })),
+          activeTenantId: resolvedTenant?.id ?? primaryMembership?.tenant_id ?? null,
         },
         accessToken,
         refreshToken ?? null

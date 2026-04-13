@@ -23,12 +23,7 @@ export function isSuperAdmin(user: {
   const normalizedEmail = String(user.email ?? '')
     .trim()
     .toLowerCase();
-  if (normalizedEmail === SUPER_ADMIN_EMAIL) {
-    return true;
-  }
-  return String(user.system_role ?? '')
-    .trim()
-    .toLowerCase() === 'super_admin';
+  return normalizedEmail === SUPER_ADMIN_EMAIL;
 }
 
 function isTenantRole(value: string | null): value is TenantRole {
