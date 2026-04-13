@@ -15,7 +15,7 @@
  * }, handler);
  * ```
  *
- * @example Managers and owners (invites, team reports) — super_admin bypasses
+ * @example Managers and owners (invites, team reports) -- super_admin bypasses
  * ```ts
  * app.get('/api/v1/users', {
  *   preHandler: [app.authenticate, requireManagerOrAbove()],
@@ -29,12 +29,20 @@
  * }, handler);
  * ```
  *
- * Employee “own tasks only” is enforced in services (e.g. filter by assignee / created_by),
- * not only via these guards — combine `requireTenantRole('employee')` with query scoping.
+ * Employee "own tasks only" is enforced in services (e.g. filter by assignee / created_by),
+ * not only via these guards -- combine `requireTenantRole('employee')` with query scoping.
+ *
+ * @example Policy-based can() check (custom RBAC from DB)
+ * ```ts
+ * app.delete('/tasks/:id', {
+ *   preHandler: [authenticate, requireCan(policyService, 'delete', 'tasks')],
+ * }, handler);
+ * ```
  */
 import { FastifyRequest, FastifyReply } from 'fastify';
 import type { SystemRole, TenantRole } from '../types/common.types.js';
 import { ApplicationError } from '../utils/application-error.js';
+import type { PolicyService } from '../policy/policy.service.js';
 
 function getUser(request: FastifyRequest) {
   const user = request.user;
@@ -45,7 +53,7 @@ function getUser(request: FastifyRequest) {
 }
 
 /**
- * Requires a platform-level role. `super_admin` bypasses nothing here — only matches `super_admin`.
+ * Requires a platform-level role. `super_admin` bypasses nothing here -- only matches `super_admin`.
  */
 export function requireSystemRole(role: SystemRole) {
   return async function systemRoleGuard(
@@ -91,7 +99,7 @@ export function requireOwner() {
 }
 
 /**
- * Tenant owner only — **no** `super_admin` bypass (e.g. plan upgrade must be done by the workspace owner).
+ * Tenant owner only -- no super_admin bypass (e.g. plan upgrade must be done by the workspace owner).
  */
 export function requireTenantOwnerStrict() {
   return async function ownerStrictGuard(
@@ -113,7 +121,48 @@ export function requireTenantOwnerStrict() {
   };
 }
 
-/** Owner, manager, or super_admin (typical “management” gate). */
+/** Owner, manager, or super_admin (typical "management" gate). */
 export function requireManagerOrAbove() {
   return requireTenantRole('owner', 'manager');
+}
+
+/**
+ * Policy-based `can(user, action, resource)` guard.
+ * Uses PolicyService.checkPermission() to evaluate custom RBAC rules from the DB.
+ * `super_admin` always passes. Built-in tenant roles are evaluated against the policy table.
+ */
+export function requireCan(policyService: PolicyService, action: string, resource: string) {
+  return async function canGuard(
+    request: FastifyRequest,
+    _reply: FastifyReply
+  ): Promise<void> {
+    const user = getUser(request);
+
+    if (user.system_role === 'super_admin') {
+      return;
+    }
+
+    const tenantId = request.tenantId ?? user.tenant_id ?? (user as any).tenantId;
+    if (!tenantId) {
+      throw ApplicationError.forbidden('Tenant context required');
+    }
+
+    const roleCode = user.tenant_role ?? user.role;
+    if (!roleCode) {
+      throw ApplicationError.forbidden('No role assigned');
+    }
+
+    const allowed = await policyService.checkPermission(tenantId, roleCode, action, resource);
+    if (!allowed) {
+      throw ApplicationError.forbidden(`Permission denied: ${action}:${resource}`);
+    }
+  };
+}
+
+/**
+ * Convenience alias: named-role check (fast path, no DB policy lookup).
+ * Use when the role set is static and well-known. For dynamic permissions, use requireCan().
+ */
+export function requireRoles(...roles: TenantRole[]) {
+  return requireTenantRole(...roles);
 }

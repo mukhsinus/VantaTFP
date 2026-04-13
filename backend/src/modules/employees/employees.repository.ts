@@ -147,6 +147,85 @@ export class EmployeesRepository {
     return legacyUserRoleToTenantRole(row.legacy);
   }
 
+  async createEmployee(
+    data: {
+      tenantId: string;
+      phone: string;
+      name: string | null;
+      roleDescription: string | null;
+      passwordHash: string;
+      role: 'manager' | 'employee';
+    },
+    executor: Queryable = this.db
+  ): Promise<{ id: string; phone: string; name: string | null; role: TenantMembershipRole }> {
+    const caps = await getAuthSchemaCaps(this.db);
+    const firstName = data.name ? data.name.split(' ')[0] : 'Employee';
+    const lastName = data.name ? data.name.split(' ').slice(1).join(' ') || '' : '';
+    const legacyRole = data.role === 'manager' ? 'MANAGER' : 'EMPLOYEE';
+
+    let userResult: { rows: Array<{ id: string }> };
+    if (caps.usersSystemRoleColumn) {
+      userResult = await executor.query<{ id: string }>(
+        `
+        INSERT INTO users (
+          id, tenant_id, phone, first_name, last_name, role, system_role,
+          password_hash, role_description, is_active, created_at, updated_at
+        )
+        VALUES (
+          gen_random_uuid(), $1, $2, $3, $4, $5::text::"user_role_enum",
+          'user', $6, $7, TRUE, NOW(), NOW()
+        )
+        RETURNING id
+        `,
+        [data.tenantId, data.phone, firstName, lastName, legacyRole, data.passwordHash, data.roleDescription]
+      ).catch(async () => {
+        return executor.query<{ id: string }>(
+          `
+          INSERT INTO users (
+            id, tenant_id, phone, first_name, last_name, role, system_role,
+            password_hash, is_active, created_at, updated_at
+          )
+          VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, 'user', $6, TRUE, NOW(), NOW())
+          RETURNING id
+          `,
+          [data.tenantId, data.phone, firstName, lastName, legacyRole, data.passwordHash]
+        );
+      });
+    } else {
+      userResult = await executor.query<{ id: string }>(
+        `
+        INSERT INTO users (
+          id, tenant_id, phone, first_name, last_name, role,
+          password_hash, is_active, created_at, updated_at
+        )
+        VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6, TRUE, NOW(), NOW())
+        RETURNING id
+        `,
+        [data.tenantId, data.phone, firstName, lastName, legacyRole, data.passwordHash]
+      );
+    }
+
+    const userId = userResult.rows[0].id;
+
+    if (caps.tenantUsersTable) {
+      await executor.query(
+        `
+        INSERT INTO tenant_users (user_id, tenant_id, role, created_at, updated_at)
+        VALUES ($1::uuid, $2::uuid, $3::tenant_membership_role, NOW(), NOW())
+        ON CONFLICT (user_id, tenant_id) DO UPDATE SET role = EXCLUDED.role, updated_at = NOW()
+        `,
+        [userId, data.tenantId, data.role]
+      );
+    }
+
+    return {
+      id: userId,
+      phone: data.phone,
+      name: data.name,
+      role: data.role,
+    };
+  }
+
   async upsertTenantMembership(
     userId: string,
     tenantId: string,

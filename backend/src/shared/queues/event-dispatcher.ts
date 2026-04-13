@@ -5,7 +5,7 @@ import {
   DOMAIN_EVENT_TASK_OVERDUE,
 } from '../events/domain-events.js';
 import { logger } from '../utils/logger.js';
-import { enqueueKpiRecalculation } from './queues.js';
+import { enqueueKpiRecalculation, enqueuePayrollRecalculation } from './queues.js';
 import { NotificationRepository } from '../../modules/notifications/notification.repository.js';
 import { NotificationService } from '../../modules/notifications/notification.service.js';
 import { Pool } from 'pg';
@@ -78,6 +78,14 @@ export function registerDomainEventDispatchers(db: Pool): void {
 
     try {
       await enqueueKpiRecalculation({
+        tenantId: payload.tenantId,
+        userId: payload.assigneeId,
+        periodStart: period.periodStart,
+        periodEnd: period.periodEnd,
+      });
+
+      // Complete the event chain: task.completed -> kpi -> payroll -> notification (per spec)
+      await enqueuePayrollRecalculation({
         tenantId: payload.tenantId,
         userId: payload.assigneeId,
         periodStart: period.periodStart,

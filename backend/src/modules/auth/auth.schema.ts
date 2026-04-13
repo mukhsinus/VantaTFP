@@ -1,33 +1,42 @@
 import { z } from 'zod';
 
 /**
- * Password validation rules:
- * - Minimum 12 characters
- * - At least one uppercase letter
- * - At least one lowercase letter
- * - At least one number
- * - At least one special character
+ * Employee password: min 4 chars, no complexity requirements (per spec).
+ * Employer password: min 8 chars (reasonable default, spec only says "required").
  */
-export const passwordSchema = z
+export const employeePasswordSchema = z
   .string()
-  .min(12, 'Password must be at least 12 characters')
-  .regex(/[A-Z]/, 'Password must contain uppercase letter')
-  .regex(/[a-z]/, 'Password must contain lowercase letter')
-  .regex(/[0-9]/, 'Password must contain number')
-  .regex(
-    /[!@#$%^&*()_\-+=\[\]{};:'",.<>?/\\|`~]/,
-    'Password must contain special character'
-  );
+  .min(4, 'Password must be at least 4 characters');
 
-export const loginRequestSchema = z.object({
-  email: z.string().email(),
-  password: z.string().min(1, 'Password is required'),
+export const employerPasswordSchema = z
+  .string()
+  .min(8, 'Password must be at least 8 characters');
+
+export const loginRequestSchema = z
+  .object({
+    email: z.string().email().optional(),
+    phone: z.string().min(4).optional(),
+    password: z.string().min(1, 'Password is required'),
+  })
+  .refine((d) => d.email || d.phone, {
+    message: 'Either email or phone is required',
+  });
+
+/** Public employer self-registration — creates tenant + owner + 15-day trial */
+export const registerEmployerSchema = z.object({
+  name: z.string().min(1, 'Name is required').max(255),
+  email: z.string().email().optional(),
+  phone: z.string().min(4).optional(),
+  password: employerPasswordSchema,
+  companyName: z.string().min(1, 'Company name is required').max(255),
 });
 
+/** Invite-based registration (legacy — kept for backward compatibility) */
 export const registerRequestSchema = z.object({
   email: z.string().email(),
-  password: passwordSchema,
-  /** Legacy email-bound invite (tenant_invites). Prefer POST /api/v1/invites/accept-invite with UUID token. */
+  password: z
+    .string()
+    .min(8, 'Password must be at least 8 characters'),
   inviteToken: z.string().min(1, 'Invite token required (registration requires valid invite)'),
 });
 
@@ -36,5 +45,6 @@ export const refreshTokenRequestSchema = z.object({
 });
 
 export type LoginRequest = z.infer<typeof loginRequestSchema>;
+export type RegisterEmployerRequest = z.infer<typeof registerEmployerSchema>;
 export type RegisterRequest = z.infer<typeof registerRequestSchema>;
 export type RefreshTokenRequest = z.infer<typeof refreshTokenRequestSchema>;

@@ -1,0 +1,5 @@
+DROP INDEX IF EXISTS idx_users_phone;
+DROP INDEX IF EXISTS idx_users_phone_lookup;
+ALTER TABLE users DROP COLUMN IF EXISTS phone;
+ALTER TABLE users DROP COLUMN IF EXISTS name;
+ALTER TABLE users DROP COLUMN IF EXISTS role_description;

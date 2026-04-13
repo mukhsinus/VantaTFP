@@ -7,6 +7,7 @@ import { sendSuccess } from '../../shared/utils/response.js';
 import {
   loginRequestSchema,
   registerRequestSchema,
+  registerEmployerSchema,
   refreshTokenRequestSchema,
 } from './auth.schema.js';
 
@@ -44,5 +45,12 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
     const body = refreshTokenRequestSchema.parse(request.body);
     const tokens = await authService.refreshTokens(body.refreshToken);
     return sendSuccess(reply, tokens);
+  });
+
+  /** Public employer self-registration — no auth required */
+  app.post('/register-employer', async (request: FastifyRequest, reply: FastifyReply) => {
+    const body = registerEmployerSchema.parse(request.body);
+    const result = await authService.registerEmployer(body);
+    return sendSuccess(reply, result, 201);
   });
 }

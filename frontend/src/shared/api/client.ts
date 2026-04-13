@@ -152,17 +152,28 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
   const accessToken = useAuthStore.getState().accessToken;
 
   const headers: HeadersInit = {
-    'Content-Type': 'application/json',
     ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
     ...(extraHeaders ?? {}),
   };
+
+  const hasExplicitContentType =
+    Object.keys(headers as Record<string, string>).some(
+      (key) => key.toLowerCase() === 'content-type'
+    );
+
+  const shouldSendJsonBody = body !== undefined && body !== null;
+  if (shouldSendJsonBody && !hasExplicitContentType) {
+    (headers as Record<string, string>)['Content-Type'] = 'application/json';
+  }
 
   const requestKey = `${init.method ?? 'GET'}:${url.toString()}:${useAuthStore.getState().accessToken ?? ''}`;
   const run = async () => {
     const response = await fetchWithRetry(url.toString(), {
       ...init,
       headers,
-      body: body !== undefined ? JSON.stringify(body) : undefined,
+      body: shouldSendJsonBody
+        ? (typeof body === 'string' || body instanceof FormData ? body : JSON.stringify(body))
+        : undefined,
     });
 
     // Global 401 handler — clear auth so the router can redirect to login

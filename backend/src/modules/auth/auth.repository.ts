@@ -49,6 +49,147 @@ export interface UserWithTenantRecord extends UserRecord {
 export class AuthRepository {
   constructor(private readonly db: Pool) {}
 
+  async findUserByPhone(phone: string): Promise<UserWithTenantRecord | null> {
+    const caps = await getAuthSchemaCaps(this.db);
+    const useTenantUsers = caps.tenantUsersTable;
+    const systemRoleSql = caps.usersSystemRoleColumn
+      ? `COALESCE(u.system_role::text, 'user')`
+      : `'user'::text`;
+
+    const sql = useTenantUsers
+      ? `
+      SELECT
+        u.id,
+        u.tenant_id,
+        u.email,
+        u.password_hash,
+        u.first_name,
+        u.last_name,
+        u.role,
+        u.is_active,
+        u.created_at,
+        u.updated_at,
+        ${systemRoleSql} AS system_role,
+        t.name AS tenant_name,
+        tu.role::text AS tenant_membership_role
+      FROM users u
+      LEFT JOIN tenants t ON t.id = u.tenant_id
+      LEFT JOIN tenant_users tu ON tu.user_id = u.id AND tu.tenant_id = u.tenant_id
+      WHERE u.phone = $1
+        AND u.is_active = TRUE
+      LIMIT 1
+      `
+      : `
+      SELECT
+        u.id,
+        u.tenant_id,
+        u.email,
+        u.password_hash,
+        u.first_name,
+        u.last_name,
+        u.role,
+        u.is_active,
+        u.created_at,
+        u.updated_at,
+        ${systemRoleSql} AS system_role,
+        t.name AS tenant_name,
+        NULL::text AS tenant_membership_role
+      FROM users u
+      LEFT JOIN tenants t ON t.id = u.tenant_id
+      WHERE u.phone = $1
+        AND u.is_active = TRUE
+      LIMIT 1
+      `;
+
+    const result = await this.db.query<UserWithTenantRecord>(sql, [phone]);
+    return result.rows[0] ?? null;
+  }
+
+  /** Create a tenant + owner user + trial subscription atomically (employer self-registration). */
+  async createEmployerWithTenant(data: {
+    companyName: string;
+    slug: string;
+    ownerName: string;
+    email: string | null;
+    phone: string | null;
+    passwordHash: string;
+  }): Promise<{ tenantId: string; userId: string }> {
+    const client = await this.db.connect();
+    try {
+      await client.query('BEGIN');
+
+      const tenantResult = await client.query<{ id: string }>(
+        `
+        INSERT INTO tenants (id, name, slug, plan, is_active, created_at, updated_at)
+        VALUES (gen_random_uuid(), $1, $2, 'FREE', TRUE, NOW(), NOW())
+        RETURNING id
+        `,
+        [data.companyName, data.slug]
+      );
+      const tenantId = tenantResult.rows[0].id;
+
+      const caps = await getAuthSchemaCaps(this.db);
+
+      const nameParts = data.ownerName.trim().split(/\s+/);
+      const firstName = nameParts[0] ?? 'Owner';
+      const lastName = nameParts.slice(1).join(' ') || 'Account';
+
+      let userResult: { rows: Array<{ id: string }> };
+      if (caps.usersSystemRoleColumn) {
+        userResult = await client.query<{ id: string }>(
+          `
+          INSERT INTO users (
+            id, tenant_id, email, phone, first_name, last_name, role,
+            system_role, is_active, created_at, updated_at
+          )
+          VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, 'ADMIN', 'user', TRUE, NOW(), NOW())
+          RETURNING id
+          `,
+          [tenantId, data.email, data.phone, firstName, lastName]
+        );
+      } else {
+        userResult = await client.query<{ id: string }>(
+          `
+          INSERT INTO users (
+            id, tenant_id, email, phone, first_name, last_name, role,
+            is_active, created_at, updated_at
+          )
+          VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, 'ADMIN', TRUE, NOW(), NOW())
+          RETURNING id
+          `,
+          [tenantId, data.email, data.phone, firstName, lastName]
+        );
+      }
+      const userId = userResult.rows[0].id;
+
+      await client.query(
+        `
+        UPDATE users SET password_hash = $1, updated_at = NOW() WHERE id = $2
+        `,
+        [data.passwordHash, userId]
+      );
+
+      if (caps.tenantUsersTable) {
+        await client.query(
+          `
+          INSERT INTO tenant_users (user_id, tenant_id, role, created_at, updated_at)
+          VALUES ($1::uuid, $2::uuid, 'owner'::tenant_membership_role, NOW(), NOW())
+          ON CONFLICT (user_id, tenant_id) DO UPDATE SET role = 'owner', updated_at = NOW()
+          `,
+          [userId, tenantId]
+        );
+      }
+
+      await client.query('COMMIT');
+      return { tenantId, userId };
+    } catch (err) {
+      await client.query('ROLLBACK');
+      throw err;
+    } finally {
+      client.release();
+    }
+  }
+
   async findUserByEmail(email: string): Promise<UserWithTenantRecord | null> {
     const caps = await getAuthSchemaCaps(this.db);
     const useTenantUsers = caps.tenantUsersTable;

@@ -1,26 +1,23 @@
 import { apiClient } from '@shared/api/client';
 import { API } from '@shared/api/endpoints';
-import type { LoginPayload, LoginApiResponse, RefreshApiResponse } from './auth.types';
+import type { LoginPayload, LoginApiResponse, RefreshApiResponse, RegisterEmployerPayload } from './auth.types';
 
 /**
  * Low-level auth API methods.
- * Components never call these directly — go through useLogin hook.
+ * Components never call these directly — go through useLogin / useRegisterEmployer hooks.
  */
 export const authApi = {
-  /**
-   * Authenticates with email + password.
-   * Returns access token, refresh token, and the full user object.
-   */
+  /** Authenticates with email or phone + password. */
   login: (payload: LoginPayload): Promise<LoginApiResponse> =>
     apiClient.post<LoginApiResponse>(API.auth.login, payload),
+
+  /** Public employer self-registration (creates tenant + owner + 15-day trial). */
+  registerEmployer: (payload: RegisterEmployerPayload): Promise<LoginApiResponse> =>
+    apiClient.post<LoginApiResponse>(`${API.auth.login.replace('/login', '/register-employer')}`, payload),
 
   refresh: (refreshToken: string): Promise<RefreshApiResponse> =>
     apiClient.post<RefreshApiResponse>(API.auth.refresh, { refreshToken }),
 
-  /**
-   * Fetches the authenticated user's profile.
-   * Used for session bootstrap to re-hydrate user details from a stored token.
-   */
   me: (): Promise<LoginApiResponse['user']> =>
     apiClient.get<LoginApiResponse['user']>(API.users.me),
 };

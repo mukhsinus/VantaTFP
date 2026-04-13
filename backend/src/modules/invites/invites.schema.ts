@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { passwordSchema } from '../auth/auth.schema.js';
+import { employerPasswordSchema } from '../auth/auth.schema.js';
 
 /** POST /invites — only manager/employee; default employee; owner cannot be invited. */
 export const createLinkInviteBodySchema = z.object({
@@ -9,7 +9,7 @@ export const createLinkInviteBodySchema = z.object({
 export const acceptInviteBodySchema = z.object({
   token: z.string().uuid(),
   email: z.string().email(),
-  password: passwordSchema,
+  password: employerPasswordSchema,
   firstName: z.string().min(1).optional(),
   lastName: z.string().min(1).optional(),
 });

@@ -89,8 +89,8 @@ export class BillingRepository {
             ELSE (NULLIF(p.limits->>'api_rate_per_hour', 'null'))::integer
           END,
           'trial'::subscription_status,
-          NOW() + INTERVAL '30 days',
-          NOW() + INTERVAL '30 days'
+          NOW() + INTERVAL '15 days',
+          NOW() + INTERVAL '15 days'
         FROM plans p
         WHERE p.name = 'basic'
         LIMIT 1
@@ -408,7 +408,7 @@ export class BillingRepository {
    */
   async upgradeSubscriptionToPlan(
     tenantId: string,
-    planName: 'basic' | 'pro' | 'unlimited',
+    planName: 'basic' | 'pro' | 'business' | 'enterprise' | 'unlimited',
     executor: Queryable = this.db
   ): Promise<{ updated: boolean }> {
     const caps = await getBillingSubscriptionCaps(this.db);
@@ -434,7 +434,7 @@ export class BillingRepository {
             ELSE (NULLIF(p.limits->>'api_rate_per_hour', 'null'))::integer
           END,
           status = 'active'::subscription_status,
-          current_period_end = NOW() + INTERVAL '30 days',
+          current_period_end = NOW() + INTERVAL '15 days',
           trial_ends_at = NULL,
           updated_at = NOW()
         FROM plans p

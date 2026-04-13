@@ -9,13 +9,15 @@ import {
   listEmployeesQuerySchema,
   employeeIdParamSchema,
   patchEmployeeRoleBodySchema,
+  createEmployeeBodySchema,
 } from './employees.schema.js';
 
 export async function employeesRoutes(app: FastifyInstance): Promise<void> {
   const authenticate = app.authenticate;
   const employeesRepository = new EmployeesRepository(app.db);
   const usersRepository = new UsersRepository(app.db);
-  const employeesService = new EmployeesService(employeesRepository, usersRepository);
+  const billing = (app as any).billingService;
+  const employeesService = new EmployeesService(employeesRepository, usersRepository, billing);
 
   app.get(
     '/',
@@ -40,6 +42,21 @@ export async function employeesRoutes(app: FastifyInstance): Promise<void> {
       }
       const result = await employeesService.listEmployees(tenantId, query);
       return sendSuccess(reply, result);
+    }
+  );
+
+  /** Employer/manager creates a new employee (phone-based, no self-registration) */
+  app.post(
+    '/create',
+    { preHandler: [authenticate, requireOwner()] },
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      const tenantId = request.tenantId;
+      if (!tenantId) {
+        throw ApplicationError.forbidden('Tenant context required');
+      }
+      const body = createEmployeeBodySchema.parse(request.body);
+      const employee = await employeesService.createEmployee(tenantId, body, request.user.id);
+      return sendSuccess(reply, employee, 201);
     }
   );
 

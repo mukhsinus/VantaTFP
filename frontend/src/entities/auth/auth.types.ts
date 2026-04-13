@@ -3,8 +3,17 @@ import type { Role } from '@shared/types/auth.types';
 // ─── Request payloads ─────────────────────────────────────────────────────────
 
 export interface LoginPayload {
-  email: string;
+  email?: string;
+  phone?: string;
   password: string;
+}
+
+export interface RegisterEmployerPayload {
+  name: string;
+  email?: string;
+  phone?: string;
+  password: string;
+  companyName: string;
 }
 
 // ─── API responses ────────────────────────────────────────────────────────────

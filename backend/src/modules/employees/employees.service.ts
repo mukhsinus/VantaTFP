@@ -1,9 +1,12 @@
-import { EmployeesRepository, TenantMembershipRole } from './employees.repository.js';
+import bcrypt from 'bcrypt';
+import { EmployeesRepository } from './employees.repository.js';
+import type { TenantMembershipRole } from './employees.repository.js';
 import { UsersRepository } from '../users/users.repository.js';
 import { ApplicationError } from '../../shared/utils/application-error.js';
 import { Role } from '../../shared/types/common.types.js';
-import type { PatchEmployeeRoleDto, ListEmployeesQuery } from './employees.schema.js';
+import type { PatchEmployeeRoleDto, ListEmployeesQuery, CreateEmployeeBody } from './employees.schema.js';
 import type { TenantRole } from '../../shared/types/common.types.js';
+import type { BillingService } from '../billing/billing.service.js';
 
 export interface EmployeeResponse {
   id: string;
@@ -43,11 +46,67 @@ function tenantRoleToLegacyRole(role: TenantMembershipRole): Role {
   }
 }
 
+export interface CreateEmployeeResponse {
+  id: string;
+  phone: string;
+  name: string | null;
+  role: TenantRole;
+}
+
 export class EmployeesService {
   constructor(
     private readonly employeesRepository: EmployeesRepository,
-    private readonly usersRepository: UsersRepository
+    private readonly usersRepository: UsersRepository,
+    private readonly billing?: BillingService
   ) {}
+
+  /**
+   * Employer creates an employee with phone as unique identifier.
+   * Password min 4 chars, no complexity requirements (per spec).
+   */
+  async createEmployee(
+    tenantId: string,
+    body: CreateEmployeeBody,
+    actorUserId: string
+  ): Promise<CreateEmployeeResponse> {
+    if (!tenantId) {
+      throw ApplicationError.badRequest('Missing tenant context');
+    }
+
+    if (this.billing) {
+      await this.billing.assertCanAddUser(tenantId);
+    }
+
+    const passwordHash = await bcrypt.hash(body.password, 10);
+
+    const employeeData = {
+      tenantId,
+      phone: body.phone,
+      name: body.name ?? null,
+      roleDescription: body.roleDescription ?? null,
+      passwordHash,
+      role: body.role,
+    };
+
+    let created: { id: string; phone: string; name: string | null; role: TenantMembershipRole };
+
+    if (this.billing) {
+      created = await this.billing.runAtomicUserCreation(
+        tenantId,
+        { occupiesBillableSeat: true },
+        (tx) => this.employeesRepository.createEmployee(employeeData, tx)
+      );
+    } else {
+      created = await this.employeesRepository.createEmployee(employeeData);
+    }
+
+    return {
+      id: created.id,
+      phone: created.phone,
+      name: created.name,
+      role: created.role,
+    };
+  }
 
   async listEmployees(tenantId: string, query: ListEmployeesQuery): Promise<EmployeeListResponse> {
     const { page, limit } = query;

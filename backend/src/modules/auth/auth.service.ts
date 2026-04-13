@@ -1,6 +1,6 @@
 import bcrypt from 'bcrypt';
 import { AuthRepository, UserWithTenantRecord } from './auth.repository.js';
-import { LoginRequest, RegisterRequest } from './auth.schema.js';
+import { LoginRequest, RegisterRequest, RegisterEmployerRequest } from './auth.schema.js';
 import { ApplicationError } from '../../shared/utils/application-error.js';
 import { AuthenticatedUser, Role } from '../../shared/types/common.types.js';
 import { validatePassword } from '../../shared/utils/password-validator.js';
@@ -45,10 +45,16 @@ export class AuthService {
   ) {}
 
   async login(payload: LoginRequest): Promise<AuthSuccessResponse> {
-    const user = await this.authRepository.findUserByEmail(payload.email);
+    let user: UserWithTenantRecord | null = null;
+
+    if (payload.email) {
+      user = await this.authRepository.findUserByEmail(payload.email);
+    } else if (payload.phone) {
+      user = await this.authRepository.findUserByPhone(payload.phone);
+    }
 
     if (!user) {
-      throw ApplicationError.unauthorized('Invalid email or password');
+      throw ApplicationError.unauthorized('Invalid credentials');
     }
 
     const isPasswordValid = await bcrypt.compare(
@@ -57,10 +63,70 @@ export class AuthService {
     );
 
     if (!isPasswordValid) {
-      throw ApplicationError.unauthorized('Invalid email or password');
+      throw ApplicationError.unauthorized('Invalid credentials');
     }
 
     return this.buildAuthResponse(user);
+  }
+
+  /**
+   * Public employer self-registration:
+   * Creates tenant + owner user + activates 15-day trial.
+   * No invite token required.
+   */
+  async registerEmployer(payload: RegisterEmployerRequest): Promise<AuthSuccessResponse> {
+    if (!payload.email && !payload.phone) {
+      throw ApplicationError.badRequest('Either email or phone is required');
+    }
+
+    if (payload.email) {
+      const existing = await this.authRepository.findUserByEmail(payload.email);
+      if (existing) {
+        throw ApplicationError.conflict('Email is already registered');
+      }
+    }
+
+    if (payload.phone) {
+      const existing = await this.authRepository.findUserByPhone(payload.phone);
+      if (existing) {
+        throw ApplicationError.conflict('Phone number is already registered');
+      }
+    }
+
+    const passwordHash = await bcrypt.hash(payload.password, 10);
+    const slug = this.generateSlug(payload.companyName);
+
+    const { tenantId, userId } = await this.authRepository.createEmployerWithTenant({
+      companyName: payload.companyName,
+      slug,
+      ownerName: payload.name,
+      email: payload.email ?? null,
+      phone: payload.phone ?? null,
+      passwordHash,
+    });
+
+    // Activate 15-day trial for new tenant
+    await this.billing.ensureSubscriptionForNewTenant(tenantId);
+
+    const identifier = payload.email ?? payload.phone ?? userId;
+    const full = payload.email
+      ? await this.authRepository.findUserByEmail(payload.email)
+      : await this.authRepository.findUserByPhone(payload.phone!);
+
+    if (!full) {
+      throw ApplicationError.internal('Failed to load user after registration');
+    }
+    return this.buildAuthResponse(full);
+  }
+
+  private generateSlug(name: string): string {
+    const base = name
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-|-$/g, '')
+      .slice(0, 50);
+    const suffix = Math.random().toString(36).slice(2, 7);
+    return `${base || 'company'}-${suffix}`;
   }
 
   /** Issue tokens after user row exists (e.g. link-invite acceptance). */

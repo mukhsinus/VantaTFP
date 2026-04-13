@@ -48,9 +48,11 @@ export interface BillingCurrentResponse {
   api_limit: number | null;
 }
 
-export type BillingPlanCatalogName = 'basic' | 'pro' | 'unlimited';
+export type BillingPlanCatalogName = 'basic' | 'pro' | 'business' | 'enterprise' | 'unlimited';
 
 export type BillingPlanCatalogEntry =
   | { name: 'basic'; price: number; users: number; tasks: number }
   | { name: 'pro'; price: number; users: number; tasks: number }
+  | { name: 'business'; price: number; users: number; tasks: number }
+  | { name: 'enterprise'; price: number }
   | { name: 'unlimited'; price: number };

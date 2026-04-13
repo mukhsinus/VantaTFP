@@ -1,0 +1,4 @@
+DROP TABLE IF EXISTS payouts;
+DROP TABLE IF EXISTS escrow_accounts;
+DROP TABLE IF EXISTS transactions;
+DROP TABLE IF EXISTS wallets;

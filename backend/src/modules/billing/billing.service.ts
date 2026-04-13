@@ -19,12 +19,13 @@ export function effectiveBillableSeatLimit(
   subscriptionMaxUsers: number | null | undefined
 ): number | null {
   const tier = subscriptionPlanTier.toLowerCase();
-  if (tier === 'unlimited') return null;
+  if (tier === 'enterprise' || tier === 'unlimited') return null;
   if (subscriptionMaxUsers !== null && subscriptionMaxUsers !== undefined) {
     return subscriptionMaxUsers;
   }
-  if (tier === 'basic') return 5;
-  if (tier === 'pro') return 15;
+  if (tier === 'basic') return 2;
+  if (tier === 'pro') return 20;
+  if (tier === 'business') return 50;
   return null;
 }
 
@@ -82,10 +83,12 @@ function mergeDenormalizedLimits(
   };
 }
 
+/** Plan catalog per spec: Basic $5, Pro $10, Business $50, Enterprise $200 */
 export const BILLING_PLANS_CATALOG: BillingPlanCatalogEntry[] = [
-  { name: 'basic', price: 19, users: 5, tasks: 500 },
-  { name: 'pro', price: 49, users: 15, tasks: 5000 },
-  { name: 'unlimited', price: 99 },
+  { name: 'basic', price: 5, users: 2, tasks: 50 },
+  { name: 'pro', price: 10, users: 20, tasks: 500 },
+  { name: 'business', price: 50, users: 50, tasks: 2000 },
+  { name: 'enterprise', price: 200 },
 ];
 
 function shouldApplyTenantApiRate(url: string): boolean {
@@ -415,7 +418,7 @@ export class BillingService {
 
   async upgradeSubscriptionPlan(
     tenantId: string,
-    plan: 'basic' | 'pro' | 'unlimited'
+    plan: 'basic' | 'pro' | 'business' | 'enterprise' | 'unlimited'
   ): Promise<void> {
     await this.repo.ensureDefaultSubscription(tenantId);
     const { updated } = await this.repo.upgradeSubscriptionToPlan(tenantId, plan);
