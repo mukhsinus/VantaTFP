@@ -9,7 +9,12 @@ import type { BillingPlanId } from '@entities/billing/billing.types';
 export function useBilling(options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: billingKeys.current(),
-    queryFn: () => billingService.getCurrent(),
+    queryFn: async () => {
+      console.log('loading billing...');
+      const data = await billingService.getCurrent();
+      console.log('loading billing... done');
+      return data;
+    },
     enabled: options?.enabled ?? true,
     /** Global QueryClient sets refetchOnMount: false; billing must refresh when opening the page. */
     refetchOnMount: 'always',

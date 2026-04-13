@@ -46,7 +46,7 @@ function queryRetry(failureCount: number, error: unknown): boolean {
       : (error as { status?: number })?.status;
   if (status === 401) return false;
   if (error instanceof ApiError && error.statusCode === 403) return false;
-  return failureCount < 2;
+  return failureCount < 1;
 }
 
 const queryClient = new QueryClient({
@@ -195,6 +195,7 @@ function AuthSessionBootstrap() {
 
     const runBootstrap = async () => {
       setSessionLoading(true);
+      console.log('loading auth...');
       try {
         let bootstrapTimeoutId = 0;
         const me = await Promise.race([
@@ -251,6 +252,7 @@ function AuthSessionBootstrap() {
 
         sessionBootstrapCompletedFor = key;
       } finally {
+        console.log('loading auth... done');
         releaseSessionGate();
       }
     };

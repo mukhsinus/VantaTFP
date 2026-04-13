@@ -4,7 +4,6 @@ import { Sidebar } from '@widgets/sidebar/Sidebar';
 import { Topbar } from '@widgets/topbar/Topbar';
 import { MobileBottomTabs } from '@widgets/mobile-bottom-tabs/MobileBottomTabs';
 import { ToastRenderer } from '@shared/components/Toast';
-import { Skeleton } from '@shared/components/ui';
 import { useIsMobile } from '@shared/hooks/useIsMobile';
 import { useSidebarStore } from '@app/store/sidebar.store';
 import { useAuthStore } from '@app/store/auth.store';
@@ -35,11 +34,7 @@ export function AppLayout() {
         <main className={styles.mainContent}>
           {user ? <TenantTrialExperience /> : null}
           <div className="page-container">
-            {!user ? (
-              <Skeleton height={200} borderRadius="var(--radius-lg)" />
-            ) : (
-              <Outlet />
-            )}
+            <Outlet />
           </div>
         </main>
       </div>
