@@ -83,6 +83,9 @@ export async function billingRoutes(app: FastifyInstance): Promise<void> {
           status: null,
           trial_ends_at: null,
           pending_payment: null,
+          available_plans: BILLING_PLANS_CATALOG,
+          renewal_date: null,
+          payment_method: null,
         });
       }
       const data = await app.billing.getBillingCurrent(tenantId);
@@ -112,7 +115,7 @@ export async function billingRoutes(app: FastifyInstance): Promise<void> {
       );
       return sendSuccess(reply, {
         ok: true,
-        payment_request: paymentRequest,
+        pending_payment: paymentRequest,
       });
     }
   );

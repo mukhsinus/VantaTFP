@@ -88,7 +88,7 @@ export const BILLING_PLANS_CATALOG: BillingPlanCatalogEntry[] = [
   { name: 'basic', price: 5, users: 2, tasks: 50 },
   { name: 'pro', price: 10, users: 20, tasks: 500 },
   { name: 'business', price: 50, users: 50, tasks: 2000 },
-  { name: 'enterprise', price: 200 },
+  { name: 'enterprise', price: 200, users: 100, tasks: 10000 },
 ];
 
 function shouldApplyTenantApiRate(url: string): boolean {
@@ -434,11 +434,15 @@ export class BillingService {
       pending_payment: pendingPayment
         ? {
             id: pendingPayment.id,
+            plan: pendingPayment.plan_name,
             status: pendingPayment.status,
             amount: Number(pendingPayment.amount),
             created_at: pendingPayment.created_at.toISOString(),
           }
         : null,
+      available_plans: BILLING_PLANS_CATALOG,
+      renewal_date: row.trial_ends_at ? row.trial_ends_at.toISOString() : null,
+      payment_method: null,
     };
   }
 
@@ -446,7 +450,7 @@ export class BillingService {
     tenantId: string,
     userId: string,
     plan: 'basic' | 'pro' | 'business' | 'enterprise'
-  ): Promise<{ id: string; status: 'pending'; amount: number }> {
+  ): Promise<{ id: string; plan: string; status: 'pending'; amount: number }> {
     const planRow = await this.repo.getPlanByName(plan);
     if (!planRow) {
       throw ApplicationError.badRequest('Invalid or unavailable plan');
@@ -466,6 +470,7 @@ export class BillingService {
 
     return {
       id: paymentRequest.id,
+      plan: paymentRequest.plan_name,
       status: 'pending',
       amount: Number(paymentRequest.amount),
     };

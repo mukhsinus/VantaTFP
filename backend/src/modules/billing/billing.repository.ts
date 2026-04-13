@@ -24,6 +24,7 @@ type Queryable = Pick<Pool, 'query'> | Pick<PoolClient, 'query'>;
 
 export interface PendingPaymentRequestRow {
   id: string;
+  plan_name: string;
   status: 'pending' | 'approved' | 'rejected';
   amount: string;
   created_at: Date;
@@ -482,7 +483,12 @@ export class BillingRepository {
         updated_at
       )
       VALUES ($1, $2, $3, $4, 'pending', NOW(), NOW())
-      RETURNING id, status, amount::text, created_at
+      RETURNING
+        id,
+        (SELECT name FROM plans WHERE id = payment_requests.plan_id) AS plan_name,
+        status,
+        amount::text,
+        created_at
       `,
       [data.tenantId, data.userId, data.planId, data.amount]
     );
@@ -531,11 +537,17 @@ export class BillingRepository {
   ): Promise<PendingPaymentRequestRow | null> {
     const result = await executor.query<PendingPaymentRequestRow>(
       `
-      SELECT id, status, amount::text, created_at
-      FROM payment_requests
-      WHERE tenant_id = $1
-        AND status = 'pending'
-      ORDER BY created_at DESC
+      SELECT
+        pr.id,
+        p.name AS plan_name,
+        pr.status,
+        pr.amount::text,
+        pr.created_at
+      FROM payment_requests pr
+      INNER JOIN plans p ON p.id = pr.plan_id
+      WHERE pr.tenant_id = $1
+        AND pr.status = 'pending'
+      ORDER BY pr.created_at DESC
       LIMIT 1
       `,
       [tenantId]

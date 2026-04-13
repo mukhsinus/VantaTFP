@@ -1,11 +1,9 @@
-import React, { useCallback, useEffect, useMemo, useRef } from 'react';
-import { createPortal } from 'react-dom';
+import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button, EmptyState, PageSkeleton } from '@shared/components/ui';
-import { useBilling, usePlans, useBillingUpgrade } from '@features/billing/hooks/useBilling';
+import { useBilling, useBillingUpgrade } from '@features/billing/hooks/useBilling';
 import { useCurrentUser } from '@shared/hooks/useCurrentUser';
 import type { BillingCurrentDto, BillingPlanCatalogItem, BillingPlanId } from '@entities/billing/billing.types';
-import { shouldShowBillingFullSkeleton, sortPlans } from './billing-page.utils';
 import styles from './BillingPage.module.css';
 
 function trialDaysLeft(trialEndsAt: string | null): number {
@@ -21,8 +19,9 @@ function pctUsed(used: number, limit: number | null | undefined): number {
 }
 
 function formatRenewal(data: BillingCurrentDto, t: (k: string, o?: { defaultValue?: string }) => string): string {
-  if (data.trial_ends_at) {
-    return new Date(data.trial_ends_at).toLocaleDateString(undefined, {
+  const value = data.renewal_date ?? data.trial_ends_at;
+  if (value) {
+    return new Date(value).toLocaleDateString(undefined, {
       year: 'numeric',
       month: 'short',
       day: 'numeric',
@@ -68,7 +67,7 @@ function ProgressRow({
   limit: number | null;
   t: (k: string, o?: { defaultValue?: string }) => string;
 }) {
-  const unlimited = limit === null || limit === undefined;
+  const hasLimit = limit !== null && limit !== undefined;
   const p = pctUsed(used, limit);
 
   return (
@@ -76,12 +75,10 @@ function ProgressRow({
       <div className={styles.progressLabelRow}>
         <span className={styles.progressLabel}>{label}</span>
         <span className={styles.progressMeta}>
-          {unlimited
-            ? t('billing.unlimited', { defaultValue: 'Unlimited' })
-            : `${used} / ${limit}`}
+          {hasLimit ? `${used} / ${limit}` : t('common.states.notAvailable', { defaultValue: '—' })}
         </span>
       </div>
-      {!unlimited && (
+      {hasLimit && (
         <div className={styles.progressTrack}>
           <div
             className={`${styles.progressFill} ${p >= 100 ? styles.progressFillWarning : ''}`}
@@ -95,21 +92,36 @@ function ProgressRow({
 
 function PlanCard({
   plan,
+  pendingPaymentExists,
   isCurrent,
-  isPro,
-  disabled,
   canUpgrade,
   onUpgrade,
   t,
 }: {
   plan: BillingPlanCatalogItem;
+  pendingPaymentExists: boolean;
   isCurrent: boolean;
-  isPro: boolean;
-  disabled: boolean;
   canUpgrade: boolean;
   onUpgrade: () => void;
   t: (k: string, o?: { defaultValue?: string; count?: number }) => string;
 }) {
+  const isPro = plan.name === 'pro';
+  const disabled = pendingPaymentExists || isCurrent || !canUpgrade;
+  const ctaLabel = pendingPaymentExists
+    ? t('billing.cta.pendingApproval', { defaultValue: 'Pending approval' })
+    : isCurrent
+      ? t('billing.cta.current', { defaultValue: 'Current plan' })
+      : t('billing.cta.requestUpgrade', { defaultValue: 'Request upgrade' });
+
+  const usersLabel = t('billing.card.usersUpTo', {
+    count: plan.users,
+    defaultValue: 'Up to {{count}} users',
+  });
+  const tasksLabel = t('billing.card.tasksCount', {
+    count: plan.tasks,
+    defaultValue: '{{count}} tasks',
+  });
+
   return (
     <div className={`${styles.planCard} ${isPro ? styles.planCardHighlighted : ''}`}>
       <h3 className={styles.planCardName}>{plan.name}</h3>
@@ -118,54 +130,19 @@ function PlanCard({
         <span className={styles.planCardPriceSuffix}>/month</span>
       </p>
       <ul className={styles.planCardList}>
-        {plan.name === 'basic' && (
-          <>
-            <li>
-              {t('billing.card.usersUpTo', {
-                count: plan.users,
-                defaultValue: 'Up to {{count}} users',
-              })}
-            </li>
-            <li>
-              {t('billing.card.tasksCount', {
-                count: plan.tasks,
-                defaultValue: '{{count}} tasks',
-              })}
-            </li>
-          </>
-        )}
-        {(plan.name === 'pro' || plan.name === 'business') && (
-          <>
-            <li>
-              {t('billing.card.usersUpTo', {
-                count: plan.users,
-                defaultValue: 'Up to {{count}} users',
-              })}
-            </li>
-            <li>
-              {t('billing.card.tasksCount', {
-                count: plan.tasks,
-                defaultValue: '{{count}} tasks',
-              })}
-            </li>
-          </>
-        )}
-        {plan.name === 'enterprise' && (
-          <li>{t('billing.card.unlimitedLine', { defaultValue: 'Unlimited users and tasks' })}</li>
-        )}
+        <li>{usersLabel}</li>
+        <li>{tasksLabel}</li>
       </ul>
       <div className={styles.planCardCta}>
         <Button
-          variant={isCurrent ? 'secondary' : 'primary'}
+          variant={isCurrent || pendingPaymentExists ? 'secondary' : 'primary'}
           size="lg"
           className={styles.tapButton}
           disabled={disabled}
-          onClick={() => canUpgrade && !isCurrent && onUpgrade()}
+          onClick={() => !disabled && onUpgrade()}
           style={{ width: '100%' }}
         >
-          {isCurrent
-            ? t('billing.cta.current', { defaultValue: 'Current plan' })
-            : t('billing.cta.upgrade', { defaultValue: 'Upgrade' })}
+          {ctaLabel}
         </Button>
       </div>
     </div>
@@ -182,15 +159,7 @@ export function BillingPage() {
     isPending: billingIsPending,
     isFetching: billingIsFetching,
   } = useBilling();
-  const plansQuery = usePlans();
   const upgrade = useBillingUpgrade();
-  const plansAnchorRef = useRef<HTMLElement | null>(null);
-
-  const sortedPlans = useMemo(() => {
-    const raw = plansQuery.data;
-    const list = Array.isArray(raw) ? raw : [];
-    return sortPlans(list as BillingPlanCatalogItem[]);
-  }, [plansQuery.data]);
 
   const currentPlan = billing?.plan?.name?.toLowerCase() as BillingPlanId | 'platform';
   const canUpgrade = isAdmin && !isSuperAdmin;
@@ -198,46 +167,18 @@ export function BillingPage() {
   const limitMessages = useMemo(() => (billing ? buildLimitMessages(billing, t) : []), [billing, t]);
   const anyLimitReached = limitMessages.length > 0;
 
-  const showStickyUpgrade =
-    sortedPlans.length > 0 &&
-    !plansQuery.isError &&
-    !(plansQuery.isFetching && plansQuery.data === undefined) &&
-    billing?.plan?.name?.toLowerCase() !== 'platform';
-
-  const scrollToPlans = useCallback(() => {
-    plansAnchorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  }, []);
-
-  const billingStatusLower = (billing?.status ?? '').toLowerCase();
-  const billingPlanLower = billing?.plan?.name?.toLowerCase() ?? '';
-  useEffect(() => {
-    const lockScroll = billingStatusLower === 'past_due' && billingPlanLower !== 'platform';
-    if (!lockScroll) return undefined;
-    document.body.style.overflow = 'hidden';
-    return () => {
-      document.body.style.overflow = '';
-    };
-  }, [billingStatusLower, billingPlanLower]);
-
-  if (
-    shouldShowBillingFullSkeleton({
-      billingData: billing,
-      billingIsError: isError,
-      billingIsPending: billingIsPending,
-      billingIsFetching: billingIsFetching,
-    })
-  ) {
+  if ((billingIsPending || billingIsFetching) && !billing) {
     return <PageSkeleton />;
   }
 
   if (isError || !billing) {
     return (
       <EmptyState
-        title={t('billing.unavailableTitle', { defaultValue: 'Billing unavailable' })}
+        title={t('billing.unavailableTitle', { defaultValue: 'Billing temporarily unavailable' })}
         description={
           error instanceof Error
             ? error.message
-            : t('billing.unavailableDesc', { defaultValue: 'Could not load billing info.' })
+            : t('billing.unavailableDesc', { defaultValue: 'Billing temporarily unavailable' })
         }
       />
     );
@@ -250,45 +191,18 @@ export function BillingPage() {
   const isPlatform = data.plan.name.toLowerCase() === 'platform';
   const pendingApproval = data.pending_payment?.status === 'pending';
   const daysLeft = isTrial && data.trial_ends_at ? trialDaysLeft(data.trial_ends_at) : null;
-
-  const trialBannerText =
-    daysLeft !== null
-      ? daysLeft === 0
-        ? t('billing.trial.bannerLastDay', { defaultValue: 'Free trial — ends today' })
-        : t('billing.trial.bannerDays', {
-            count: daysLeft,
-            defaultValue: 'Free trial — {{count}} days left',
-          })
-      : '';
-
-  const pastDueModal =
-    isPastDue && !isPlatform
-      ? createPortal(
-          <div className={styles.billingPastDueOverlay} role="presentation">
-            <div className={styles.billingPastDueBackdrop} aria-hidden />
-            <div
-              className={styles.billingPastDuePanel}
-              role="alertdialog"
-              aria-modal="true"
-              aria-labelledby="billing-past-due-title"
-            >
-              <p id="billing-past-due-title" className={styles.billingPastDueTitle}>
-                {t('billing.trial.expiredMessage', {
-                  defaultValue: 'Your trial has expired. Upgrade to continue.',
-                })}
-              </p>
-              <Button type="button" variant="primary" size="lg" className={styles.tapButton} onClick={scrollToPlans}>
-                {t('billing.trial.upgradeCta', { defaultValue: 'Upgrade' })}
-              </Button>
-            </div>
-          </div>,
-          document.body
-        )
-      : null;
+  const plans = Array.isArray(data.available_plans) ? data.available_plans : [];
+  const trialBannerText = daysLeft === null
+    ? null
+    : daysLeft === 0
+      ? t('billing.trial.bannerLastDay', { defaultValue: 'Free trial — ends today' })
+      : t('billing.trial.bannerDays', {
+          count: daysLeft,
+          defaultValue: 'Free trial — {{count}} days left',
+        });
 
   return (
-    <div className={`page-container ${styles.billingContainer} ${showStickyUpgrade ? styles.pageRootStickyPad : ''}`}>
-      {pastDueModal}
+    <div className={`page-container ${styles.billingContainer}`}>
 
       {isTrial && trialBannerText && (
         <div className={styles.billingTrialBanner} role="status">
@@ -299,6 +213,33 @@ export function BillingPage() {
             </svg>
           </span>
           <span>{trialBannerText}</span>
+        </div>
+      )}
+      {isPastDue && !isPlatform && (
+        <div className={styles.limitAlert} role="alert">
+          {t('billing.trial.expiredRequired', { defaultValue: 'Trial expired — upgrade required' })}
+        </div>
+      )}
+      {pendingApproval && data.pending_payment && (
+        <div className={styles.billingTrialBanner} role="status">
+          <span>
+            {t('billing.pendingApproval', {
+              defaultValue: 'Waiting for approval from super admin',
+            })}
+          </span>
+          <span>
+            {' '}
+            {t('billing.pendingRequested', {
+              defaultValue: 'Requested: {{plan}} (pending approval)',
+              plan: data.pending_payment.plan,
+            })}
+          </span>
+          <span>
+            {' '}
+            {t('billing.pendingAwaitingAdmin', {
+              defaultValue: 'Awaiting approval by system administrator',
+            })}
+          </span>
         </div>
       )}
 
@@ -312,46 +253,29 @@ export function BillingPage() {
       </header>
 
       <div className={styles.billingMainGrid}>
-        <section ref={plansAnchorRef} id="billing-plans-anchor" aria-labelledby="billing-plans-heading">
+        <section id="billing-plans-anchor" aria-labelledby="billing-plans-heading">
           <h2 id="billing-plans-heading" className={styles.sectionLabel}>
             {t('billing.section.plans', { defaultValue: 'Plans' })}
           </h2>
-          {plansQuery.isFetching && plansQuery.data === undefined && !plansQuery.isError && (
-            <div className={styles.plansLoading}>{t('common.loading', { defaultValue: 'Loading…' })}</div>
-          )}
-          {plansQuery.isError && (
-            <div className={styles.plansLoading} role="alert">
-              {t('billing.plansError', { defaultValue: 'Could not load plans.' })}
-            </div>
-          )}
-          {sortedPlans.length > 0 && (
+          {plans.length > 0 ? (
             <div className={styles.plansScroll}>
-              {sortedPlans.map((plan) => {
+              {plans.map((plan) => {
                 const id = plan.name as BillingPlanId;
                 const isCurrent = !isPlatform && currentPlan === id;
-                const isPro = id === 'pro';
-                const disabled = upgrade.isPending || isCurrent || isPlatform || !canUpgrade || pendingApproval;
                 return (
                   <PlanCard
                     key={plan.name}
                     plan={plan}
+                    pendingPaymentExists={pendingApproval}
                     isCurrent={isCurrent}
-                    isPro={isPro}
-                    disabled={disabled}
-                    canUpgrade={canUpgrade}
+                    canUpgrade={canUpgrade && !isPlatform && !upgrade.isPending}
                     onUpgrade={() => upgrade.mutate(id)}
                     t={t}
                   />
                 );
               })}
             </div>
-          )}
-          {pendingApproval && (
-            <p className={styles.plansLoading} role="status">
-              {t('billing.pendingApproval', { defaultValue: 'Waiting for approval from super admin.' })}
-            </p>
-          )}
-          {!plansQuery.isFetching && !plansQuery.isError && sortedPlans.length === 0 && (
+          ) : (
             <div className={styles.plansLoading} role="status">
               {t('billing.plansEmpty', { defaultValue: 'No plans available.' })}
             </div>
@@ -399,7 +323,7 @@ export function BillingPage() {
           <div className={styles.metaRow}>
             <span className={styles.metaKey}>{t('billing.paymentMethod', { defaultValue: 'Payment method' })}</span>
             <span className={styles.metaVal}>
-              {isPlatform ? '—' : t('billing.paymentFake', { defaultValue: 'Visa •••• 4242' })}
+              {isPlatform ? '—' : data.payment_method ?? '—'}
             </span>
           </div>
         </aside>
@@ -420,7 +344,7 @@ export function BillingPage() {
             <div>
               <p className={styles.overviewItemTitle}>{t('billing.nextPayment', { defaultValue: 'Next payment' })}</p>
               <p className={styles.overviewItemValue}>
-                {isPlatform ? '—' : data.trial_ends_at ? formatRenewal(data, t) : '—'}
+                {isPlatform ? '—' : formatRenewal(data, t)}
               </p>
             </div>
             <div>
@@ -463,14 +387,6 @@ export function BillingPage() {
           </div>
         </div>
       </section>
-
-      {showStickyUpgrade && !isPlatform && (
-        <div className={styles.stickyUpgrade}>
-          <Button type="button" variant="primary" size="lg" className={styles.stickyUpgradeButton} onClick={scrollToPlans}>
-            {t('billing.cta.stickyUpgrade', { defaultValue: 'Upgrade Plan' })}
-          </Button>
-        </div>
-      )}
     </div>
   );
 }

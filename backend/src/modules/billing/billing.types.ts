@@ -55,10 +55,14 @@ export interface BillingCurrentResponse {
   trial_ends_at: string | null;
   pending_payment: {
     id: string;
+    plan: string;
     status: 'pending' | 'approved' | 'rejected';
     amount: number;
     created_at: string;
   } | null;
+  available_plans: BillingPlanCatalogEntry[];
+  renewal_date?: string | null;
+  payment_method?: string | null;
 }
 
 export type BillingPlanCatalogName = 'basic' | 'pro' | 'business' | 'enterprise';
@@ -67,4 +71,4 @@ export type BillingPlanCatalogEntry =
   | { name: 'basic'; price: number; users: number; tasks: number }
   | { name: 'pro'; price: number; users: number; tasks: number }
   | { name: 'business'; price: number; users: number; tasks: number }
-  | { name: 'enterprise'; price: number };
+  | { name: 'enterprise'; price: number; users: number; tasks: number };

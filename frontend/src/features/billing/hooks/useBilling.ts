@@ -17,18 +17,6 @@ export function useBilling(options?: { enabled?: boolean }) {
 }
 
 /**
- * Static plan catalog (pricing / caps) from GET /billing/plans.
- */
-export function usePlans() {
-  return useQuery({
-    queryKey: billingKeys.plans(),
-    queryFn: () => billingService.getPlans(),
-    staleTime: 60 * 60 * 1000,
-    refetchOnMount: 'always',
-  });
-}
-
-/**
  * Owner-only plan upgrade; invalidates billing queries on success.
  */
 export function useBillingUpgrade() {

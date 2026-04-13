@@ -62,6 +62,8 @@ export function TasksPage() {
     billing.limits.tasks !== undefined
       ? total >= billing.limits.tasks
       : false;
+  const trialExpired = (billing?.status ?? '').toLowerCase() === 'past_due';
+  const creationBlocked = taskLimitReached || trialExpired;
 
   if (isLoading) return <PageSkeleton />;
 
@@ -140,7 +142,7 @@ export function TasksPage() {
                 variant="primary"
                 size="sm"
                 onClick={() => setShowCreateModal(true)}
-                disabled={taskLimitReached}
+                disabled={creationBlocked}
                 leftIcon={
                   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
                     <path d="M12 5v14M5 12h14" />
@@ -156,7 +158,14 @@ export function TasksPage() {
         {taskLimitReached && (
           <Card style={{ borderColor: 'var(--color-warning-border)', background: 'var(--color-warning-subtle)' }}>
             <p style={{ margin: 0, color: 'var(--color-warning)', fontSize: 'var(--text-sm)', fontWeight: 600 }}>
-              {t('billing.limitReached', { defaultValue: 'Task limit reached for your current plan.' })}
+              {t('billing.limitReached', { defaultValue: 'Task limit reached for your plan' })}
+            </p>
+          </Card>
+        )}
+        {trialExpired && (
+          <Card style={{ borderColor: 'var(--color-danger-border)', background: 'var(--color-danger-subtle)' }}>
+            <p style={{ margin: 0, color: 'var(--color-danger)', fontSize: 'var(--text-sm)', fontWeight: 600 }}>
+              {t('billing.trial.expiredRequired', { defaultValue: 'Trial expired — upgrade required' })}
             </p>
           </Card>
         )}
@@ -211,7 +220,7 @@ export function TasksPage() {
       {isMobile && can('task:create') && (
         <button
           onClick={() => setShowCreateModal(true)}
-          disabled={taskLimitReached}
+          disabled={creationBlocked}
           style={{
             position: 'fixed',
             left: 12,
@@ -227,7 +236,7 @@ export function TasksPage() {
             fontWeight: 600,
             boxShadow: 'var(--shadow-lg)',
             cursor: 'pointer',
-            opacity: taskLimitReached ? 0.6 : 1,
+            opacity: creationBlocked ? 0.6 : 1,
           }}
         >
           + {t('tasks.create')}
