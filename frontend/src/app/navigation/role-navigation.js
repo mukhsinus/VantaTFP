@@ -4,6 +4,7 @@ const ADMIN_NAV = [
     { to: '/tasks', labelKey: 'nav.tasks' },
     { to: '/kpi', labelKey: 'nav.kpi' },
     { to: '/payroll', labelKey: 'nav.payroll' },
+    { to: '/messages', labelKey: 'nav.messages' },
     { to: '/reports', labelKey: 'nav.reports' },
     { to: '/billing', labelKey: 'nav.billing' },
 ];
@@ -12,11 +13,13 @@ const MANAGER_NAV = [
     { to: '/employees', labelKey: 'nav.employees' },
     { to: '/tasks', labelKey: 'nav.tasks' },
     { to: '/kpi', labelKey: 'nav.kpi' },
+    { to: '/messages', labelKey: 'nav.messages' },
     { to: '/reports', labelKey: 'nav.reports' },
 ];
 const EMPLOYEE_NAV = [
     { to: '/tasks', labelKey: 'nav.tasks' },
     { to: '/kpi', labelKey: 'nav.kpi' },
+    { to: '/messages', labelKey: 'nav.messages' },
 ];
 export function getNavigationForRole(role) {
     if (role === 'ADMIN')

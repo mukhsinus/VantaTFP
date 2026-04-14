@@ -6,6 +6,7 @@ export const API = {
     auth: {
         login: '/api/v1/auth/login',
         register: '/api/v1/auth/register',
+        registerEmployer: '/api/v1/auth/register-employer',
         refresh: '/api/v1/auth/refresh',
     },
     users: {
@@ -18,6 +19,7 @@ export const API = {
     },
     employees: {
         list: '/api/v1/employees',
+        create: '/api/v1/employees/create',
         detail: (userId) => `/api/v1/employees/${userId}`,
         patchRole: (userId) => `/api/v1/employees/${userId}/role`,
     },
@@ -67,5 +69,44 @@ export const API = {
         tenants: '/api/v1/platform/tenants',
         users: '/api/v1/platform/users',
         subscriptions: '/api/v1/platform/subscriptions',
+    },
+    admin: {
+        dashboard: '/api/v1/admin/dashboard',
+        payments: '/api/v1/admin/payments',
+        approvePayment: (paymentId) => `/api/v1/admin/payments/${paymentId}/approve`,
+        rejectPayment: (paymentId) => `/api/v1/admin/payments/${paymentId}/reject`,
+        tenants: '/api/v1/admin/tenants',
+        suspendTenant: (tenantId) => `/api/v1/admin/tenants/${tenantId}/suspend`,
+        activateTenant: (tenantId) => `/api/v1/admin/tenants/${tenantId}/activate`,
+        setTenantPlan: (tenantId) => `/api/v1/admin/tenants/${tenantId}/plan`,
+        subscriptions: '/api/v1/admin/subscriptions',
+        users: '/api/v1/admin/users',
+        updateUserRole: (userId) => `/api/v1/admin/users/${userId}/role`,
+        banUser: (userId) => `/api/v1/admin/users/${userId}/ban`,
+    },
+    projects: {
+        list: '/api/v1/projects',
+        detail: (projectId) => `/api/v1/projects/${projectId}`,
+    },
+    comments: {
+        list: (taskId) => `/api/v1/tasks/${taskId}/comments`,
+        detail: (taskId, commentId) => `/api/v1/tasks/${taskId}/comments/${commentId}`,
+    },
+    labels: {
+        list: '/api/v1/labels',
+        detail: (labelId) => `/api/v1/labels/${labelId}`,
+        taskLabels: (taskId) => `/api/v1/labels/task/${taskId}`,
+    },
+    documents: {
+        list: '/api/v1/documents',
+        detail: (docId) => `/api/v1/documents/${docId}`,
+    },
+    automations: {
+        list: '/api/v1/automations',
+        detail: (ruleId) => `/api/v1/automations/${ruleId}`,
+    },
+    templates: {
+        list: '/api/v1/templates',
+        detail: (templateId) => `/api/v1/templates/${templateId}`,
     },
 };

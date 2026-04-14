@@ -2,6 +2,7 @@ import { useAuthStore } from '@app/store/auth.store';
 import i18n from '@shared/i18n/i18n';
 import { normalizeMeUser } from '@shared/utils/normalize-me-user';
 import { waitUntilBackendReady } from '@shared/api/backend-readiness';
+import { readMirroredAccessToken } from '@shared/lib/access-token-storage';
 
 // ─── Error type ───────────────────────────────────────────────────────────────
 
@@ -60,7 +61,10 @@ const APP_BOOT_TIME_MS = Date.now();
 export const API_BASE = '/api';
 
 function resolveApiBaseUrl(): string {
-  const configuredBaseUrl = (import.meta.env.VITE_API_BASE_URL as string | undefined)?.trim();
+  const configuredBaseUrl = (
+    (import.meta.env.VITE_API_BASE_URL as string | undefined)?.trim() ||
+    (import.meta.env.VITE_API_URL as string | undefined)?.trim()
+  )?.replace(/\/$/, '');
   const directApi =
     import.meta.env.VITE_DIRECT_API === 'true' || import.meta.env.VITE_DIRECT_API === '1';
 
@@ -71,7 +75,7 @@ function resolveApiBaseUrl(): string {
    * Set `VITE_DIRECT_API=true` to force `VITE_API_BASE_URL` in development.
    */
   if (import.meta.env.DEV && !directApi) {
-    return window.location.origin;
+    return typeof window !== 'undefined' ? window.location.origin : 'http://localhost:5173';
   }
 
   if (configuredBaseUrl) {
@@ -79,16 +83,14 @@ function resolveApiBaseUrl(): string {
   }
 
   if (import.meta.env.DEV) {
+    return typeof window !== 'undefined' ? window.location.origin : 'http://localhost:5173';
+  }
+
+  if (typeof window !== 'undefined' && window.location?.origin) {
     return window.location.origin;
   }
 
-  // Production without explicit API base URL usually means deployment misconfiguration.
-  // Throw a typed error so UI can show a clear message.
-  throw new ApiError(
-    503,
-    'API_NOT_CONFIGURED',
-    i18n.t('errors.generic.apiNotConfigured')
-  );
+  return 'http://localhost:3000';
 }
 
 async function fetchWithRetry(url: string, init: RequestInit): Promise<Response> {
@@ -148,8 +150,9 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
     });
   }
 
-  // Inject JWT from Zustand store without requiring a React hook
-  const accessToken = useAuthStore.getState().accessToken;
+  // Inject JWT from Zustand + mirrored storage (mobile / `ugc_token` fallback)
+  const accessToken =
+    useAuthStore.getState().accessToken ?? readMirroredAccessToken();
 
   const headers: HeadersInit = {
     ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
@@ -166,7 +169,7 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
     (headers as Record<string, string>)['Content-Type'] = 'application/json';
   }
 
-  const requestKey = `${init.method ?? 'GET'}:${url.toString()}:${useAuthStore.getState().accessToken ?? ''}`;
+  const requestKey = `${init.method ?? 'GET'}:${url.toString()}:${accessToken ?? ''}`;
   const run = async () => {
     const response = await fetchWithRetry(url.toString(), {
       ...init,

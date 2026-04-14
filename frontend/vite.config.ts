@@ -12,6 +12,7 @@ export default defineConfig({
   resolve: {
     extensions: ['.ts', '.tsx', '.mjs', '.js', '.jsx', '.json'],
     alias: {
+      '@': resolve(__dirname, 'src'),
       '@app': resolve(__dirname, 'src/app'),
       '@pages': resolve(__dirname, 'src/pages'),
       '@widgets': resolve(__dirname, 'src/widgets'),

@@ -3,13 +3,16 @@ import { employeesApi } from '@entities/employees/employees.api';
 import { useAuthStore } from '@app/store/auth.store';
 import { employeesKeys } from './employees.query-keys';
 function toUi(dto) {
-    const local = dto.email.split('@')[0]?.trim() || dto.email;
+    const displayName = (dto.displayName && dto.displayName.trim()) ||
+        (dto.phone && dto.phone.trim()) ||
+        (dto.email.split('@')[0]?.trim() || dto.email);
     return {
         id: dto.id,
         email: dto.email,
+        phone: dto.phone ?? null,
         role: dto.role,
         isOwner: dto.isOwner,
-        displayName: local,
+        displayName,
     };
 }
 export function useEmployees() {

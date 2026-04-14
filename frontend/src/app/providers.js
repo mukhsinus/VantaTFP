@@ -8,6 +8,7 @@ import { useAuthStore } from '@app/store/auth.store';
 import { toast } from '@app/store/toast.store';
 import { normalizeMeUser } from '@shared/utils/normalize-me-user';
 import { markBackendReadyFailOpen, markBackendReadyFromHealth, } from '@shared/api/backend-readiness';
+import { readMirroredAccessToken, writeAccessTokenMirrors } from '@shared/lib/access-token-storage';
 /** Stable key for the current persisted session (access token preferred). */
 function sessionBootstrapKey(accessToken, refreshToken) {
     if (!accessToken && !refreshToken)
@@ -35,7 +36,7 @@ function queryRetry(failureCount, error) {
         return false;
     if (error instanceof ApiError && error.statusCode === 403)
         return false;
-    return failureCount < 2;
+    return failureCount < 1;
 }
 const queryClient = new QueryClient({
     queryCache: new QueryCache({
@@ -102,7 +103,8 @@ function BackendStartupGate({ children }) {
             markReady();
         }, 2000);
         const run = async () => {
-            const configuredBase = import.meta.env.VITE_API_BASE_URL?.trim().replace(/\/$/, '');
+            const configuredBase = (import.meta.env.VITE_API_BASE_URL?.trim() ||
+                import.meta.env.VITE_API_URL?.trim())?.replace(/\/$/, '');
             const healthPaths = configuredBase
                 ? [`${configuredBase}/api/health`, `${configuredBase}/health`]
                 : ['/api/health', '/health'];
@@ -137,9 +139,15 @@ function AuthSessionBootstrap() {
     const setUser = useAuthStore((s) => s.setUser);
     const clearAuth = useAuthStore((s) => s.clearAuth);
     const setSessionLoading = useAuthStore((s) => s.setSessionLoading);
+    const setTokens = useAuthStore((s) => s.setTokens);
     useEffect(() => {
         if (!isHydrated)
             return;
+        const mirrored = readMirroredAccessToken();
+        if (!accessToken && mirrored) {
+            setTokens(mirrored);
+            return;
+        }
         const releaseSessionGate = () => setSessionLoading(false);
         const key = sessionBootstrapKey(accessToken, refreshToken);
         if (!key) {
@@ -154,6 +162,7 @@ function AuthSessionBootstrap() {
         let cancelled = false;
         const runBootstrap = async () => {
             setSessionLoading(true);
+            console.log('loading auth...');
             try {
                 let bootstrapTimeoutId = 0;
                 const me = await Promise.race([
@@ -185,6 +194,7 @@ function AuthSessionBootstrap() {
                 if (!currentUser) {
                     setUser(normalized);
                 }
+                console.log('USER:', normalized);
                 sessionBootstrapCompletedFor = key;
             }
             catch (error) {
@@ -207,6 +217,7 @@ function AuthSessionBootstrap() {
                 sessionBootstrapCompletedFor = key;
             }
             finally {
+                console.log('loading auth... done');
                 releaseSessionGate();
             }
         };
@@ -224,10 +235,60 @@ function AuthSessionBootstrap() {
         return () => {
             cancelled = true;
         };
-    }, [isHydrated, accessToken, refreshToken, setUser, clearAuth, setSessionLoading]);
+    }, [isHydrated, accessToken, refreshToken, setUser, clearAuth, setSessionLoading, setTokens]);
+    return null;
+}
+/** Keeps `ugc_token` (and fallbacks) aligned with the Zustand session token. */
+function AccessTokenMirrorSync() {
+    useEffect(() => {
+        writeAccessTokenMirrors(useAuthStore.getState().accessToken);
+        let prev = useAuthStore.getState().accessToken;
+        return useAuthStore.subscribe((state) => {
+            const next = state.accessToken;
+            if (next !== prev) {
+                writeAccessTokenMirrors(next);
+                prev = next;
+            }
+        });
+    }, []);
     return null;
 }
 /** Drop cached API state when the session ends so stale data never renders after logout/401. */
+/**
+ * Ensures `isHydrated` flips true even if `onRehydrateStorage` never runs (storage/quirks),
+ * so AuthGuard does not show the loading screen forever.
+ */
+function AuthPersistHydrationBridge() {
+    useEffect(() => {
+        const store = useAuthStore;
+        const persist = store.persist;
+        const mark = () => {
+            if (!useAuthStore.getState().isHydrated) {
+                useAuthStore.getState().setHydrated();
+            }
+            const { accessToken, refreshToken } = useAuthStore.getState();
+            if (accessToken || refreshToken) {
+                useAuthStore.getState().setSessionLoading(true);
+            }
+        };
+        if (persist?.hasHydrated?.()) {
+            mark();
+            return undefined;
+        }
+        const unsub = persist?.onFinishHydration?.(mark);
+        const tid = window.setTimeout(() => {
+            if (!useAuthStore.getState().isHydrated) {
+                console.warn('[TFP auth] Persist did not finish in time; unlocking the shell. Sign in again if your session was lost.');
+                mark();
+            }
+        }, 4000);
+        return () => {
+            unsub?.();
+            window.clearTimeout(tid);
+        };
+    }, []);
+    return null;
+}
 function AuthQueryResetOnLogout() {
     const queryClient = useQueryClient();
     useEffect(() => {
@@ -242,5 +303,5 @@ function AuthQueryResetOnLogout() {
     return null;
 }
 export function Providers({ children }) {
-    return (_jsxs(QueryClientProvider, { client: queryClient, children: [_jsxs(BackendStartupGate, { children: [_jsx(AuthQueryResetOnLogout, {}), _jsx(AuthSessionBootstrap, {}), children] }), import.meta.env.DEV && _jsx(ReactQueryDevtools, { initialIsOpen: false })] }));
+    return (_jsxs(QueryClientProvider, { client: queryClient, children: [_jsxs(BackendStartupGate, { children: [_jsx(AuthPersistHydrationBridge, {}), _jsx(AccessTokenMirrorSync, {}), _jsx(AuthQueryResetOnLogout, {}), _jsx(AuthSessionBootstrap, {}), children] }), import.meta.env.DEV && _jsx(ReactQueryDevtools, { initialIsOpen: false })] }));
 }

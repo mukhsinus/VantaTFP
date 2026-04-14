@@ -6,6 +6,12 @@ import { router } from './app/router';
 import { RootErrorBoundary } from './app/RootErrorBoundary';
 import './shared/i18n/i18n';
 import './shared/styles/global.css';
+if (import.meta.env.DEV) {
+    const port = window.location.port;
+    if (port === '' || port === '80') {
+        console.warn('[TFP] This origin uses the default HTTP port (80). The Vite UI normally runs at http://localhost:5173 — run `cd frontend && npm run dev` and open the URL Vite prints. Port 3000 is the API only.');
+    }
+}
 const rootElement = document.getElementById('root');
 if (!rootElement)
     throw new Error('Root element not found');

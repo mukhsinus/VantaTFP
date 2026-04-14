@@ -15,6 +15,8 @@ export function AuthGuard() {
   const isHydrated = useAuthStore((s) => s.isHydrated);
   const accessToken = useAuthStore((s) => s.accessToken);
   const refreshToken = useAuthStore((s) => s.refreshToken);
+  const user = useAuthStore((s) => s.user);
+  const isSessionLoading = useAuthStore((s) => s.isSessionLoading);
   const location = useLocation();
 
   if (!isHydrated) {
@@ -22,6 +24,19 @@ export function AuthGuard() {
   }
 
   if (!accessToken && !refreshToken) {
+    return (
+      <Navigate
+        to={`/login?redirect=${encodeURIComponent(location.pathname)}`}
+        replace
+      />
+    );
+  }
+
+  if ((accessToken || refreshToken) && isSessionLoading && !user) {
+    return <AppLoadingScreen />;
+  }
+
+  if ((accessToken || refreshToken) && !isSessionLoading && !user) {
     return (
       <Navigate
         to={`/login?redirect=${encodeURIComponent(location.pathname)}`}

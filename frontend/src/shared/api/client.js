@@ -2,6 +2,7 @@ import { useAuthStore } from '@app/store/auth.store';
 import i18n from '@shared/i18n/i18n';
 import { normalizeMeUser } from '@shared/utils/normalize-me-user';
 import { waitUntilBackendReady } from '@shared/api/backend-readiness';
+import { readMirroredAccessToken } from '@shared/lib/access-token-storage';
 // ─── Error type ───────────────────────────────────────────────────────────────
 export class ApiError extends Error {
     statusCode;
@@ -28,18 +29,28 @@ const APP_BOOT_TIME_MS = Date.now();
 /** Browser-relative API prefix; Vite dev server proxies `/api` → backend (see vite.config.ts). */
 export const API_BASE = '/api';
 function resolveApiBaseUrl() {
-    const configuredBaseUrl = import.meta.env.VITE_API_BASE_URL?.trim();
+    const configuredBaseUrl = (import.meta.env.VITE_API_BASE_URL?.trim() ||
+        import.meta.env.VITE_API_URL?.trim())?.replace(/\/$/, '');
     const directApi = import.meta.env.VITE_DIRECT_API === 'true' || import.meta.env.VITE_DIRECT_API === '1';
+    /**
+     * In Vite dev, default to same-origin so `/api/*` goes through the dev proxy.
+     * Calling `http://127.0.0.1:3000` directly from `http://localhost:5173` (or the reverse)
+     * requires CORS and often breaks with a blank UI while `/api/health` (relative) still works.
+     * Set `VITE_DIRECT_API=true` to force `VITE_API_BASE_URL` in development.
+     */
     if (import.meta.env.DEV && !directApi) {
-        return window.location.origin;
+        return typeof window !== 'undefined' ? window.location.origin : 'http://localhost:5173';
     }
     if (configuredBaseUrl) {
         return configuredBaseUrl;
     }
     if (import.meta.env.DEV) {
+        return typeof window !== 'undefined' ? window.location.origin : 'http://localhost:5173';
+    }
+    if (typeof window !== 'undefined' && window.location?.origin) {
         return window.location.origin;
     }
-    throw new ApiError(503, 'API_NOT_CONFIGURED', i18n.t('errors.generic.apiNotConfigured'));
+    return 'http://localhost:3000';
 }
 async function fetchWithRetry(url, init) {
     let attempt = 0;
@@ -81,19 +92,25 @@ async function request(path, options = {}) {
             }
         });
     }
-    // Inject JWT from Zustand store without requiring a React hook
-    const accessToken = useAuthStore.getState().accessToken;
+    // Inject JWT from Zustand + mirrored storage (mobile / `ugc_token` fallback)
+    const accessToken = useAuthStore.getState().accessToken ?? readMirroredAccessToken();
     const headers = {
-        'Content-Type': 'application/json',
         ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
         ...(extraHeaders ?? {}),
     };
-    const requestKey = `${init.method ?? 'GET'}:${url.toString()}:${useAuthStore.getState().accessToken ?? ''}`;
+    const hasExplicitContentType = Object.keys(headers).some((key) => key.toLowerCase() === 'content-type');
+    const shouldSendJsonBody = body !== undefined && body !== null;
+    if (shouldSendJsonBody && !hasExplicitContentType) {
+        headers['Content-Type'] = 'application/json';
+    }
+    const requestKey = `${init.method ?? 'GET'}:${url.toString()}:${accessToken ?? ''}`;
     const run = async () => {
         const response = await fetchWithRetry(url.toString(), {
             ...init,
             headers,
-            body: body !== undefined ? JSON.stringify(body) : undefined,
+            body: shouldSendJsonBody
+                ? (typeof body === 'string' || body instanceof FormData ? body : JSON.stringify(body))
+                : undefined,
         });
         // Global 401 handler — clear auth so the router can redirect to login
         if (response.status === 401) {

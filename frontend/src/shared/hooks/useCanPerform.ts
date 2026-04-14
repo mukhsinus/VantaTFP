@@ -52,8 +52,11 @@ const PERMISSION_MAP: Record<Permission, Role[]> = {
  *   {canCreate && <Button>New Task</Button>}
  */
 export function useCanPerform(permission: Permission): boolean {
-  const { role } = useCurrentUser();
+  const { role, isSuperAdmin } = useCurrentUser();
   if (!role) return false;
+  if (isSuperAdmin) {
+    return true;
+  }
   return PERMISSION_MAP[permission].includes(role);
 }
 
@@ -67,10 +70,13 @@ export function useCanPerform(permission: Permission): boolean {
  *   {can('payroll:approve') && <Button>Approve</Button>}
  */
 export function usePermissions(): { can: (permission: Permission) => boolean } {
-  const { role } = useCurrentUser();
+  const { role, isSuperAdmin } = useCurrentUser();
   return {
     can: (permission: Permission) => {
       if (!role) return false;
+      if (isSuperAdmin) {
+        return true;
+      }
       return PERMISSION_MAP[permission].includes(role);
     },
   };

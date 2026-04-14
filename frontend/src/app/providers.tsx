@@ -16,6 +16,7 @@ import {
   markBackendReadyFailOpen,
   markBackendReadyFromHealth,
 } from '@shared/api/backend-readiness';
+import { readMirroredAccessToken, writeAccessTokenMirrors } from '@shared/lib/access-token-storage';
 
 /** Stable key for the current persisted session (access token preferred). */
 function sessionBootstrapKey(
@@ -131,7 +132,10 @@ function BackendStartupGate({ children }: { children: React.ReactNode }) {
     }, 2000);
 
     const run = async () => {
-      const configuredBase = (import.meta.env.VITE_API_BASE_URL as string | undefined)?.trim().replace(/\/$/, '');
+      const configuredBase = (
+        (import.meta.env.VITE_API_BASE_URL as string | undefined)?.trim() ||
+        (import.meta.env.VITE_API_URL as string | undefined)?.trim()
+      )?.replace(/\/$/, '');
       const healthPaths = configuredBase
         ? [`${configuredBase}/api/health`, `${configuredBase}/health`]
         : ['/api/health', '/health'];
@@ -173,9 +177,16 @@ function AuthSessionBootstrap() {
   const setUser = useAuthStore((s) => s.setUser);
   const clearAuth = useAuthStore((s) => s.clearAuth);
   const setSessionLoading = useAuthStore((s) => s.setSessionLoading);
+  const setTokens = useAuthStore((s) => s.setTokens);
 
   useEffect(() => {
     if (!isHydrated) return;
+
+    const mirrored = readMirroredAccessToken();
+    if (!accessToken && mirrored) {
+      setTokens(mirrored);
+      return;
+    }
 
     const releaseSessionGate = () => setSessionLoading(false);
     const key = sessionBootstrapKey(accessToken, refreshToken);
@@ -230,6 +241,7 @@ function AuthSessionBootstrap() {
           setUser(normalized);
         }
 
+        console.log('USER:', normalized);
         sessionBootstrapCompletedFor = key;
       } catch (error) {
         if (cancelled) return;
@@ -271,7 +283,24 @@ function AuthSessionBootstrap() {
     return () => {
       cancelled = true;
     };
-  }, [isHydrated, accessToken, refreshToken, setUser, clearAuth, setSessionLoading]);
+  }, [isHydrated, accessToken, refreshToken, setUser, clearAuth, setSessionLoading, setTokens]);
+
+  return null;
+}
+
+/** Keeps `ugc_token` (and fallbacks) aligned with the Zustand session token. */
+function AccessTokenMirrorSync() {
+  useEffect(() => {
+    writeAccessTokenMirrors(useAuthStore.getState().accessToken);
+    let prev = useAuthStore.getState().accessToken;
+    return useAuthStore.subscribe((state) => {
+      const next = state.accessToken;
+      if (next !== prev) {
+        writeAccessTokenMirrors(next);
+        prev = next;
+      }
+    });
+  }, []);
 
   return null;
 }
@@ -293,6 +322,10 @@ function AuthPersistHydrationBridge() {
     const mark = () => {
       if (!useAuthStore.getState().isHydrated) {
         useAuthStore.getState().setHydrated();
+      }
+      const { accessToken, refreshToken } = useAuthStore.getState();
+      if (accessToken || refreshToken) {
+        useAuthStore.getState().setSessionLoading(true);
       }
     };
 
@@ -341,6 +374,7 @@ export function Providers({ children }: ProvidersProps) {
     <QueryClientProvider client={queryClient}>
       <BackendStartupGate>
         <AuthPersistHydrationBridge />
+        <AccessTokenMirrorSync />
         <AuthQueryResetOnLogout />
         <AuthSessionBootstrap />
         {children}

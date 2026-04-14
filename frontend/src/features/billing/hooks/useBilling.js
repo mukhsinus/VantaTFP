@@ -7,20 +7,14 @@ import { billingKeys } from '@features/billing/billing.query-keys';
 export function useBilling(options) {
     return useQuery({
         queryKey: billingKeys.current(),
-        queryFn: () => billingService.getCurrent(),
+        queryFn: async () => {
+            console.log('loading billing...');
+            const data = await billingService.getCurrent();
+            console.log('loading billing... done');
+            return data;
+        },
         enabled: options?.enabled ?? true,
         /** Global QueryClient sets refetchOnMount: false; billing must refresh when opening the page. */
-        refetchOnMount: 'always',
-    });
-}
-/**
- * Static plan catalog (pricing / caps) from GET /billing/plans.
- */
-export function usePlans() {
-    return useQuery({
-        queryKey: billingKeys.plans(),
-        queryFn: () => billingService.getPlans(),
-        staleTime: 60 * 60 * 1000,
         refetchOnMount: 'always',
     });
 }

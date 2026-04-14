@@ -5,11 +5,11 @@ import { Modal, Button, Input, Select } from '@shared/components/ui';
 import { useIsMobile } from '@shared/hooks/useIsMobile';
 import { useCreateUser } from '../hooks/useCreateUser';
 const INITIAL_FORM = {
-    email: '',
+    phone: '',
     password: '',
-    role: 'EMPLOYEE',
-    firstName: '',
-    lastName: '',
+    role: 'employee',
+    name: '',
+    roleDescription: '',
 };
 export function CreateUserModal({ isOpen, onClose, creatorRole }) {
     const { t } = useTranslation();
@@ -19,11 +19,11 @@ export function CreateUserModal({ isOpen, onClose, creatorRole }) {
     const [error, setError] = useState(null);
     const roleOptions = useMemo(() => {
         if (creatorRole === 'MANAGER') {
-            return [{ value: 'EMPLOYEE', label: t('employees.roles.employee') }];
+            return [{ value: 'employee', label: t('employees.roles.employee') }];
         }
         return [
-            { value: 'MANAGER', label: t('employees.roles.manager') },
-            { value: 'EMPLOYEE', label: t('employees.roles.employee') },
+            { value: 'manager', label: t('employees.roles.manager') },
+            { value: 'employee', label: t('employees.roles.employee') },
         ];
     }, [creatorRole, t]);
     const setField = (key, value) => {
@@ -35,19 +35,15 @@ export function CreateUserModal({ isOpen, onClose, creatorRole }) {
         onClose();
     };
     const validate = () => {
-        if (!form.firstName.trim() || !form.lastName.trim()) {
-            setError(t('employees.modal.errors.nameRequired'));
-            return false;
-        }
-        if (!form.email.trim()) {
+        if (!form.phone.trim()) {
             setError(t('employees.modal.errors.emailRequired'));
             return false;
         }
-        if (form.password.length < 8) {
+        if (form.password.length < 4) {
             setError(t('employees.modal.errors.passwordShort'));
             return false;
         }
-        if (creatorRole === 'MANAGER' && form.role !== 'EMPLOYEE') {
+        if (creatorRole === 'MANAGER' && form.role !== 'employee') {
             setError(t('employees.modal.errors.managerRole'));
             return false;
         }
@@ -60,11 +56,11 @@ export function CreateUserModal({ isOpen, onClose, creatorRole }) {
             return;
         try {
             await createUser({
-                email: form.email.trim(),
+                phone: form.phone.trim(),
                 password: form.password,
                 role: form.role,
-                firstName: form.firstName.trim(),
-                lastName: form.lastName.trim(),
+                name: form.name.trim() || undefined,
+                roleDescription: form.roleDescription.trim() || undefined,
             });
             handleClose();
         }
@@ -79,5 +75,5 @@ export function CreateUserModal({ isOpen, onClose, creatorRole }) {
                         border: '1px solid var(--color-danger-border)',
                         borderRadius: 'var(--radius)',
                         padding: '8px 10px',
-                    }, children: error })), _jsxs("div", { style: { display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 10 }, children: [_jsx(Input, { label: t('employees.modal.fields.firstName'), value: form.firstName, onChange: (e) => setField('firstName', e.target.value) }), _jsx(Input, { label: t('employees.modal.fields.lastName'), value: form.lastName, onChange: (e) => setField('lastName', e.target.value) })] }), _jsx(Input, { label: t('employees.modal.fields.email'), type: "email", value: form.email, onChange: (e) => setField('email', e.target.value) }), _jsx(Input, { label: t('employees.modal.fields.password'), type: "password", value: form.password, onChange: (e) => setField('password', e.target.value) }), _jsx(Select, { label: t('employees.modal.fields.role'), value: form.role, onChange: (e) => setField('role', e.target.value), options: roleOptions })] }) }));
+                    }, children: error })), _jsx(Input, { label: t('employees.modal.fields.firstName'), value: form.name, onChange: (e) => setField('name', e.target.value) }), _jsx(Input, { label: "Phone", type: "tel", value: form.phone, onChange: (e) => setField('phone', e.target.value) }), _jsx(Input, { label: t('employees.modal.fields.password'), type: "password", value: form.password, onChange: (e) => setField('password', e.target.value) }), _jsx(Input, { label: "Role description (optional)", value: form.roleDescription, onChange: (e) => setField('roleDescription', e.target.value) }), _jsx(Select, { label: t('employees.modal.fields.role'), value: form.role, onChange: (e) => setField('role', e.target.value), options: roleOptions })] }) }));
 }

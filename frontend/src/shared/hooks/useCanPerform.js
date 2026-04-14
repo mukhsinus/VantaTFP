@@ -25,9 +25,12 @@ const PERMISSION_MAP = {
  *   {canCreate && <Button>New Task</Button>}
  */
 export function useCanPerform(permission) {
-    const { role } = useCurrentUser();
+    const { role, isSuperAdmin } = useCurrentUser();
     if (!role)
         return false;
+    if (isSuperAdmin) {
+        return true;
+    }
     return PERMISSION_MAP[permission].includes(role);
 }
 /**
@@ -40,11 +43,14 @@ export function useCanPerform(permission) {
  *   {can('payroll:approve') && <Button>Approve</Button>}
  */
 export function usePermissions() {
-    const { role } = useCurrentUser();
+    const { role, isSuperAdmin } = useCurrentUser();
     return {
         can: (permission) => {
             if (!role)
                 return false;
+            if (isSuperAdmin) {
+                return true;
+            }
             return PERMISSION_MAP[permission].includes(role);
         },
     };

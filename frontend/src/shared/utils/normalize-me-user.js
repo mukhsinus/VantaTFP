@@ -9,20 +9,34 @@ export function normalizeMeUser(raw, fallback = null) {
     const userId = value.userId ?? value.id;
     const tenantId = value.tenantId ?? '';
     const email = value.email;
-    const firstName = value.firstName;
-    const lastName = value.lastName;
+    const firstNameRaw = value.firstName ?? value.first_name ?? '';
+    const lastNameRaw = value.lastName ?? value.last_name ?? '';
     const role = value.role;
-    const systemRole = value.systemRole !== undefined ? asSystemRole(value.systemRole) : (fallback?.systemRole ?? 'user');
-    if (!userId || !email || !firstName || !lastName || !role) {
+    const systemRole = value.systemRole !== undefined
+        ? asSystemRole(value.systemRole)
+        : value.system_role !== undefined
+            ? asSystemRole(value.system_role)
+            : (fallback?.systemRole ?? 'user');
+    const firstNameTrimmed = String(firstNameRaw).trim();
+    const lastNameTrimmed = String(lastNameRaw).trim();
+    if (!userId || !email || !role) {
         return null;
     }
     if (systemRole !== 'super_admin' && !tenantId) {
         return null;
     }
+    if (systemRole !== 'super_admin' && (!firstNameTrimmed || !lastNameTrimmed)) {
+        return null;
+    }
+    const firstName = firstNameTrimmed || (systemRole === 'super_admin' ? 'Super' : '');
+    const lastName = lastNameTrimmed || (systemRole === 'super_admin' ? 'Admin' : '');
     return {
         userId,
         tenantId,
-        tenantName: value.tenantName ?? fallback?.tenantName ?? 'Tenant',
+        tenantName: value.tenantName
+            ?? value.tenant_name
+            ?? fallback?.tenantName
+            ?? 'Tenant',
         email,
         firstName,
         lastName,

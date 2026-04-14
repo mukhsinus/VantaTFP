@@ -21,6 +21,8 @@ import { AdminDashboardPage } from '@pages/admin/AdminDashboardPage';
 import { AdminTenantsPage } from '@pages/admin/AdminTenantsPage';
 import { AdminUsersPage } from '@pages/admin/AdminUsersPage';
 import { AdminSubscriptionsPage } from '@pages/admin/AdminSubscriptionsPage';
+import { AdminPaymentsPage } from '@pages/admin/AdminPaymentsPage';
+import { MessagesPage } from '@pages/messages/MessagesPage';
 export const router = createBrowserRouter([
     {
         path: '/login',
@@ -36,7 +38,8 @@ export const router = createBrowserRouter([
                     {
                         element: _jsx(AdminLayout, {}),
                         children: [
-                            { index: true, element: _jsx(Navigate, { to: "dashboard", replace: true }) },
+                            { index: true, element: _jsx(Navigate, { to: "payments", replace: true }) },
+                            { path: 'payments', element: _jsx(AdminPaymentsPage, {}) },
                             { path: 'dashboard', element: _jsx(AdminDashboardPage, {}) },
                             { path: 'tenants', element: _jsx(AdminTenantsPage, {}) },
                             { path: 'users', element: _jsx(AdminUsersPage, {}) },
@@ -60,6 +63,7 @@ export const router = createBrowserRouter([
                             { path: 'reports', element: _jsx(RoleGuard, { path: "/reports", children: _jsx(ReportsPage, {}) }) },
                             { path: 'billing', element: _jsx(RoleGuard, { path: "/billing", children: _jsx(BillingPage, {}) }) },
                             { path: 'settings', element: _jsx(RoleGuard, { path: "/settings", children: _jsx(SettingsPage, {}) }) },
+                            { path: 'messages', element: _jsx(RoleGuard, { path: "/messages", children: _jsx(MessagesPage, {}) }) },
                         ],
                     },
                 ],

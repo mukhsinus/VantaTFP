@@ -12,10 +12,10 @@ export function normalizeMeUser(raw: unknown, fallback: CurrentUser | null = nul
   const userId = (value.userId as string | undefined) ?? (value.id as string | undefined);
   const tenantId = (value.tenantId as string | undefined) ?? '';
   const email = value.email as string | undefined;
-  const firstName =
-    (value.firstName as string | undefined) ?? (value.first_name as string | undefined);
-  const lastName =
-    (value.lastName as string | undefined) ?? (value.last_name as string | undefined);
+  const firstNameRaw =
+    (value.firstName as string | undefined) ?? (value.first_name as string | undefined) ?? '';
+  const lastNameRaw =
+    (value.lastName as string | undefined) ?? (value.last_name as string | undefined) ?? '';
   const role = value.role as CurrentUser['role'] | undefined;
   const systemRole =
     value.systemRole !== undefined
@@ -24,13 +24,23 @@ export function normalizeMeUser(raw: unknown, fallback: CurrentUser | null = nul
         ? asSystemRole(value.system_role)
         : (fallback?.systemRole ?? 'user');
 
-  if (!userId || !email || !firstName || !lastName || !role) {
+  const firstNameTrimmed = String(firstNameRaw).trim();
+  const lastNameTrimmed = String(lastNameRaw).trim();
+
+  if (!userId || !email || !role) {
     return null;
   }
 
   if (systemRole !== 'super_admin' && !tenantId) {
     return null;
   }
+
+  if (systemRole !== 'super_admin' && (!firstNameTrimmed || !lastNameTrimmed)) {
+    return null;
+  }
+
+  const firstName = firstNameTrimmed || (systemRole === 'super_admin' ? 'Super' : '');
+  const lastName = lastNameTrimmed || (systemRole === 'super_admin' ? 'Admin' : '');
 
   return {
     userId,

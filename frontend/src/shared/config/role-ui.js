@@ -1,5 +1,6 @@
 import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
 const icon = {
+    messages: (_jsx("svg", { width: "16", height: "16", viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 1.75, children: _jsx("path", { d: "M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" }) })),
     dashboard: (_jsxs("svg", { width: "16", height: "16", viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 1.75, children: [_jsx("rect", { x: "3", y: "3", width: "7", height: "7", rx: "1" }), _jsx("rect", { x: "14", y: "3", width: "7", height: "7", rx: "1" }), _jsx("rect", { x: "3", y: "14", width: "7", height: "7", rx: "1" }), _jsx("rect", { x: "14", y: "14", width: "7", height: "7", rx: "1" })] })),
     tasks: (_jsxs("svg", { width: "16", height: "16", viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 1.75, children: [_jsx("path", { d: "M9 11l3 3L22 4" }), _jsx("path", { d: "M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11" })] })),
     employees: (_jsxs("svg", { width: "16", height: "16", viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 1.75, children: [_jsx("path", { d: "M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" }), _jsx("circle", { cx: "9", cy: "7", r: "4" }), _jsx("path", { d: "M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" })] })),
@@ -16,6 +17,7 @@ const NAV_BY_ROLE = {
         { to: '/tasks', label: 'Tasks', icon: icon.tasks },
         { to: '/kpi', label: 'KPI', icon: icon.kpi },
         { to: '/payroll', label: 'Payroll', icon: icon.payroll },
+        { to: '/messages', label: 'Messages', icon: icon.messages },
         { to: '/reports', label: 'Reports', icon: icon.reports },
         { to: '/billing', label: 'Billing', icon: icon.billing },
         { to: '/settings', label: 'Settings', icon: icon.settings },
@@ -25,6 +27,7 @@ const NAV_BY_ROLE = {
         { to: '/employees', label: 'Employees', icon: icon.employees },
         { to: '/tasks', label: 'Team Tasks', icon: icon.tasks },
         { to: '/kpi', label: 'Team KPI', icon: icon.kpi },
+        { to: '/messages', label: 'Messages', icon: icon.messages },
         { to: '/reports', label: 'Reports', icon: icon.reports },
         { to: '/settings', label: 'Settings', icon: icon.settings },
     ],
@@ -32,6 +35,7 @@ const NAV_BY_ROLE = {
         { to: '/tasks', label: 'My Tasks', icon: icon.tasks },
         { to: '/kpi', label: 'My KPI', icon: icon.kpi },
         { to: '/payroll', label: 'My Payroll', icon: icon.payroll },
+        { to: '/messages', label: 'Messages', icon: icon.messages },
         { to: '/settings', label: 'Settings', icon: icon.settings },
     ],
 };
@@ -41,6 +45,7 @@ const ALLOWED_ROLES_BY_ROUTE = {
     '/tasks': ['ADMIN', 'MANAGER', 'EMPLOYEE'],
     '/kpi': ['ADMIN', 'MANAGER', 'EMPLOYEE'],
     '/payroll': ['ADMIN', 'EMPLOYEE'],
+    '/messages': ['ADMIN', 'MANAGER', 'EMPLOYEE'],
     '/reports': ['ADMIN', 'MANAGER'],
     '/billing': ['ADMIN'],
     '/settings': ['ADMIN', 'MANAGER', 'EMPLOYEE'],

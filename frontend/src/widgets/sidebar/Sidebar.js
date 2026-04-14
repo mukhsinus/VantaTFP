@@ -33,5 +33,5 @@ export function Sidebar() {
 }
 function SidebarItem({ item, active, isCollapsed, }) {
     const { t } = useTranslation();
-    return (_jsxs(NavLink, { to: item.to, title: isCollapsed ? item.label : undefined, className: `${styles.navItem} ${active ? styles.navItemActive : ''} ${isCollapsed ? styles.navItemCollapsed : ''}`, children: [_jsx("span", { className: styles.navItemIcon, children: item.icon }), !isCollapsed && (_jsxs(_Fragment, { children: [_jsx("span", { className: styles.navItemLabel, children: item.label }), active && _jsx("span", { className: styles.navItemDot })] })), isCollapsed && active && _jsx("span", { className: styles.navItemDot })] }));
+    return (_jsxs(NavLink, { to: item.to, title: isCollapsed ? t(item.label) : undefined, className: `${styles.navItem} ${active ? styles.navItemActive : ''} ${isCollapsed ? styles.navItemCollapsed : ''}`, children: [_jsx("span", { className: styles.navItemIcon, children: item.icon }), !isCollapsed && (_jsxs(_Fragment, { children: [_jsx("span", { className: styles.navItemLabel, children: t(item.label) }), active && _jsx("span", { className: styles.navItemDot })] })), isCollapsed && active && _jsx("span", { className: styles.navItemDot })] }));
 }

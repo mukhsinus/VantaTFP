@@ -7,23 +7,26 @@ import { AppLoadingScreen } from './AppLoadingScreen';
  *
  * Render order:
  *  1. isHydrated = false     → full-screen loader (prevents flicker)
- *  2. isSessionLoading       → full-screen loader (bootstrap / session work)
- *  3. no tokens              → redirect to /login
- *  4. tokens (user may lag)  → render child routes; AppLayout shows skeleton until user is set
+ *  2. no tokens              → redirect to /login
+ *  3. tokens (user may lag)  → render child routes immediately (non-blocking bootstrap)
  */
 export function AuthGuard() {
     const isHydrated = useAuthStore((s) => s.isHydrated);
-    const isSessionLoading = useAuthStore((s) => s.isSessionLoading);
     const accessToken = useAuthStore((s) => s.accessToken);
     const refreshToken = useAuthStore((s) => s.refreshToken);
+    const user = useAuthStore((s) => s.user);
+    const isSessionLoading = useAuthStore((s) => s.isSessionLoading);
     const location = useLocation();
     if (!isHydrated) {
         return _jsx(AppLoadingScreen, {});
     }
-    if (isSessionLoading) {
+    if (!accessToken && !refreshToken) {
+        return (_jsx(Navigate, { to: `/login?redirect=${encodeURIComponent(location.pathname)}`, replace: true }));
+    }
+    if ((accessToken || refreshToken) && isSessionLoading && !user) {
         return _jsx(AppLoadingScreen, {});
     }
-    if (!accessToken && !refreshToken) {
+    if ((accessToken || refreshToken) && !isSessionLoading && !user) {
         return (_jsx(Navigate, { to: `/login?redirect=${encodeURIComponent(location.pathname)}`, replace: true }));
     }
     return _jsx(Outlet, {});

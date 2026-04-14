@@ -44,11 +44,13 @@ export function TasksPage() {
     const { can } = usePermissions();
     const overdueTasks = tasks.filter((task) => task.overdue);
     const taskLimitReached = billing &&
-        billing.plan !== 'platform' &&
-        billing.tasks_limit !== null &&
-        billing.tasks_limit !== undefined
-        ? total >= billing.tasks_limit
+        billing.plan.name !== 'platform' &&
+        billing.limits.tasks !== null &&
+        billing.limits.tasks !== undefined
+        ? total >= billing.limits.tasks
         : false;
+    const trialExpired = (billing?.status ?? '').toLowerCase() === 'past_due';
+    const creationBlocked = taskLimitReached || trialExpired;
     if (isLoading)
         return _jsx(PageSkeleton, {});
     if (isError) {
@@ -71,7 +73,7 @@ export function TasksPage() {
                                                 background: view === v ? 'var(--color-bg)' : 'transparent',
                                                 color: view === v ? 'var(--color-text-primary)' : 'var(--color-text-secondary)',
                                                 boxShadow: view === v ? 'var(--shadow-xs)' : 'none',
-                                            }, children: v === 'board' ? t('tasks.view.board') : t('tasks.view.list') }, v))) }), can('task:create') && (_jsx(Button, { variant: "primary", size: "sm", onClick: () => setShowCreateModal(true), disabled: taskLimitReached, leftIcon: _jsx("svg", { width: "13", height: "13", viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 2.5, children: _jsx("path", { d: "M12 5v14M5 12h14" }) }), children: t('tasks.create') }))] })] }), taskLimitReached && (_jsx(Card, { style: { borderColor: 'var(--color-warning-border)', background: 'var(--color-warning-subtle)' }, children: _jsx("p", { style: { margin: 0, color: 'var(--color-warning)', fontSize: 'var(--text-sm)', fontWeight: 600 }, children: t('billing.limitReached', { defaultValue: 'Task limit reached for your current plan.' }) }) })), overdueTasks.length > 0 && (_jsxs("div", { style: {
+                                            }, children: v === 'board' ? t('tasks.view.board') : t('tasks.view.list') }, v))) }), can('task:create') && (_jsx(Button, { variant: "primary", size: "sm", onClick: () => setShowCreateModal(true), disabled: creationBlocked, leftIcon: _jsx("svg", { width: "13", height: "13", viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 2.5, children: _jsx("path", { d: "M12 5v14M5 12h14" }) }), children: t('tasks.create') }))] })] }), taskLimitReached && (_jsx(Card, { style: { borderColor: 'var(--color-warning-border)', background: 'var(--color-warning-subtle)' }, children: _jsx("p", { style: { margin: 0, color: 'var(--color-warning)', fontSize: 'var(--text-sm)', fontWeight: 600 }, children: t('billing.limitReached', { defaultValue: 'Task limit reached for your plan' }) }) })), trialExpired && (_jsx(Card, { style: { borderColor: 'var(--color-danger-border)', background: 'var(--color-danger-subtle)' }, children: _jsx("p", { style: { margin: 0, color: 'var(--color-danger)', fontSize: 'var(--text-sm)', fontWeight: 600 }, children: t('billing.trial.expiredRequired', { defaultValue: 'Trial expired — upgrade required' }) }) })), overdueTasks.length > 0 && (_jsxs("div", { style: {
                             display: 'flex',
                             alignItems: 'center',
                             gap: 10,
@@ -82,7 +84,7 @@ export function TasksPage() {
                             fontSize: 'var(--text-sm)',
                         }, children: [_jsxs("svg", { width: "14", height: "14", viewBox: "0 0 24 24", fill: "none", stroke: "var(--color-danger)", strokeWidth: 2, children: [_jsx("circle", { cx: "12", cy: "12", r: "10" }), _jsx("path", { d: "M12 8v4M12 16h.01" })] }), _jsxs("span", { style: { color: 'var(--color-danger)', fontWeight: 500 }, children: [overdueTasks.length, " ", t('tasks.overdueAlert')] })] })), tasks.length === 0 ? (_jsx(EmptyState, { title: t('tasks.empty.title'), description: t('tasks.empty.subtitle'), action: can('task:create')
                             ? { label: t('tasks.create'), onClick: () => setShowCreateModal(true) }
-                            : undefined, icon: _jsxs("svg", { width: "24", height: "24", viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 1.5, children: [_jsx("path", { d: "M9 11l3 3L22 4" }), _jsx("path", { d: "M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11" })] }) })) : isMobile || role === 'EMPLOYEE' ? (_jsx(MobileTasksList, { tasks: tasks })) : view === 'board' ? (_jsx(BoardView, { tasks: tasks })) : (_jsx(ListView, { tasks: tasks }))] }), isMobile && can('task:create') && (_jsxs("button", { onClick: () => setShowCreateModal(true), disabled: taskLimitReached, style: {
+                            : undefined, icon: _jsxs("svg", { width: "24", height: "24", viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 1.5, children: [_jsx("path", { d: "M9 11l3 3L22 4" }), _jsx("path", { d: "M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11" })] }) })) : isMobile || role === 'EMPLOYEE' ? (_jsx(MobileTasksList, { tasks: tasks })) : view === 'board' ? (_jsx(BoardView, { tasks: tasks })) : (_jsx(ListView, { tasks: tasks }))] }), isMobile && can('task:create') && (_jsxs("button", { onClick: () => setShowCreateModal(true), disabled: creationBlocked, style: {
                     position: 'fixed',
                     left: 12,
                     right: 12,
@@ -97,7 +99,7 @@ export function TasksPage() {
                     fontWeight: 600,
                     boxShadow: 'var(--shadow-lg)',
                     cursor: 'pointer',
-                    opacity: taskLimitReached ? 0.6 : 1,
+                    opacity: creationBlocked ? 0.6 : 1,
                 }, children: ["+ ", t('tasks.create')] })), _jsx(CreateTaskModal, { isOpen: showCreateModal, onClose: () => setShowCreateModal(false) })] }));
 }
 function MobileTasksList({ tasks }) {
