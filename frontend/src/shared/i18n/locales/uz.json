@@ -1,4 +1,59 @@
-{
+  {"employees": {
+    "title": "Xodimlar",
+    "total": "jami",
+    "add": "Xodim qo'shish",
+    "limitReached": "Joriy tarif uchun xodimlar limiti tugadi",
+    "filters": { "all": "Barchasi" },
+    "sheet": { "actionsTitle": "Amallar", "changeRoleTitle": "Rolni o'zgartirish" },
+    "confirm": {
+      "deactivateTitle": "A'zoni o'chirish?",
+      "deactivateBody": "U ish maydoniga kira olmaydi. Keyinroq qayta taklif qilishingiz mumkin.",
+      "removeTitle": "Ish maydonidan o'chirish?",
+      "removeBody": "U jamoadan o'chiriladi va kirish huquqini yo'qotadi."
+    },
+    "ownerLockedHint": "Ish maydoni egasini o'chirish yoki o'zgartirish mumkin emas.",
+    "roles": { "owner": "Ega", "manager": "Menejer", "employee": "Xodim" },
+    "toast": { "roleUpdated": "Rol yangilandi: {{email}}" },
+    "active": "faol",
+    "invite": "Xodimni taklif qilish",
+    "role": "Rol",
+    "search": "Xodimlarni qidirish...",
+    "empty": { "title": "Xodimlar topilmadi", "description": "Filtrlarni o'zgartiring yoki birinchi xodimni taklif qiling." },
+    "actions": {
+      "openMenu": "Amallarni ochish",
+      "changeRole": "Rolni o'zgartirish",
+      "deactivate": "O'chirish",
+      "remove": "O'chirish",
+      "readonly": "Bu foydalanuvchini boshqarish huquqiga ega emassiz.",
+      "self": "Bu yerda o'z rolingizni o'zgartira olmaysiz."
+    },
+    "modal": {
+      "title": "Foydalanuvchi yaratish",
+      "description": "Yangi xodimni akkauntingizga qo'shing.",
+      "submit": "Yaratish",
+      "fields": {
+        "firstName": "Ism",
+        "lastName": "Familiya",
+        "email": "Telefon",
+        "phone": "Telefon",
+        "roleDescription": "Rol tavsifi (ixtiyoriy)",
+        "password": "Parol",
+        "role": "Rol"
+      },
+      "errors": {
+        "nameRequired": "Ism va familiya majburiy.",
+        "emailRequired": "Telefon majburiy.",
+        "passwordShort": "Parol kamida 4 belgidan iborat bo'lishi kerak.",
+        "managerRole": "Menejerlar faqat xodimlarni taklif qilishi mumkin."
+      }
+    },
+    "card": {
+      "tasks": "Ochiq vazifalar",
+      "joined": "Jamoada",
+      "status": "Holat"
+    }
+},
+
   "nav": {
     "overview": "Boshqaruv",
     "dashboard": "Boshqaruv",
@@ -14,6 +69,7 @@
     "documents": "Hujjatlar",
     "automations": "Avtomatlashtirish",
     "templates": "Shablonlar",
+    "messages": "Xabarlar",
     "notifications": {
       "title": "Bildirishnomalar"
     },
@@ -97,12 +153,14 @@
       "title": "Yangi vazifa",
       "description": "Vazifa qo'shing va uni jamoaga biriktiring.",
       "submit": "Vazifa yaratish",
-      "fields": {
-        "title": "Nomi",
-        "description": "Tavsif",
-        "priority": "Ustuvorlik",
-        "dueDate": "Muddat"
-      },
+        "fields": {
+          "title": "Nomi",
+          "description": "Tavsif",
+          "priority": "Ustuvorlik",
+          "dueDate": "Muddat",
+          "assignee": "Mas'ul",
+          "assigneeEveryone": "Barchasi"
+        },
       "placeholders": {
         "title": "Nima qilish kerak?",
         "description": "Kontekst yoki qabul mezonlarini kiriting..."
@@ -273,7 +331,9 @@
       "avatarHint": "JPG, PNG 2 MB gacha",
       "firstName": "Ism",
       "lastName": "Familiya",
-      "email": "Email"
+      "email": "Telefon",
+      "phone": "Telefon",
+      "roleDescription": "Rol tavsifi (ixtiyoriy)"
     },
     "workspace": {
       "title": "Ish maydoni",
@@ -312,6 +372,23 @@
       "saveFailed": "Saqlab bo‘lmadi",
       "loadFailed": "Sozlamalarni yuklab bo‘lmadi"
     }  },
+  "dashboard": {
+    "title": "Boshqaruv",
+    "subtitle": "Tenant ma'lumotlari backend xizmatlaridan sinxronlashtirilgan.",
+    "totalTasks": "Jami vazifalar",
+    "completedTasks": "Bajarilgan vazifalar",
+    "overdueTasks": "Muddati o‘tgan vazifalar",
+    "inProgress": "Jarayonda",
+    "kpiSummary": "KPI trekeri",
+    "kpiSubtitle": "KPI tahlil endpointidan",
+    "payrollSummary": "Ish haqi trekeri",
+    "payrollSubtitle": "Ish haqi yozuvlari endpointidan",
+    "recentTasks": "So‘nggi vazifalar",
+    "recentTasksSubtitle": "Oxirgi sinxronlangan vazifalar",
+    "reportsActivity": "Hisobotlar faolligi",
+    "reportsActivitySubtitle": "Hisobotlar tarixi endpointidan",
+    "generatedReports": "Yaratilgan hisobotlar: {{count}}"
+  },
   "projects": {
     "title": "Loyihalar",
     "total": "loyihalar",

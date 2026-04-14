@@ -380,9 +380,12 @@ function TaskCard({ task, canChangeStatus }: { task: TaskUiModel; canChangeStatu
   const [hovered, setHovered] = useState(false);
   const { updateStatus } = useUpdateTaskStatus();
 
+
   const currentIndex = STATUS_SEQUENCE.indexOf(task.status);
   const nextStatus = STATUS_SEQUENCE[currentIndex + 1] as TaskStatus | undefined;
+  const prevStatus = currentIndex > 0 ? STATUS_SEQUENCE[currentIndex - 1] as TaskStatus : undefined;
 
+  const isDone = task.status === 'DONE';
   return (
     <div
       style={{
@@ -395,10 +398,10 @@ function TaskCard({ task, canChangeStatus }: { task: TaskUiModel; canChangeStatu
         transition: 'box-shadow var(--transition), transform var(--transition)',
         boxShadow: task.overdue
           ? '0 0 0 2px var(--color-danger-subtle)'
-          : hovered ? 'var(--shadow-md)' : 'var(--shadow-xs)',
-        transform: hovered ? 'translateY(-1px)' : 'none',
+          : 'var(--shadow-xs)',
+        transform: 'none',
       }}
-      onMouseEnter={() => setHovered(true)}
+      onMouseEnter={() => { if (!isDone) setHovered(true); }}
       onMouseLeave={() => { setHovered(false); setMenuOpen(false); }}
     >
       {/* Title row */}
@@ -408,90 +411,6 @@ function TaskCard({ task, canChangeStatus }: { task: TaskUiModel; canChangeStatu
         </p>
         <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
           <Badge variant={PRIORITY_VARIANT[task.priority]}>{t(PRIORITY_LABEL_KEY[task.priority])}</Badge>
-
-          {/* Status menu only when at least one valid transition exists (e.g. not from DONE). */}
-          {canChangeStatus && (TASK_STATUS_ALLOWED_NEXT[task.status] ?? []).length > 0 && (
-          <div style={{ position: 'relative' }}>
-            <button
-              onClick={(e) => { e.stopPropagation(); setMenuOpen((o) => !o); }}
-              style={{
-                width: 22,
-                height: 22,
-                display: hovered || menuOpen ? 'flex' : 'none',
-                alignItems: 'center',
-                justifyContent: 'center',
-                background: menuOpen ? 'var(--color-bg-muted)' : 'transparent',
-                border: 'none',
-                borderRadius: 'var(--radius-sm)',
-                cursor: 'pointer',
-                color: 'var(--color-text-muted)',
-                transition: 'background var(--transition)',
-              }}
-              onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--color-bg-muted)')}
-              onMouseLeave={(e) => !menuOpen && (e.currentTarget.style.background = 'transparent')}
-            >
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
-                <circle cx="12" cy="5" r="1.5" fill="currentColor" stroke="none" />
-                <circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none" />
-                <circle cx="12" cy="19" r="1.5" fill="currentColor" stroke="none" />
-              </svg>
-            </button>
-
-            {menuOpen && (
-              <div
-                style={{
-                  position: 'absolute',
-                  top: '100%',
-                  right: 0,
-                  marginTop: 4,
-                  background: 'var(--color-bg)',
-                  border: '1px solid var(--color-border)',
-                  borderRadius: 'var(--radius-lg)',
-                  boxShadow: 'var(--shadow-lg)',
-                  zIndex: 'var(--z-dropdown)' as React.CSSProperties['zIndex'],
-                  overflow: 'hidden',
-                  minWidth: 160,
-                }}
-              >
-                <p style={{ padding: '6px 10px 4px', fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                  {t('tasks.moveTo')}
-                </p>
-                {(TASK_STATUS_ALLOWED_NEXT[task.status] ?? [])
-                  .map((targetId) => STATUS_COLUMNS.find((c) => c.id === targetId))
-                  .filter((col): col is (typeof STATUS_COLUMNS)[number] => Boolean(col))
-                  .map((col) => (
-                  <button
-                    key={col.id}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      updateStatus({ taskId: task.id, status: col.id, taskTitle: task.title });
-                      setMenuOpen(false);
-                    }}
-                    style={{
-                      width: '100%',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 8,
-                      padding: '7px 10px',
-                      border: 'none',
-                      background: 'transparent',
-                      cursor: 'pointer',
-                      fontSize: 'var(--text-sm)',
-                      color: 'var(--color-text-primary)',
-                      textAlign: 'left',
-                      transition: 'background var(--transition-fast)',
-                    }}
-                    onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--color-bg-subtle)')}
-                    onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
-                  >
-                    <span style={{ width: 7, height: 7, borderRadius: '50%', background: col.color, flexShrink: 0 }} />
-                    {t(col.labelKey)}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-          )}
         </div>
       </div>
 
@@ -509,30 +428,58 @@ function TaskCard({ task, canChangeStatus }: { task: TaskUiModel; canChangeStatu
         </span>
       </div>
 
-      {/* Quick advance button — visible on hover when there is a next status and user has permission */}
-      {hovered && nextStatus && canChangeStatus && (
-        <button
-          onClick={() => updateStatus({ taskId: task.id, status: nextStatus, taskTitle: task.title })}
-          style={{
-            position: 'absolute',
-            bottom: -11,
-            left: '50%',
-            transform: 'translateX(-50%)',
-            fontSize: 10,
-            fontWeight: 600,
-            color: 'var(--color-accent)',
-            background: 'var(--color-accent-subtle)',
-            border: '1px solid var(--color-accent-subtle-border)',
-            borderRadius: 'var(--radius-full)',
-            padding: '2px 8px',
-            cursor: 'pointer',
-            whiteSpace: 'nowrap',
-            lineHeight: 1.6,
-            zIndex: 1,
-          }}
-        >
-          → {t(STATUS_COLUMNS.find((c) => c.id === nextStatus)?.labelKey ?? 'status.todo')}
-        </button>
+      {/* Quick advance/back buttons — visible on hover when there is a next/prev status and user has permission, but never for DONE */}
+      {!isDone && hovered && canChangeStatus && (prevStatus || nextStatus) && (
+        <div style={{
+          display: 'flex',
+          gap: 8,
+          marginTop: 12,
+          justifyContent: 'flex-start',
+          flexWrap: 'wrap',
+        }}>
+          {prevStatus && (
+            <button
+              onClick={() => updateStatus({ taskId: task.id, status: prevStatus, taskTitle: task.title })}
+              style={{
+                fontSize: 12,
+                fontWeight: 600,
+                color: 'var(--color-accent)',
+                background: 'var(--color-accent-subtle)',
+                border: '1px solid var(--color-accent-subtle-border)',
+                borderRadius: 'var(--radius-full)',
+                padding: '2px 12px',
+                cursor: 'pointer',
+                whiteSpace: 'nowrap',
+                lineHeight: 1.6,
+                zIndex: 1,
+                minWidth: 0,
+              }}
+            >
+              ← {t(STATUS_COLUMNS.find((c) => c.id === prevStatus)?.labelKey ?? 'status.todo')}
+            </button>
+          )}
+          {nextStatus && (
+            <button
+              onClick={() => updateStatus({ taskId: task.id, status: nextStatus, taskTitle: task.title })}
+              style={{
+                fontSize: 12,
+                fontWeight: 600,
+                color: 'var(--color-accent)',
+                background: 'var(--color-accent-subtle)',
+                border: '1px solid var(--color-accent-subtle-border)',
+                borderRadius: 'var(--radius-full)',
+                padding: '2px 12px',
+                cursor: 'pointer',
+                whiteSpace: 'nowrap',
+                lineHeight: 1.6,
+                zIndex: 1,
+                minWidth: 0,
+              }}
+            >
+              → {t(STATUS_COLUMNS.find((c) => c.id === nextStatus)?.labelKey ?? 'status.todo')}
+            </button>
+          )}
+        </div>
       )}
     </div>
   );

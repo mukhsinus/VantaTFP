@@ -12,7 +12,7 @@ import { assertTenantEntityMatch } from '../../shared/utils/tenant-scope.js';
 
 const ALLOWED_STATUS_TRANSITIONS: Record<string, string[]> = {
   TODO: ['IN_PROGRESS', 'CANCELLED'],
-  IN_PROGRESS: ['IN_REVIEW', 'DONE', 'CANCELLED'],
+  IN_PROGRESS: ['TODO', 'IN_REVIEW', 'DONE', 'CANCELLED'],
   IN_REVIEW: ['IN_PROGRESS', 'DONE', 'CANCELLED'],
   DONE: [],
   CANCELLED: [],

@@ -1,4 +1,60 @@
-{
+  {
+    "employees": {
+    "title": "Сотрудники",
+    "total": "всего",
+    "add": "Добавить сотрудника",
+    "limitReached": "Достигнут лимит сотрудников для текущего тарифа",
+    "filters": { "all": "Все" },
+    "sheet": { "actionsTitle": "Действия", "changeRoleTitle": "Изменить роль" },
+    "confirm": {
+      "deactivateTitle": "Деактивировать участника?",
+      "deactivateBody": "Он потеряет доступ к рабочему пространству. Вы сможете пригласить его снова позже.",
+      "removeTitle": "Удалить из рабочего пространства?",
+      "removeBody": "Он будет удален из команды и потеряет доступ."
+    },
+    "ownerLockedHint": "Владелец рабочего пространства не может быть деактивирован или переназначен.",
+    "roles": { "owner": "Владелец", "manager": "Менеджер", "employee": "Сотрудник" },
+    "toast": { "roleUpdated": "Роль обновлена для {{email}}" },
+    "active": "активен",
+    "invite": "Пригласить сотрудника",
+    "role": "Роль",
+    "search": "Поиск сотрудников...",
+    "empty": { "title": "Сотрудники не найдены", "description": "Измените фильтры или пригласите первого участника." },
+    "actions": {
+      "openMenu": "Открыть действия",
+      "changeRole": "Изменить роль",
+      "deactivate": "Деактивировать",
+      "remove": "Удалить",
+      "readonly": "У вас нет прав для управления этим пользователем.",
+      "self": "Вы не можете изменить свою роль здесь."
+    },
+    "modal": {
+      "title": "Создать пользователя",
+      "description": "Добавьте нового сотрудника в ваш аккаунт.",
+      "submit": "Создать",
+      "fields": {
+        "firstName": "Имя",
+        "lastName": "Фамилия",
+        "email": "Телефон",
+        "phone": "Телефон",
+        "roleDescription": "Описание роли (необязательно)",
+        "password": "Пароль",
+        "role": "Роль"
+      },
+      "errors": {
+        "nameRequired": "Имя и фамилия обязательны.",
+        "emailRequired": "Телефон обязателен.",
+        "passwordShort": "Пароль должен быть не менее 4 символов.",
+        "managerRole": "Менеджеры могут приглашать только сотрудников."
+      }
+    },
+    "card": {
+      "tasks": "Открытые задачи",
+      "joined": "В команде с",
+      "status": "Статус"
+    }
+  },
+
   "nav": {
     "overview": "Обзор",
     "dashboard": "Обзор",
@@ -14,6 +70,7 @@
     "documents": "Документы",
     "automations": "Автоматизации",
     "templates": "Шаблоны",
+    "messages": "Сообщения",
     "notifications": {
       "title": "Уведомления"
     },
@@ -97,12 +154,14 @@
       "title": "Новая задача",
       "description": "Добавьте задачу и назначьте ее участнику команды.",
       "submit": "Создать задачу",
-      "fields": {
-        "title": "Название",
-        "description": "Описание",
-        "priority": "Приоритет",
-        "dueDate": "Срок"
-      },
+        "fields": {
+          "title": "Название",
+          "description": "Описание",
+          "priority": "Приоритет",
+          "dueDate": "Срок",
+          "assignee": "Исполнитель",
+          "assigneeEveryone": "Все"
+        },
       "placeholders": {
         "title": "Что нужно сделать?",
         "description": "Добавьте контекст или критерии приемки..."
@@ -273,7 +332,9 @@
       "avatarHint": "JPG, PNG до 2 МБ",
       "firstName": "Имя",
       "lastName": "Фамилия",
-      "email": "Email"
+      "email": "Телефон",
+      "phone": "Телефон",
+      "roleDescription": "Описание роли (необязательно)"
     },
     "workspace": {
       "title": "Рабочее пространство",
@@ -312,6 +373,23 @@
       "saveFailed": "Не удалось сохранить",
       "loadFailed": "Не удалось загрузить настройки"
     }
+  },
+  "dashboard": {
+    "title": "Обзор",
+    "subtitle": "Данные арендатора синхронизированы с бэкенд-сервисами.",
+    "totalTasks": "Всего задач",
+    "completedTasks": "Выполнено задач",
+    "overdueTasks": "Просрочено задач",
+    "inProgress": "В работе",
+    "kpiSummary": "KPI трекер",
+    "kpiSubtitle": "Из KPI-аналитики",
+    "payrollSummary": "Зарплатный трекер",
+    "payrollSubtitle": "Из записей по зарплате",
+    "recentTasks": "Последние задачи",
+    "recentTasksSubtitle": "Последние синхронизированные задачи",
+    "reportsActivity": "Активность отчетов",
+    "reportsActivitySubtitle": "Из истории отчетов",
+    "generatedReports": "Создано отчетов: {{count}}"
   },
   "projects": {
     "title": "Проекты",

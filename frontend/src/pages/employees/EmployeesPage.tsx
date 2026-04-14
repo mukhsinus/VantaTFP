@@ -130,10 +130,10 @@ export function EmployeesPage() {
               size={isMobile ? 'lg' : 'sm'}
               onClick={() => setShowCreateModal(true)}
               disabled={disableAddEmployee}
-              title={disableAddEmployee ? 'Employee limit reached for current plan' : undefined}
+              title={disableAddEmployee ? t('employees.limitReached') : undefined}
               style={isMobile ? { width: '100%' } : undefined}
             >
-              + Add employee
+              + {t('employees.add')}
             </Button>
           ) : null}
         </div>
@@ -193,7 +193,7 @@ export function EmployeesPage() {
             description={t('employees.empty.description')}
             action={
               showAddEmployeeButton && !disableAddEmployee
-                ? { label: '+ Add employee', onClick: () => setShowCreateModal(true) }
+                ? { label: `+ ${t('employees.add')}`, onClick: () => setShowCreateModal(true) }
                 : undefined
             }
           />

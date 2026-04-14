@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { NavLink, Outlet } from 'react-router-dom';
 import { Button } from '@shared/components/ui';
 import { ToastRenderer } from '@shared/components/Toast';
@@ -10,6 +11,7 @@ function navLinkClass({ isActive }: { isActive: boolean }) {
 }
 
 export function AdminLayout() {
+  const { t } = useTranslation();
   const clearAuth = useAuthStore((s) => s.clearAuth);
 
   return (
@@ -18,23 +20,23 @@ export function AdminLayout() {
         <div className={styles.brand}>Platform admin</div>
         <nav className={styles.nav}>
           <NavLink to="/admin/payments" className={navLinkClass}>
-            Payments
+            {t('admin.payments', 'Payments')}
           </NavLink>
           <NavLink to="/admin/tenants" className={navLinkClass}>
-            Tenants
+            {t('admin.tenants', 'Tenants')}
           </NavLink>
           <NavLink to="/admin/users" className={navLinkClass}>
-            Users
+            {t('admin.users', 'Users')}
           </NavLink>
           <NavLink to="/admin/subscriptions" className={navLinkClass}>
-            Subscriptions
+            {t('admin.subscriptions', 'Subscriptions')}
           </NavLink>
           <NavLink to="/admin/dashboard" className={navLinkClass}>
-            Dashboard
+            {t('nav.dashboard', 'Dashboard')}
           </NavLink>
         </nav>
         <Button variant="secondary" size="sm" onClick={() => clearAuth()}>
-          Sign out
+          {t('common.logout', 'Sign out')}
         </Button>
       </header>
       <main className={styles.main}>

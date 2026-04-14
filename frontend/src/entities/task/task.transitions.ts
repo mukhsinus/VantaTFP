@@ -5,7 +5,7 @@ import type { TaskStatus } from './task.types';
  */
 export const TASK_STATUS_ALLOWED_NEXT: Record<TaskStatus, TaskStatus[]> = {
   TODO: ['IN_PROGRESS', 'CANCELLED'],
-  IN_PROGRESS: ['IN_REVIEW', 'DONE', 'CANCELLED'],
+  IN_PROGRESS: ['TODO', 'IN_REVIEW', 'DONE', 'CANCELLED'],
   IN_REVIEW: ['IN_PROGRESS', 'DONE', 'CANCELLED'],
   DONE: [],
   CANCELLED: [],

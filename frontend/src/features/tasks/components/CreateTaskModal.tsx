@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { Modal, Button, Input, Select } from '@shared/components/ui';
 import { useIsMobile } from '@shared/hooks/useIsMobile';
 import { useCreateTask } from '../hooks/useCreateTask';
+import { useEmployees } from '../../employees/hooks/useEmployees';
 import type { CreateTaskPayload, TaskPriority } from '@entities/task/task.types';
 
 interface CreateTaskModalProps {
@@ -15,6 +16,7 @@ interface FormState {
   description: string;
   priority: TaskPriority;
   dueDate: string;
+  assigneeId: string; // empty string means 'everyone'
 }
 
 interface FormErrors {
@@ -33,13 +35,21 @@ const INITIAL_STATE: FormState = {
   description: '',
   priority:    'MEDIUM',
   dueDate:     '',
+  assigneeId:  '', // default to 'everyone'
 };
 
 export function CreateTaskModal({ isOpen, onClose }: CreateTaskModalProps) {
   const { t } = useTranslation();
   const isMobile = useIsMobile();
   const { createTask, isPending } = useCreateTask();
+  const { employees, isLoading: isLoadingEmployees } = useEmployees();
   const priorityOptions = PRIORITY_OPTIONS.map((opt) => ({ value: opt.value, label: t(opt.labelKey) }));
+
+  // Build assignee options: 'everyone' (empty string) + employees
+  const assigneeOptions = [
+    { value: '', label: t('tasks.modal.fields.assigneeEveryone') },
+    ...employees.map((emp) => ({ value: emp.id, label: emp.displayName })),
+  ];
 
   const [form, setForm] = useState<FormState>(INITIAL_STATE);
   const [errors, setErrors] = useState<FormErrors>({});
@@ -63,6 +73,7 @@ export function CreateTaskModal({ isOpen, onClose }: CreateTaskModalProps) {
     e.preventDefault();
     if (!validate()) return;
 
+
     const payload: CreateTaskPayload = {
       title:       form.title.trim(),
       description: form.description.trim() || undefined,
@@ -70,6 +81,7 @@ export function CreateTaskModal({ isOpen, onClose }: CreateTaskModalProps) {
       dueDate:     form.dueDate
         ? new Date(form.dueDate).toISOString()
         : undefined,
+      ...(form.assigneeId ? { assigneeId: form.assigneeId } : {}),
     };
 
     try {
@@ -158,6 +170,15 @@ export function CreateTaskModal({ isOpen, onClose }: CreateTaskModalProps) {
             }}
           />
         </div>
+
+        {/* Assignee row */}
+        <Select
+          label={t('tasks.modal.fields.assignee')}
+          value={form.assigneeId}
+          options={assigneeOptions}
+          onChange={(e) => field('assigneeId', e.target.value)}
+          disabled={isLoadingEmployees}
+        />
 
         {/* Priority + Due date row */}
         <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 12 }}>

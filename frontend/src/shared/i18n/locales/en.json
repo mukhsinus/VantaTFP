@@ -1,3 +1,4 @@
+
 {
   "login": {
     "hero": {
@@ -15,6 +16,24 @@
       "submit": "Sign in",
       "hint": "Contact your administrator if you don't have an account."
     }
+  },
+    "status": {
+    "todo": "To Do",
+    "inProgress": "In Progress",
+    "inReview": "In Review",
+    "done": "Done",
+    "paid": "Paid",
+    "approved": "Approved",
+    "draft": "Draft",
+    "cancelled": "Cancelled",
+    "success": "Success",
+    "warning": "Warning",
+    "danger": "Error",
+    "accent": "Info",
+    "low": "Low",
+    "medium": "Medium",
+    "high": "High",
+    "critical": "Critical"
   },
   "common": {
     "actions": {
@@ -106,6 +125,19 @@
     "shortcut": "⌘K"
   },
   "dashboard": {
+    "totalTasks": "Tasks",
+    "completedTasks": "Completed",
+    "overdueTasks": "Overdue",
+    "inProgress": "In Progress",
+    "kpiSummary": "KPI Summary",
+    "kpiSubtitle": "Team performance at a glance",
+    "payrollSummary": "Payroll Summary",
+    "payrollSubtitle": "Compensation overview for this period",
+    "recentTasks": "Recent Tasks",
+    "recentTasksSubtitle": "Latest updates from your team",
+    "reportsActivity": "Reports Activity",
+    "reportsActivitySubtitle": "Recent report generation and exports",
+    "generatedReports": "Generated Reports",
     "title": "Overview",
     "subtitle": "Here's what's happening today",
     "stats": {
@@ -131,7 +163,10 @@
         "teamFeedbackSession": "Team Feedback Session"
       }
     },
-    "progress": { "title": "Task Progress" }
+    "progress": { "title": "Task Progress" },
+    "kpiAssignees": "Assignees: {{count}}",
+    "kpiCompleted": "Completed: {{count}}",
+    "payrollEntries": "Entries: {{count}}"
     ,
     "labels": {
       "completed": "Completed",
@@ -390,7 +425,9 @@
         "title": "Title",
         "description": "Description",
         "priority": "Priority",
-        "dueDate": "Due Date"
+        "dueDate": "Due Date",
+        "assignee": "Assignee",
+        "assigneeEveryone": "Everyone"
       },
       "placeholders": {
         "title": "What needs to be done?",
@@ -403,6 +440,9 @@
   },
   "employees": {
     "title": "Employees",
+    "total": "total",
+    "add": "Add employee",
+    "limitReached": "Employee limit reached for current plan",
     "filters": {
       "all": "All"
     },
@@ -450,6 +490,8 @@
         "firstName": "First name",
         "lastName": "Last name",
         "email": "Phone",
+        "phone": "Phone",
+        "roleDescription": "Role description (optional)",
         "password": "Password",
         "role": "Role"
       },

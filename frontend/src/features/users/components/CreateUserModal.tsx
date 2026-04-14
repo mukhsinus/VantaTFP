@@ -126,27 +126,27 @@ export function CreateUserModal({ isOpen, onClose, creatorRole }: CreateUserModa
         <Input label={t('employees.modal.fields.firstName')} value={form.name} onChange={(e) => setField('name', e.target.value)} />
 
         <Input
-          label="Phone"
+          label={t('employees.modal.fields.phone')}
           type="tel"
           value={form.phone}
           onChange={(e) => setField('phone', e.target.value)}
         />
 
         <Input
-          label={t('employees.modal.fields.password')}
+          label={t('employees.modal.fields.password')} 
           type="password"
           value={form.password}
           onChange={(e) => setField('password', e.target.value)}
         />
 
         <Input
-          label="Role description (optional)"
+          label={t('employees.modal.fields.roleDescription')}
           value={form.roleDescription}
           onChange={(e) => setField('roleDescription', e.target.value)}
         />
 
         <Select
-          label={t('employees.modal.fields.role')}
+          label={t('employees.modal.fields.role')} 
           value={form.role}
           onChange={(e) => setField('role', e.target.value as FormState['role'])}
           options={roleOptions}
