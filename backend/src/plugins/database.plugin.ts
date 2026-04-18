@@ -11,20 +11,30 @@ async function databasePlugin(app: FastifyInstance): Promise<void> {
   const databaseUrl = env.DATABASE_URL;
   const isLocalDatabase =
     databaseUrl.includes('localhost') || databaseUrl.includes('127.0.0.1');
-
   const pool = new Pool({
     connectionString: databaseUrl,
     max: 20,
     idleTimeoutMillis: 30_000,
-    connectionTimeoutMillis: 15_000,
+    // Shorter connect timeout in development to avoid long blocking during dev
+    connectionTimeoutMillis: env.NODE_ENV === 'production' ? 15_000 : 3_000,
     keepAlive: true,
     ssl: isLocalDatabase ? undefined : { rejectUnauthorized: false },
   });
 
-  // Verify connectivity at startup
-  const client = await pool.connect();
-  client.release();
-  app.log.info('Database connection established');
+  // Verify connectivity at startup, but don't crash the whole app in development
+  // if the DB is temporarily unreachable. In production we rethrow so startup
+  // fails fast.
+  try {
+    const client = await pool.connect();
+    client.release();
+    app.log.info('Database connection established');
+  } catch (err) {
+    app.log.error({ err }, 'Failed to connect to database at startup');
+    if (env.NODE_ENV === 'production') {
+      throw err;
+    }
+    app.log.warn('Continuing startup in development despite DB connection failure');
+  }
 
   app.decorate('db', pool);
 

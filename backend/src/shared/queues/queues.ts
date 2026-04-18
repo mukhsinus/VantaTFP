@@ -5,16 +5,34 @@ import {
   RecalculatePayrollJobPayload,
 } from './queue-types.js';
 
-export const kpiRecalculationQueue = createQueue<RecalculateKpiJobPayload>(
-  QUEUE_NAMES.KPI_RECALCULATION
-);
+// Lazily instantiate queues to avoid attempting to connect to Redis at module
+// import time. Callers should use the enqueue helpers which will create the
+// queue on first use. The app shutdown hook will close queues if they've been
+// created.
+let _kpiRecalculationQueue = null;
+let _payrollRecalculationQueue = null;
 
-export const payrollRecalculationQueue = createQueue<RecalculatePayrollJobPayload>(
-  QUEUE_NAMES.PAYROLL_RECALCULATION
-);
+export function getKpiRecalculationQueue() {
+  if (!_kpiRecalculationQueue) {
+    _kpiRecalculationQueue = createQueue<RecalculateKpiJobPayload>(
+      QUEUE_NAMES.KPI_RECALCULATION
+    );
+  }
+  return _kpiRecalculationQueue;
+}
+
+export function getPayrollRecalculationQueue() {
+  if (!_payrollRecalculationQueue) {
+    _payrollRecalculationQueue = createQueue<RecalculatePayrollJobPayload>(
+      QUEUE_NAMES.PAYROLL_RECALCULATION
+    );
+  }
+  return _payrollRecalculationQueue;
+}
 
 export async function enqueueKpiRecalculation(payload: RecalculateKpiJobPayload): Promise<void> {
-  await kpiRecalculationQueue.add(
+  const q = getKpiRecalculationQueue();
+  await q.add(
     'recalculate-kpi',
     payload,
     {
@@ -26,7 +44,8 @@ export async function enqueueKpiRecalculation(payload: RecalculateKpiJobPayload)
 export async function enqueuePayrollRecalculation(
   payload: RecalculatePayrollJobPayload
 ): Promise<void> {
-  await payrollRecalculationQueue.add(
+  const q = getPayrollRecalculationQueue();
+  await q.add(
     'recalculate-payroll',
     payload,
     {

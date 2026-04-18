@@ -25,6 +25,7 @@ const environmentSchema = z.object({
   SENTRY_DSN: z.string().optional(),
   BILLING_STRICT_MODE: z.string().optional().default('true').transform((value) => value !== 'false'),
   BILLING_DEV_API_RATE_LIMIT: z.coerce.number().int().positive().default(10000),
+  SHUTDOWN_TIMEOUT_MS: z.coerce.number().int().positive().default(10000),
 });
 
 export type Environment = z.infer<typeof environmentSchema>;

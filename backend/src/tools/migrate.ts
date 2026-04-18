@@ -158,17 +158,62 @@ async function applyUp(client: Client, migrations: Migration[], applied: Applied
   for (const migration of pending) {
     console.log(`Applying ${migration.version}...`);
     try {
-      await client.query('BEGIN;');
-      await client.query(migration.upSql);
-      await client.query(
-        `INSERT INTO schema_migrations (version, name, checksum)
-         VALUES ($1, $2, $3);`,
-        [migration.version, migration.name, migration.checksum]
-      );
-      await client.query('COMMIT;');
+      // Some migrations include statements with CONCURRENTLY which cannot
+      // run inside a transaction. We must execute statements sequentially
+      // and run non-CONCURRENTLY statements inside a transaction, while
+      // executing CONCURRENTLY statements outside any transaction.
+      const statements = migration.upSql
+        .split(/;\s*\n/)
+        .map((s) => s.trim())
+        .filter(Boolean);
+
+      let pendingNonConcurrent: string[] = [];
+
+      const flushNonConcurrent = async () => {
+        if (pendingNonConcurrent.length === 0) return;
+        await client.query('BEGIN;');
+        try {
+          for (const stmt of pendingNonConcurrent) {
+            await client.query(stmt);
+          }
+          await client.query(
+            `INSERT INTO schema_migrations (version, name, checksum)
+             VALUES ($1, $2, $3)
+             ON CONFLICT (version) DO NOTHING;`,
+            [migration.version, migration.name, migration.checksum]
+          );
+          await client.query('COMMIT;');
+        } catch (err) {
+          try {
+            await client.query('ROLLBACK;');
+          } catch {}
+          throw err;
+        } finally {
+          pendingNonConcurrent = [];
+        }
+      };
+
+      for (const stmt of statements) {
+        if (/CONCURRENTLY/i.test(stmt)) {
+          // Flush any pending non-concurrent statements first
+          await flushNonConcurrent();
+          // Execute the concurrent statement outside any transaction
+          await client.query(stmt);
+        } else {
+          // Queue non-concurrent statements to run inside a single transaction
+          pendingNonConcurrent.push(stmt);
+        }
+      }
+
+      // Flush remaining non-concurrent statements and record migration
+      await flushNonConcurrent();
       console.log(`Applied ${migration.version}`);
     } catch (error) {
-      await client.query('ROLLBACK;');
+      try {
+        await client.query('ROLLBACK;');
+      } catch {
+        // ignore rollback errors (may occur if no transaction active)
+      }
       throw error;
     }
   }
@@ -197,13 +242,54 @@ async function applyDown(
 
     console.log(`Rolling back ${migration.version}...`);
     try {
+      const statements = migration.downSql
+        .split(/;\s*\n/)
+        .map((s) => s.trim())
+        .filter(Boolean);
+
+      let pendingNonConcurrent: string[] = [];
+
+      const flushNonConcurrent = async () => {
+        if (pendingNonConcurrent.length === 0) return;
+        await client.query('BEGIN;');
+        try {
+          for (const stmt of pendingNonConcurrent) {
+            await client.query(stmt);
+          }
+          await client.query('COMMIT;');
+        } catch (err) {
+          try {
+            await client.query('ROLLBACK;');
+          } catch {}
+          throw err;
+        } finally {
+          pendingNonConcurrent = [];
+        }
+      };
+
+      for (const stmt of statements) {
+        if (/CONCURRENTLY/i.test(stmt)) {
+          await flushNonConcurrent();
+          await client.query(stmt);
+        } else {
+          pendingNonConcurrent.push(stmt);
+        }
+      }
+
+      await flushNonConcurrent();
+
+      // Record rollback by deleting migration record inside a transaction
       await client.query('BEGIN;');
-      await client.query(migration.downSql);
       await client.query('DELETE FROM schema_migrations WHERE version = $1;', [migration.version]);
       await client.query('COMMIT;');
+
       console.log(`Rolled back ${migration.version}`);
     } catch (error) {
-      await client.query('ROLLBACK;');
+      try {
+        await client.query('ROLLBACK;');
+      } catch {
+        // ignore rollback errors
+      }
       throw error;
     }
   }
