@@ -48,15 +48,19 @@ export function registerRequestLogger(app: FastifyInstance): void {
 
       if (reply.statusCode >= 500) {
         request.log.error(payload, 'Request failed');
-        return;
-      }
-
-      if (reply.statusCode >= 400) {
+      } else if (reply.statusCode >= 400) {
         request.log.warn(payload, 'Request completed with client error');
-        return;
+      } else {
+        request.log.info(payload, 'Request completed');
       }
 
-      request.log.info(payload, 'Request completed');
+      // Also print a concise, human-friendly line to stdout for local debugging.
+      // Keep this limited to non-production environments to avoid noisy logs in prod.
+      if (process.env.NODE_ENV !== 'production') {
+        const ms = payload.durationMs !== undefined ? `${payload.durationMs}ms` : 'n/a';
+        // eslint-disable-next-line no-console
+        console.log(`${request.method} ${request.url} ${reply.statusCode} ${ms}`);
+      }
     } catch (err) {
       console.error('MIDDLEWARE ERROR:', err);
       throw err;

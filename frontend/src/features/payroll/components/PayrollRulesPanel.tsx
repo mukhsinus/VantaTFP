@@ -1,8 +1,10 @@
 import React from 'react';
 import { Badge, Card, EmptyState, Skeleton } from '@shared/components/ui';
 import { usePayrollRules } from '../hooks/usePayrollRules';
+import { useTranslation } from 'react-i18next';
 
 export function PayrollRulesPanel() {
+  const { t } = useTranslation();
   const { data, isLoading, isError } = usePayrollRules();
 
   if (isLoading) {
@@ -18,8 +20,8 @@ export function PayrollRulesPanel() {
   if (isError) {
     return (
       <EmptyState
-        title="Payroll rules unavailable"
-        description="Unable to load payroll rules."
+        title={t('payroll.rules.unavailable.title')}
+        description={t('payroll.rules.unavailable.description')}
       />
     );
   }
@@ -27,8 +29,8 @@ export function PayrollRulesPanel() {
   if (!data || data.length === 0) {
     return (
       <EmptyState
-        title="No payroll rules"
-        description="Create rules from backend admin to enable advanced payroll calculation."
+        title={t('payroll.rules.empty.title')}
+        description={t('payroll.rules.empty.description')}
       />
     );
   }
@@ -43,9 +45,9 @@ export function PayrollRulesPanel() {
               {rule.isActive ? 'ACTIVE' : 'INACTIVE'}
             </Badge>
           </div>
-          <p style={{ margin: '8px 0 0', fontSize: 12, color: 'var(--color-text-secondary)' }}>
-            Type: <strong>{rule.type}</strong>
-          </p>
+            <p style={{ margin: '8px 0 0', fontSize: 12, color: 'var(--color-text-secondary)' }}>
+              {t('payroll.rules.typeLabel')} <strong>{rule.type}</strong>
+            </p>
         </Card>
       ))}
     </div>

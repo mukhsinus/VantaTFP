@@ -1,5 +1,6 @@
 import React from 'react';
 import { Button, Card, Input, Select } from '@shared/components/ui';
+import { useTranslation } from 'react-i18next';
 import type { ReportType } from '@entities/reports/reports.types';
 
 interface Props {
@@ -20,6 +21,7 @@ interface Props {
 }
 
 export function ReportBuilderCard(props: Props) {
+  const { t } = useTranslation();
   return (
     <Card>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(180px,1fr))', gap: 10 }}>
@@ -27,25 +29,25 @@ export function ReportBuilderCard(props: Props) {
           value={props.type}
           onChange={(e) => props.setType(e.target.value as ReportType)}
           options={[
-            { value: 'KPI', label: 'KPI' },
-            { value: 'PAYROLL', label: 'Payroll' },
-            { value: 'TASKS', label: 'Tasks' },
+            { value: 'KPI', label: t('reports.builder.types.kpi') },
+            { value: 'PAYROLL', label: t('reports.builder.types.payroll') },
+            { value: 'TASKS', label: t('reports.builder.types.tasks') },
           ]}
         />
         <Input type="date" value={props.dateFrom} onChange={(e) => props.setDateFrom(e.target.value)} />
         <Input type="date" value={props.dateTo} onChange={(e) => props.setDateTo(e.target.value)} />
-        <Input placeholder="User ID (optional)" value={props.userId} onChange={(e) => props.setUserId(e.target.value)} />
-        <Input placeholder="Team ID (optional)" value={props.teamId} onChange={(e) => props.setTeamId(e.target.value)} />
+        <Input placeholder={t('reports.builder.placeholders.userId')} value={props.userId} onChange={(e) => props.setUserId(e.target.value)} />
+        <Input placeholder={t('reports.builder.placeholders.teamId')} value={props.teamId} onChange={(e) => props.setTeamId(e.target.value)} />
       </div>
       <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
         <Button onClick={props.onGenerate} disabled={props.isPending}>
-          {props.isPending ? 'Generating...' : 'Generate'}
+          {props.isPending ? t('reports.builder.actions.generating') : t('reports.builder.actions.generate')}
         </Button>
         <Button variant="secondary" onClick={props.onExportCsv} disabled={props.isPending}>
-          Export CSV
+          {t('reports.builder.actions.exportCsv')}
         </Button>
         <Button variant="secondary" onClick={props.onExportPdf} disabled={props.isPending}>
-          Export PDF
+          {t('reports.builder.actions.exportPdf')}
         </Button>
       </div>
     </Card>

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useAuthStore } from '@app/store/auth.store';
 import { apiClient } from '@shared/api/client';
 
@@ -20,6 +21,7 @@ interface Message {
 
 export function MessagesPage() {
   const user = useAuthStore((s) => s.user);
+  const { t } = useTranslation();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeConv, setActiveConv] = useState<Conversation | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -113,17 +115,17 @@ export function MessagesPage() {
             color: 'var(--color-text-primary)',
           }}
         >
-          Messages
+          {t('messages.title')}
         </div>
 
         <div style={{ flex: 1, overflowY: 'auto', WebkitOverflowScrolling: 'touch' as any }}>
           {loadingConvs ? (
             <div style={{ padding: 20, color: 'var(--color-text-muted)', fontSize: 'var(--text-sm)', textAlign: 'center' }}>
-              Loading...
+              {t('messages.loadingConversations')}
             </div>
           ) : conversations.length === 0 ? (
             <div style={{ padding: '40px 20px', color: 'var(--color-text-muted)', fontSize: 'var(--text-sm)', textAlign: 'center' }}>
-              No conversations yet
+              {t('messages.noConversations')}
             </div>
           ) : (
             conversations.map((conv) => (
@@ -173,7 +175,7 @@ export function MessagesPage() {
                       whiteSpace: 'nowrap',
                     }}
                   >
-                    {conv.name ?? (conv.type === 'group' ? 'Group chat' : 'Direct message')}
+                    {conv.name ?? (conv.type === 'group' ? t('messages.groupChat') : t('messages.directMessage'))}
                   </div>
                   <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)' }}>
                     {formatDate(conv.updated_at)}
@@ -210,7 +212,7 @@ export function MessagesPage() {
               </svg>
             </button>
             <span style={{ fontWeight: 700, fontSize: 'var(--text-md)', color: 'var(--color-text-primary)' }}>
-              {activeConv.name ?? 'Chat'}
+              {activeConv.name ?? t('messages.chat')}
             </span>
           </div>
 
@@ -228,11 +230,11 @@ export function MessagesPage() {
           >
             {loadingMsgs ? (
               <div style={{ textAlign: 'center', color: 'var(--color-text-muted)', fontSize: 'var(--text-sm)', marginTop: 40 }}>
-                Loading messages...
+                {t('messages.loadingMessages')}
               </div>
             ) : messages.length === 0 ? (
               <div style={{ textAlign: 'center', color: 'var(--color-text-muted)', fontSize: 'var(--text-sm)', marginTop: 40 }}>
-                No messages yet. Say hello!
+                {t('messages.noMessages')}
               </div>
             ) : (
               messages.map((msg) => (
@@ -264,7 +266,7 @@ export function MessagesPage() {
                         rel="noopener noreferrer"
                         style={{ color: isMine(msg) ? '#fff' : 'var(--color-accent)', fontSize: 'var(--text-xs)', display: 'block', marginTop: 4 }}
                       >
-                        {msg.attachment_name ?? 'Attachment'}
+                        {msg.attachment_name ?? t('messages.attachment')}
                       </a>
                     )}
                     <div style={{ fontSize: 11, opacity: 0.65, marginTop: 4, textAlign: 'right' }}>
@@ -290,11 +292,11 @@ export function MessagesPage() {
               flexShrink: 0,
             }}
           >
-            <input
+              <input
               type="text"
               value={msgText}
               onChange={(e) => setMsgText(e.target.value)}
-              placeholder="Type a message..."
+              placeholder={t('messages.typePlaceholder')}
               style={{
                 flex: 1,
                 height: 44,
@@ -348,8 +350,8 @@ export function MessagesPage() {
           <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5}>
             <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />
           </svg>
-          <p style={{ fontSize: 'var(--text-base)', fontWeight: 600 }}>Select a conversation</p>
-          <p style={{ fontSize: 'var(--text-sm)' }}>Choose a chat from the left to start messaging</p>
+          <p style={{ fontSize: 'var(--text-base)', fontWeight: 600 }}>{t('messages.selectConversation')}</p>
+          <p style={{ fontSize: 'var(--text-sm)' }}>{t('messages.chooseConversation')}</p>
         </div>
       )}
     </div>

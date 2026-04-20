@@ -127,6 +127,21 @@
     "search": "Qidiruv...",
     "shortcut": "⌘K"
   },
+  "messages": {
+    "title": "Xabarlar",
+    "loadingConversations": "Yuklanmoqda...",
+    "noConversations": "Hali suhbatlar yo'q",
+    "groupChat": "Guruh chat",
+    "directMessage": "Shaxsiy xabar",
+    "chat": "Chat",
+    "loadingMessages": "Xabarlar yuklanmoqda...",
+    "noMessages": "Hali xabarlar yo'q. Salom ayting!",
+    "typePlaceholder": "Xabar yozing...",
+    "attachment": "Ilova",
+    "selectConversation": "Suhbatni tanlang",
+    "chooseConversation": "Xabar yuborishni boshlash uchun chapdan chatni tanlang",
+    "send": "Yuborish"
+  },
   "tasks": {
     "title": "Vazifalar",
     "total": "jami vazifa",
@@ -286,6 +301,23 @@
       "net": "Sof summa",
       "status": "Holat"
     },
+    "employee": "Xodim",
+    "period": "Davr",
+    "base": "Asosiy maosh",
+    "bonuses": "Bonuslar",
+    "deductions": "Ushlanmalar",
+    "net": "Sof summa",
+    "status": "Holat",
+    "export": "Eksport",
+    "col": {
+      "employee": "Xodim",
+      "period": "Davr",
+      "base": "Asosiy maosh",
+      "bonuses": "Bonuslar",
+      "deductions": "Ushlanmalar",
+      "net": "Sof summa",
+      "status": "Holat"
+    },
     "stats": {
       "totalNet": "Jami sof summa (filtr bo'yicha)",
       "paid": "To'langan",
@@ -300,10 +332,43 @@
       "title": "Ish haqi yozuvlari yo'q",
       "description": "Boshlash uchun birinchi ish haqi yozuvini yarating."
     }
+    ,
+    "rules": {
+      "unavailable": { "title": "Ish haqi qoidalari mavjud emas", "description": "Ish haqi qoidalarini yuklab bo'lmadi." },
+      "empty": { "title": "Ish haqi qoidalari yo'q", "description": "Rivojlangan ish haqi hisob-kitobini yoqish uchun admin panelida qoidalar yarating." },
+      "status": { "active": "FAOL", "inactive": "NOFAOL" },
+      "typeLabel": "Turi:"
+    }
   },
   "reports": {
     "title": "Hisobotlar",
-    "subtitle": "KPI, ish haqi va vazifalar bo'yicha hisobotlarni yaratish va eksport qilish"
+    "subtitle": "KPI, ish haqi va vazifalar bo'yicha hisobotlarni sana, foydalanuvchi va jamoa bo'yicha filtrlash bilan yaratish va eksport qilish",
+    "builder": {
+      "types": {
+        "kpi": "KPI",
+        "payroll": "Ish haqi",
+        "tasks": "Vazifalar"
+      },
+      "placeholders": {
+        "userId": "Foydalanuvchi ID (ixtiyoriy)",
+        "teamId": "Jamoa ID (ixtiyoriy)"
+      },
+      "actions": {
+        "generate": "Yaratish",
+        "generating": "Yaratilmoqda...",
+        "exportCsv": "CSV eksport",
+        "exportPdf": "PDF eksport"
+      }
+    },
+    "history": {
+      "title": "Hisobotlar tarixi ({{type}})",
+      "processing": "So‘rov qayta ishlanmoqda..."
+    },
+    "errors": {
+      "actionFailed": { "title": "Amal bajarilmadi", "description": "Iltimos, qayta urinib ko‘ring. Server bu amalni rad etdi." },
+      "loadFailed": { "title": "Tarix yuklanmadi", "description": "Iltimos, keyinroq qayta urinib ko‘ring." }
+    },
+    "empty": { "title": "Hisobotlar hali yo‘q", "description": "Birinchi hisobotni yarating." }
   },
   "billing": {
     "title": "Billing",
@@ -313,6 +378,37 @@
       "bannerLastDay": "Bepul sinov — bugun tugaydi",
       "expiredMessage": "Sinov muddati tugadi. Davom etish uchun tarifni yangilang.",
       "upgradeCta": "Yangilash"
+    }
+    ,
+    "platform": "Platforma",
+    "card": {
+      "usersUpTo": "Mijozlar: {{count}} gacha",
+      "tasksCount": "Vazifalar: {{count}}"
+    },
+    "cta": {
+      "pendingApproval": "Tasdiqlash kutilyapti",
+      "current": "Joriy tarif",
+      "requestUpgrade": "Yuksaltirishni so'rash"
+    },
+    "plans": {
+      "basic": { "title": "Asosiy" },
+      "pro": { "title": "Pro" },
+      "business": { "title": "Biznes" },
+      "enterprise": { "title": "Korporativ" }
+    },
+    "unavailableTitle": "Billing vaqtincha mavjud emas",
+    "unavailableDesc": "Obuna ma'lumotlarini olish mumkin emas. Iltimos, keyinroq qayta urinib ko'ring.",
+    "plansEmpty": "Tariflar mavjud emas.",
+    "upgradeFailed": "Tarifni yangilab bo'lmadi",
+    "pendingApproval": "Tasdiqlash kutilyapti",
+    "pendingRequested": "So'rov yuborildi: {{plan}} (tasdiqlash kutilyapti)",
+    "pendingAwaitingAdmin": "Tizim administratorining tasdig'ini kutmoqda",
+    "historyEmpty": "Hisoblar hali mavjud emas.",
+    "section": {
+      "plans": "Tariflar",
+      "current": "Joriy tarif",
+      "overview": "Obuna bo'yicha umumiy ma'lumot",
+      "security": "Xavfsizlik"
     }
   },
   "settings": {
@@ -374,6 +470,7 @@
     }  },
   "dashboard": {
     "title": "Boshqaruv",
+    
     "subtitle": "Tenant ma'lumotlari backend xizmatlaridan sinxronlashtirilgan.",
     "totalTasks": "Jami vazifalar",
     "completedTasks": "Bajarilgan vazifalar",

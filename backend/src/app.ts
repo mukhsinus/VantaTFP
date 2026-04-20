@@ -143,3 +143,9 @@ export async function buildApp(): Promise<FastifyInstance> {
 
   return app;
 }
+
+// When running the standalone server (dev), ensure Node HTTP server keep-alive
+// settings are reasonably high so dev clients can reuse connections and avoid
+// repeated TCP/TLS handshake overhead for repeated requests.
+// Note: Fastify creates `app.server` when the instance is listened on; code
+// that starts the server should call `buildApp()` then `app.listen(...)`.

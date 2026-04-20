@@ -1,9 +1,11 @@
 import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
 import { useState, useEffect, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useAuthStore } from '@app/store/auth.store';
 import { apiClient } from '@shared/api/client';
 export function MessagesPage() {
     const user = useAuthStore((s) => s.user);
+        const { t } = useTranslation();
     const [conversations, setConversations] = useState([]);
     const [activeConv, setActiveConv] = useState(null);
     const [messages, setMessages] = useState([]);

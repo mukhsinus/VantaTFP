@@ -1,4 +1,5 @@
 import { createQueue } from './bullmq.js';
+import { Queue } from 'bullmq';
 import {
   QUEUE_NAMES,
   RecalculateKpiJobPayload,
@@ -9,10 +10,10 @@ import {
 // import time. Callers should use the enqueue helpers which will create the
 // queue on first use. The app shutdown hook will close queues if they've been
 // created.
-let _kpiRecalculationQueue = null;
-let _payrollRecalculationQueue = null;
+let _kpiRecalculationQueue: Queue<RecalculateKpiJobPayload> | null = null;
+let _payrollRecalculationQueue: Queue<RecalculatePayrollJobPayload> | null = null;
 
-export function getKpiRecalculationQueue() {
+export function getKpiRecalculationQueue(): Queue<RecalculateKpiJobPayload> {
   if (!_kpiRecalculationQueue) {
     _kpiRecalculationQueue = createQueue<RecalculateKpiJobPayload>(
       QUEUE_NAMES.KPI_RECALCULATION
@@ -21,7 +22,7 @@ export function getKpiRecalculationQueue() {
   return _kpiRecalculationQueue;
 }
 
-export function getPayrollRecalculationQueue() {
+export function getPayrollRecalculationQueue(): Queue<RecalculatePayrollJobPayload> {
   if (!_payrollRecalculationQueue) {
     _payrollRecalculationQueue = createQueue<RecalculatePayrollJobPayload>(
       QUEUE_NAMES.PAYROLL_RECALCULATION

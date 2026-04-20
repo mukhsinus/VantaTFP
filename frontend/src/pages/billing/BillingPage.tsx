@@ -124,7 +124,7 @@ function PlanCard({
 
   return (
     <div className={`${styles.planCard} ${isPro ? styles.planCardHighlighted : ''}`}>
-      <h3 className={styles.planCardName}>{plan.name}</h3>
+      <h3 className={styles.planCardName}>{t(`billing.plans.${plan.name}.title`, { defaultValue: String(plan.name) })}</h3>
       <p className={styles.planCardPrice}>
         ${plan.price}
         <span className={styles.planCardPriceSuffix}>/month</span>
@@ -293,7 +293,7 @@ export function BillingPage() {
           <h2 id="current-plan-heading" className={styles.currentPanelTitle}>
             {t('billing.section.current', { defaultValue: 'Current plan' })}
           </h2>
-          <p className={styles.planNameDisplay}>{isPlatform ? 'Platform' : data.plan.name}</p>
+          <p className={styles.planNameDisplay}>{isPlatform ? t('billing.platform', { defaultValue: 'Platform' }) : t(`billing.plans.${data.plan.name}.title`, { defaultValue: data.plan.name })}</p>
 
           <ProgressRow
             label={t('billing.usage.users', { defaultValue: 'Users' })}

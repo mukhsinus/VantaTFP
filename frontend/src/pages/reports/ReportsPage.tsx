@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Card, EmptyState, PageSkeleton } from '@shared/components/ui';
 import { useExportReport, useGenerateReport, useReportHistory } from '@features/reports/hooks/useReports';
 import type { ReportType } from '@entities/reports/reports.types';
@@ -9,6 +10,7 @@ const defaultFrom = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1
 const defaultTo = now.toISOString().slice(0, 10);
 
 export function ReportsPage() {
+  const { t } = useTranslation();
   const [type, setType] = useState<ReportType>('KPI');
   const [dateFrom, setDateFrom] = useState(defaultFrom);
   const [dateTo, setDateTo] = useState(defaultTo);
@@ -35,10 +37,8 @@ export function ReportsPage() {
   return (
     <div className="page-container" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <div>
-        <h2 style={{ margin: 0 }}>Reports</h2>
-        <p style={{ margin: '6px 0 0', color: 'var(--color-text-secondary)' }}>
-          Generate KPI, payroll, and task reports with date/user/team filters.
-        </p>
+        <h2 style={{ margin: 0 }}>{t('reports.title')}</h2>
+        <p style={{ margin: '6px 0 0', color: 'var(--color-text-secondary)' }}>{t('reports.subtitle')}</p>
       </div>
 
       <ReportBuilderCard
@@ -59,25 +59,25 @@ export function ReportsPage() {
       />
 
       <Card>
-        <h3 style={{ marginTop: 0 }}>Report History ({type})</h3>
+        <h3 style={{ marginTop: 0 }}>{t('reports.history.title', { type })}</h3>
         {isBusy && (
           <p style={{ margin: '0 0 10px', color: 'var(--color-accent)', fontSize: 'var(--text-sm)', fontWeight: 600 }}>
-            Processing request...
+            {t('reports.history.processing')}
           </p>
         )}
         {generate.isError || exportReport.isError ? (
-          <EmptyState title="Action failed" description="Please retry. The server rejected this report action." />
+          <EmptyState title={t('reports.errors.actionFailed.title')} description={t('reports.errors.actionFailed.description')} />
         ) : null}
         {history.isLoading ? (
           <PageSkeleton />
         ) : history.isError ? (
           <EmptyState
-            title="Unable to load history"
-            description="Please try again later."
-            action={{ label: 'Retry', onClick: () => void history.refetch() }}
+            title={t('reports.errors.loadFailed.title')}
+            description={t('reports.errors.loadFailed.description')}
+            action={{ label: t('common.actions.retry'), onClick: () => void history.refetch() }}
           />
         ) : !history.data?.data?.length ? (
-          <EmptyState title="No reports yet" description="Generate your first report." />
+          <EmptyState title={t('reports.empty.title')} description={t('reports.empty.description')} />
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {history.data.data.map((item) => (
