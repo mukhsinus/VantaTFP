@@ -155,6 +155,36 @@ describe('AdminService user protection rules', () => {
     );
   });
 
+  it('writes audit logs when suspending and re-activating tenant', async () => {
+    const { service, adminRepository } = await createService();
+    adminRepository.getTenant.mockResolvedValue({
+      id: 'b713a2ec-9d2e-445f-bab0-03e4f8d643b4',
+      name: 'Acme',
+      slug: 'acme',
+      plan: 'basic',
+      is_active: true,
+      created_at: new Date(),
+      updated_at: new Date(),
+    });
+    adminRepository.setTenantActiveState.mockResolvedValue(true);
+
+    await service.suspendTenant('b713a2ec-9d2e-445f-bab0-03e4f8d643b4', 'actor-1');
+    await service.activateTenant('b713a2ec-9d2e-445f-bab0-03e4f8d643b4', 'actor-1');
+
+    expect(adminRepository.insertAuditLog).toHaveBeenCalledWith(
+      expect.objectContaining({
+        tenantId: 'b713a2ec-9d2e-445f-bab0-03e4f8d643b4',
+        action: 'TENANT_SUSPENDED',
+      })
+    );
+    expect(adminRepository.insertAuditLog).toHaveBeenCalledWith(
+      expect.objectContaining({
+        tenantId: 'b713a2ec-9d2e-445f-bab0-03e4f8d643b4',
+        action: 'TENANT_ACTIVATED',
+      })
+    );
+  });
+
   it('writes audit log when updating tenant user role', async () => {
     const { service, adminRepository } = await createService();
     adminRepository.getUserById.mockResolvedValue({
@@ -187,6 +217,27 @@ describe('AdminService user protection rules', () => {
 
     await expect(service.banUser('platform-user-1', 'actor-1')).rejects.toThrow(
       'Cannot ban platform accounts'
+    );
+  });
+
+  it('writes audit log when banning tenant user', async () => {
+    const { service, adminRepository } = await createService();
+    adminRepository.getUserById.mockResolvedValue({
+      id: 'user-2',
+      tenant_id: 'b713a2ec-9d2e-445f-bab0-03e4f8d643b4',
+      system_role: 'user',
+      role: 'EMPLOYEE',
+    });
+    adminRepository.banUser.mockResolvedValue(true);
+
+    await service.banUser('user-2', 'actor-1');
+
+    expect(adminRepository.insertAuditLog).toHaveBeenCalledWith(
+      expect.objectContaining({
+        tenantId: 'b713a2ec-9d2e-445f-bab0-03e4f8d643b4',
+        action: 'USER_BANNED',
+        userId: 'actor-1',
+      })
     );
   });
 });
