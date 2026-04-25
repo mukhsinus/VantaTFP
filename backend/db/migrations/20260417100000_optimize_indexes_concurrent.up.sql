@@ -22,26 +22,16 @@ DROP INDEX CONCURRENTLY IF EXISTS idx_payroll_status;
 DROP INDEX CONCURRENTLY IF EXISTS idx_payroll_period;
 DROP INDEX CONCURRENTLY IF EXISTS idx_payroll_created_at;
 
--- === Payroll: composite index for tenant+employee ordered by period_start DESC ===
+-- === Payroll records: composite index for tenant+user ordered by period_start DESC ===
 CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_payroll_tenant_employee_period_desc
-  ON payroll (tenant_id, employee_id, period_start DESC);
+  ON payroll_records (tenant_id, user_id, period_start DESC);
 
--- === tenant_invites: remove existing constraint/index on (tenant_id,email) ===
--- Dropping constraint is a DDL operation; it may lock the table briefly.
-ALTER TABLE IF EXISTS tenant_invites
-  DROP CONSTRAINT IF EXISTS tenant_invites_tenant_id_email_key;
+-- === invites: optimize active invite scans ===
+DROP INDEX CONCURRENTLY IF EXISTS idx_invites_tenant_id;
+DROP INDEX CONCURRENTLY IF EXISTS idx_invites_expires_at;
 
-DROP INDEX CONCURRENTLY IF EXISTS idx_tenant_invites_email;
-DROP INDEX CONCURRENTLY IF EXISTS idx_tenant_invites_tenant_id;
-
--- === tenant_invites: partial unique index for active invites (used_at IS NULL) ===
-CREATE UNIQUE INDEX CONCURRENTLY IF NOT EXISTS ux_tenant_invites_active_email_lower
-  ON tenant_invites (tenant_id, lower(email))
-  WHERE used_at IS NULL;
-
--- Optional supporting index for token lookups when invite is active
-CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_tenant_invites_tenant_token_active
-  ON tenant_invites (tenant_id, token)
+CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_invites_tenant_expires_active
+  ON invites (tenant_id, expires_at DESC)
   WHERE used_at IS NULL;
 
 -- End of migration
