@@ -127,8 +127,14 @@ jobs:
       - name: Validate migration files
         run: npm run migrate:validate --workspace=backend
 
+      - name: Enforce migrations as only source of truth
+        run: npm run migrate:source:check --workspace=backend
+
       - name: Apply migrations on fresh database
         run: npm run migrate:up --workspace=backend
+
+      - name: Validate schema contract on fresh install
+        run: npm run schema:contract --workspace=backend
 
       - name: Verify migration status
         run: npm run migrate:status --workspace=backend

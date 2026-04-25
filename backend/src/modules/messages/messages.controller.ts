@@ -16,7 +16,7 @@ export async function messagesRoutes(app: FastifyInstance): Promise<void> {
   const messagesRepo = new MessagesRepository(app.db);
 
   // Wire WS broadcast: notify all members of the conversation about new messages
-  const wsHub = (app as any).wsHub as
+  const wsHub = app.notificationHub as
     | { broadcastToUser: (tenantId: string, userId: string, msg: unknown) => void }
     | undefined;
 
@@ -67,7 +67,7 @@ export async function messagesRoutes(app: FastifyInstance): Promise<void> {
       if (!tenantId) throw ApplicationError.forbidden('Tenant context required');
       const { id } = conversationIdParamSchema.parse(request.params);
       const query = listMessagesQuerySchema.parse(request.query);
-      const messages = await messagesService.listMessages(id, request.user.id, query);
+      const messages = await messagesService.listMessages(tenantId, id, request.user.id, query);
       return sendSuccess(reply, { data: messages });
     }
   );
@@ -88,8 +88,13 @@ export async function messagesRoutes(app: FastifyInstance): Promise<void> {
       if (wsHub) {
         // Fetch member IDs for broadcast
         const membersResult = await app.db.query<{ user_id: string }>(
-          `SELECT user_id FROM conversation_members WHERE conversation_id = $1`,
-          [id]
+          `
+          SELECT user_id
+          FROM conversation_members
+          WHERE tenant_id = $1
+            AND conversation_id = $2
+          `,
+          [tenantId, id]
         );
         for (const { user_id } of membersResult.rows) {
           wsHub.broadcastToUser(tenantId, user_id, {
@@ -111,7 +116,7 @@ export async function messagesRoutes(app: FastifyInstance): Promise<void> {
       const tenantId = request.tenantId;
       if (!tenantId) throw ApplicationError.forbidden('Tenant context required');
       const { id } = conversationIdParamSchema.parse(request.params);
-      await messagesService.markRead(id, request.user.id);
+      await messagesService.markRead(tenantId, id, request.user.id);
       return sendNoContent(reply);
     }
   );

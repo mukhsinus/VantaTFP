@@ -28,7 +28,7 @@ export class MessagesService {
     senderId: string,
     body: SendMessageBody
   ) {
-    const isMember = await this.repo.isMember(conversationId, senderId);
+    const isMember = await this.repo.isMember(tenantId, conversationId, senderId);
     if (!isMember) {
       throw ApplicationError.forbidden('You are not a member of this conversation');
     }
@@ -50,20 +50,20 @@ export class MessagesService {
     return message;
   }
 
-  async listMessages(conversationId: string, userId: string, query: ListMessagesQuery) {
-    const isMember = await this.repo.isMember(conversationId, userId);
+  async listMessages(tenantId: string, conversationId: string, userId: string, query: ListMessagesQuery) {
+    const isMember = await this.repo.isMember(tenantId, conversationId, userId);
     if (!isMember) {
       throw ApplicationError.forbidden('You are not a member of this conversation');
     }
-    return this.repo.listMessages(conversationId, query.limit, query.before);
+    return this.repo.listMessages(tenantId, conversationId, query.limit, query.before);
   }
 
-  async markRead(conversationId: string, userId: string) {
-    const isMember = await this.repo.isMember(conversationId, userId);
+  async markRead(tenantId: string, conversationId: string, userId: string) {
+    const isMember = await this.repo.isMember(tenantId, conversationId, userId);
     if (!isMember) {
       throw ApplicationError.forbidden('You are not a member of this conversation');
     }
-    return this.repo.markRead(conversationId, userId);
+    return this.repo.markRead(tenantId, conversationId, userId);
   }
 
   async deleteMessage(messageId: string, userId: string) {

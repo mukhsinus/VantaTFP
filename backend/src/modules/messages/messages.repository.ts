@@ -83,13 +83,19 @@ export class MessagesRepository {
     return result.rows;
   }
 
-  async isMember(conversationId: string, userId: string): Promise<boolean> {
+  async isMember(tenantId: string, conversationId: string, userId: string): Promise<boolean> {
     const result = await this.db.query<{ exists: boolean }>(
       `SELECT EXISTS(
-        SELECT 1 FROM conversation_members
-        WHERE conversation_id = $1 AND user_id = $2
+        SELECT 1
+        FROM conversation_members cm
+        JOIN conversations c
+          ON c.id = cm.conversation_id
+         AND c.tenant_id = $1
+        WHERE cm.conversation_id = $2
+          AND cm.user_id = $3
+          AND cm.tenant_id = $1
       ) AS exists`,
-      [conversationId, userId]
+      [tenantId, conversationId, userId]
     );
     return result.rows[0]?.exists ?? false;
   }
@@ -138,36 +144,48 @@ export class MessagesRepository {
   }
 
   async listMessages(
+    tenantId: string,
     conversationId: string,
     limit: number,
     before?: string
   ): Promise<MessageRow[]> {
     const sql = before
       ? `
-        SELECT * FROM messages
-        WHERE conversation_id = $1 AND is_deleted = FALSE AND created_at < $3
+        SELECT *
+        FROM messages
+        WHERE tenant_id = $1
+          AND conversation_id = $2
+          AND is_deleted = FALSE
+          AND created_at < $4
         ORDER BY created_at DESC
-        LIMIT $2
+        LIMIT $3
         `
       : `
-        SELECT * FROM messages
-        WHERE conversation_id = $1 AND is_deleted = FALSE
+        SELECT *
+        FROM messages
+        WHERE tenant_id = $1
+          AND conversation_id = $2
+          AND is_deleted = FALSE
         ORDER BY created_at DESC
-        LIMIT $2
+        LIMIT $3
         `;
-    const params = before ? [conversationId, limit, before] : [conversationId, limit];
+    const params = before
+      ? [tenantId, conversationId, limit, before]
+      : [tenantId, conversationId, limit];
     const result = await this.db.query<MessageRow>(sql, params);
     return result.rows.reverse();
   }
 
-  async markRead(conversationId: string, userId: string): Promise<void> {
+  async markRead(tenantId: string, conversationId: string, userId: string): Promise<void> {
     await this.db.query(
       `
       UPDATE conversation_members
       SET last_read_at = NOW()
-      WHERE conversation_id = $1 AND user_id = $2
+      WHERE tenant_id = $1
+        AND conversation_id = $2
+        AND user_id = $3
       `,
-      [conversationId, userId]
+      [tenantId, conversationId, userId]
     );
   }
 

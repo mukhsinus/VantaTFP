@@ -1,11 +1,12 @@
 import { Pool } from 'pg';
 import { Job } from 'bullmq';
 import { redis } from '../../config/redis.js';
-import { createWorker } from './bullmq.js';
+import { createQueue, createWorker } from './bullmq.js';
 import {
   QUEUE_NAMES,
   RecalculateKpiJobPayload,
   RecalculatePayrollJobPayload,
+  DeadLetterJobPayload,
 } from './queue-types.js';
 import { env } from '../utils/env.js';
 import { KpiRepository } from '../../modules/kpi/kpi.repository.js';
@@ -39,6 +40,7 @@ async function processPayrollRecalculation(job: Job<RecalculatePayrollJobPayload
 }
 
 export function startQueueProcessors() {
+  const deadLetterQueue = createQueue<DeadLetterJobPayload>(QUEUE_NAMES.DEAD_LETTER);
   const kpiWorker = createWorker<RecalculateKpiJobPayload>(
     QUEUE_NAMES.KPI_RECALCULATION,
     processKpiRecalculation
@@ -49,10 +51,42 @@ export function startQueueProcessors() {
     processPayrollRecalculation
   );
 
+  const attachDlqHandler = (queueName: string, worker: { on: (event: 'failed', cb: (job: Job | undefined, error: Error) => void) => void }) => {
+    worker.on('failed', (job, error) => {
+      if (!job) {
+        logger.error({ queueName, err: error }, '[Queue worker] failed without job payload');
+        return;
+      }
+      const payload: DeadLetterJobPayload = {
+        sourceQueue: queueName,
+        sourceJobId: String(job.id ?? 'unknown'),
+        sourceName: job.name,
+        data: job.data,
+        failedReason: error.message,
+        failedAt: new Date().toISOString(),
+      };
+      void deadLetterQueue.add(
+        `dlq-${queueName}`,
+        payload,
+        {
+          jobId: `dlq:${queueName}:${String(job.id ?? Date.now())}`,
+        }
+      );
+      logger.error(
+        { queueName, jobId: job.id, err: error, attemptsMade: job.attemptsMade },
+        '[Queue worker] job moved to DLQ'
+      );
+    });
+  };
+
+  attachDlqHandler(QUEUE_NAMES.KPI_RECALCULATION, kpiWorker);
+  attachDlqHandler(QUEUE_NAMES.PAYROLL_RECALCULATION, payrollWorker);
+
   return {
     workers: [kpiWorker, payrollWorker],
     async close(): Promise<void> {
       await Promise.all([kpiWorker.close(), payrollWorker.close()]);
+      await deadLetterQueue.close().catch(() => undefined);
       await redis.quit().catch(() => undefined);
       await pool.end();
     },

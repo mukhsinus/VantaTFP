@@ -18,6 +18,8 @@
     "migrate:down": "tsx src/tools/migrate.ts down",
     "migrate:status": "tsx src/tools/migrate.ts status",
     "migrate:validate": "tsx src/tools/validate-migrations.ts",
+    "migrate:source:check": "tsx src/tools/enforce-migration-source.ts",
+    "schema:contract": "tsx src/tools/validate-schema-contract.ts",
     "backup": "tsx scripts/backup.ts",
     "restore": "tsx scripts/restore.ts",
     "create-super-admin": "tsx scripts/createSuperAdmin.ts"
