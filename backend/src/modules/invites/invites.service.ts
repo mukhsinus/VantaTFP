@@ -1,6 +1,6 @@
 import { randomUUID } from 'crypto';
 import bcrypt from 'bcrypt';
-import { InvitesRepository, type InviteTenantRole } from './invites.repository.js';
+import { InvitesRepository } from './invites.repository.js';
 import { AuthRepository } from '../auth/auth.repository.js';
 import type { AuthService, AuthSuccessResponse } from '../auth/auth.service.js';
 import type { BillingService } from '../billing/billing.service.js';
@@ -24,6 +24,10 @@ export class InvitesService {
     dto: CreateLinkInviteDto,
     actor: { system_role: SystemRole; tenant_role: TenantRole | null }
   ): Promise<{ token: string; expiresAt: Date }> {
+    if (!tenantId || tenantId.trim().length === 0) {
+      throw ApplicationError.forbidden('Tenant context required');
+    }
+
     if (actor.system_role !== 'super_admin') {
       if (actor.tenant_role !== 'owner' && actor.tenant_role !== 'manager') {
         throw ApplicationError.forbidden('Only owners and managers can create invites');

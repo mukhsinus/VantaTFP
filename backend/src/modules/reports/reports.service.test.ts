@@ -47,4 +47,21 @@ describe('ReportsService access control', () => {
       )
     ).rejects.toThrow('Managers can only access their own team');
   });
+
+  it('prevents manager from requesting non-direct-report user report', async () => {
+    const service = createService();
+
+    await expect(
+      service.generateReport(
+        'tenant-1',
+        { userId: 'manager-1', tenantRole: 'manager', systemRole: 'user' },
+        {
+          type: 'TASKS',
+          dateFrom: '2026-04-01T00:00:00.000Z',
+          dateTo: '2026-04-30T23:59:59.000Z',
+          userId: 'employee-9',
+        }
+      )
+    ).rejects.toThrow('You can only access your direct reports');
+  });
 });

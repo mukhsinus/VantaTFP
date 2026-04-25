@@ -288,6 +288,12 @@ export class AdminService {
   async updateUserRole(userId: string, role: 'ADMIN' | 'MANAGER' | 'EMPLOYEE') {
     const user = await this.adminRepository.getUserById(userId);
     if (!user) throw ApplicationError.notFound('User');
+    if (user.system_role === 'super_admin') {
+      throw ApplicationError.forbidden('Cannot change role for super admin accounts');
+    }
+    if (!user.tenant_id) {
+      throw ApplicationError.forbidden('Cannot change role for platform accounts');
+    }
     const ok = await this.adminRepository.updateUserRole(userId, role);
     if (!ok) throw ApplicationError.badRequest('Could not update user role');
     const tenantRole = role === 'ADMIN' ? 'owner' : role === 'MANAGER' ? 'manager' : 'employee';
@@ -298,6 +304,9 @@ export class AdminService {
   async banUser(userId: string) {
     const user = await this.adminRepository.getUserById(userId);
     if (!user) throw ApplicationError.notFound('User');
+    if (user.system_role === 'super_admin') {
+      throw ApplicationError.forbidden('Cannot ban super admin accounts');
+    }
     const ok = await this.adminRepository.banUser(userId);
     if (!ok) throw ApplicationError.badRequest('Could not ban user');
     return { ok: true };
