@@ -194,7 +194,11 @@ export class AdminService {
   }
 
   async listSubscriptions(query: AdminListQuery) {
-    const { rows, total } = await this.adminRepository.listSubscriptions(query.page, query.limit);
+    const { rows, total } = await this.adminRepository.listSubscriptions(
+      query.page,
+      query.limit,
+      query.tenantId
+    );
     const pages = Math.ceil(total / query.limit) || (total === 0 ? 0 : 1);
     return {
       data: rows.map((row) => ({

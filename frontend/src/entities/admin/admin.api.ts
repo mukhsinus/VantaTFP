@@ -60,7 +60,7 @@ export const adminApi = {
   approvePayment: (id: string) => apiClient.post(API.admin.approvePayment(id)),
   rejectPayment: (id: string) => apiClient.post(API.admin.rejectPayment(id)),
 
-  listSubscriptions: (params?: { page?: number; limit?: number }) =>
+  listSubscriptions: (params?: { page?: number; limit?: number; tenantId?: string }) =>
     apiClient.get<AdminListResponse<AdminSubscription>>(API.admin.subscriptions, params),
 
   listTenants: (params?: { page?: number; limit?: number }) =>

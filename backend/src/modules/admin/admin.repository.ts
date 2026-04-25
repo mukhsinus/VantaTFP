@@ -299,11 +299,28 @@ export class AdminRepository {
     };
   }
 
-  async listSubscriptions(page: number, limit: number): Promise<{ rows: AdminSubscriptionRecord[]; total: number }> {
+  async listSubscriptions(
+    page: number,
+    limit: number,
+    tenantId?: string
+  ): Promise<{ rows: AdminSubscriptionRecord[]; total: number }> {
     const offset = (page - 1) * limit;
+    const where = tenantId ? `WHERE s.tenant_id = $1` : '';
     const countResult = await this.db.query<{ total: string }>(
-      `SELECT COUNT(*)::text AS total FROM subscriptions`
+      `
+      SELECT COUNT(*)::text AS total
+      FROM subscriptions s
+      ${where}
+      `,
+      tenantId ? [tenantId] : []
     );
+    const params: Array<string | number> = [];
+    if (tenantId) {
+      params.push(tenantId);
+    }
+    params.push(limit, offset);
+    const limitIdx = params.length - 1;
+    const offsetIdx = params.length;
     const rows = await this.db.query<AdminSubscriptionRecord>(
       `
       SELECT
@@ -315,10 +332,11 @@ export class AdminRepository {
       FROM subscriptions s
       INNER JOIN tenants t ON t.id = s.tenant_id
       LEFT JOIN plans p ON p.id = s.plan_id
+      ${where}
       ORDER BY t.name ASC
-      LIMIT $1 OFFSET $2
+      LIMIT $${limitIdx} OFFSET $${offsetIdx}
       `,
-      [limit, offset]
+      params
     );
     return {
       rows: rows.rows,
