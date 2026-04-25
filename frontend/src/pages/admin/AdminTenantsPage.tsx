@@ -11,6 +11,7 @@ const PLAN_OPTIONS: Array<'basic' | 'pro' | 'business' | 'enterprise'> = [
   'business',
   'enterprise',
 ];
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 export function AdminTenantsPage() {
   const queryClient = useQueryClient();
@@ -20,12 +21,20 @@ export function AdminTenantsPage() {
   });
   const [selectedTenantId, setSelectedTenantId] = React.useState<string | null>(null);
   const [selectedPlans, setSelectedPlans] = React.useState<Record<string, 'basic' | 'pro' | 'business' | 'enterprise'>>({});
+  const [auditPage, setAuditPage] = React.useState(1);
+  const [auditAction, setAuditAction] = React.useState('');
+  const [auditEntity, setAuditEntity] = React.useState('');
+  const [auditUserId, setAuditUserId] = React.useState('');
 
   React.useEffect(() => {
     if (!selectedTenantId && data?.data?.length) {
       setSelectedTenantId(data.data[0].id);
     }
   }, [data, selectedTenantId]);
+
+  React.useEffect(() => {
+    setAuditPage(1);
+  }, [selectedTenantId, auditAction, auditEntity, auditUserId]);
 
   const selectedTenant = data?.data.find((tenant) => tenant.id === selectedTenantId) ?? null;
   const tenantManagementQuery = useQuery({
@@ -39,8 +48,23 @@ export function AdminTenantsPage() {
     enabled: Boolean(selectedTenantId),
   });
   const tenantAuditQuery = useQuery({
-    queryKey: ['admin', 'audit-logs', selectedTenantId],
-    queryFn: () => adminApi.getTenantAuditLogs(selectedTenantId!, { page: 1, limit: 5 }),
+    queryKey: [
+      'admin',
+      'audit-logs',
+      selectedTenantId,
+      auditPage,
+      auditAction,
+      auditEntity,
+      auditUserId,
+    ],
+    queryFn: () =>
+      adminApi.getTenantAuditLogs(selectedTenantId!, {
+        page: auditPage,
+        limit: 5,
+        action: auditAction.trim() || undefined,
+        entity: auditEntity.trim() || undefined,
+        userId: UUID_RE.test(auditUserId.trim()) ? auditUserId.trim() : undefined,
+      }),
     enabled: Boolean(selectedTenantId),
   });
 
@@ -106,6 +130,33 @@ export function AdminTenantsPage() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <h1 style={{ fontSize: 'var(--text-xl)', fontWeight: 700, margin: 0 }}>Tenants</h1>
+      <div
+        style={{
+          border: '1px solid var(--color-border)',
+          borderRadius: 'var(--radius-lg)',
+          padding: 12,
+          display: 'flex',
+          flexWrap: 'wrap',
+          gap: 10,
+          alignItems: 'center',
+        }}
+      >
+        <label htmlFor="tenant-scope-select" style={{ fontSize: 'var(--text-sm)', fontWeight: 600 }}>
+          Tenant scope
+        </label>
+        <select
+          id="tenant-scope-select"
+          value={selectedTenantId ?? ''}
+          onChange={(event) => setSelectedTenantId(event.target.value || null)}
+          style={{ minWidth: 240 }}
+        >
+          {(data?.data ?? []).map((tenant) => (
+            <option key={tenant.id} value={tenant.id}>
+              {tenant.name} ({tenant.slug})
+            </option>
+          ))}
+        </select>
+      </div>
       <div style={{ overflowX: 'auto', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 'var(--text-sm)' }}>
           <thead>
@@ -232,6 +283,30 @@ export function AdminTenantsPage() {
 
           <div>
             <h3 style={{ margin: 0, fontSize: 'var(--text-sm)' }}>Recent audit logs</h3>
+            <div
+              style={{
+                marginTop: 8,
+                display: 'grid',
+                gap: 8,
+                gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
+              }}
+            >
+              <input
+                placeholder="Filter action"
+                value={auditAction}
+                onChange={(event) => setAuditAction(event.target.value)}
+              />
+              <input
+                placeholder="Filter entity"
+                value={auditEntity}
+                onChange={(event) => setAuditEntity(event.target.value)}
+              />
+              <input
+                placeholder="Filter userId (uuid)"
+                value={auditUserId}
+                onChange={(event) => setAuditUserId(event.target.value)}
+              />
+            </div>
             <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 8 }}>
               {(tenantAuditQuery.data?.data ?? []).length === 0 ? (
                 <p style={{ margin: 0, color: 'var(--color-text-muted)', fontSize: 'var(--text-xs)' }}>
@@ -255,6 +330,29 @@ export function AdminTenantsPage() {
                   </div>
                 ))
               )}
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 10 }}>
+              <button
+                type="button"
+                onClick={() => setAuditPage((prev) => Math.max(1, prev - 1))}
+                disabled={auditPage <= 1 || tenantAuditQuery.isFetching}
+              >
+                Previous
+              </button>
+              <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)' }}>
+                Page {tenantAuditQuery.data?.pagination.page ?? auditPage} of{' '}
+                {tenantAuditQuery.data?.pagination.pages ?? 1}
+              </span>
+              <button
+                type="button"
+                onClick={() => setAuditPage((prev) => prev + 1)}
+                disabled={
+                  tenantAuditQuery.isFetching ||
+                  (tenantAuditQuery.data?.pagination.hasMore === false)
+                }
+              >
+                Next
+              </button>
             </div>
           </div>
         </section>
