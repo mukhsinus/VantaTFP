@@ -54,6 +54,7 @@ export const adminApi = {
     status?: 'pending' | 'approved' | 'rejected';
     page?: number;
     limit?: number;
+    tenantId?: string;
   }) => apiClient.get<AdminListResponse<PaymentRequest>>(API.admin.payments, params),
 
   approvePayment: (id: string) => apiClient.post(API.admin.approvePayment(id)),
@@ -69,7 +70,7 @@ export const adminApi = {
   setTenantPlan: (id: string, plan: 'basic' | 'pro' | 'business' | 'enterprise') =>
     apiClient.post(API.admin.setTenantPlan(id), { plan }),
 
-  listUsers: (params?: { page?: number; limit?: number }) =>
+  listUsers: (params?: { page?: number; limit?: number; tenantId?: string }) =>
     apiClient.get<AdminListResponse<AdminUser>>(API.admin.users, params),
   updateUserRole: (id: string, role: 'ADMIN' | 'MANAGER' | 'EMPLOYEE') =>
     apiClient.post(API.admin.updateUserRole(id), { role }),

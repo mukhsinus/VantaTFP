@@ -243,17 +243,23 @@ export class AdminRepository {
 
   async listPaymentRequests(
     status: 'pending' | 'approved' | 'rejected' | undefined,
+    tenantId: string | undefined,
     page: number,
     limit: number
   ): Promise<{ rows: AdminPaymentRequestRecord[]; total: number }> {
     const offset = (page - 1) * limit;
     const params: Array<string | number> = [];
-    let where = '';
+    const conditions: string[] = [];
 
     if (status) {
       params.push(status);
-      where = `WHERE pr.status = $1`;
+      conditions.push(`pr.status = $${params.length}`);
     }
+    if (tenantId) {
+      params.push(tenantId);
+      conditions.push(`pr.tenant_id = $${params.length}`);
+    }
+    const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
 
     const countResult = await this.db.query<{ total: string }>(
       `
@@ -361,16 +367,33 @@ export class AdminRepository {
     return (result.rowCount ?? 0) > 0;
   }
 
-  async listUsers(page: number, limit: number): Promise<{ rows: AdminUserRecord[]; total: number }> {
+  async listUsers(
+    page: number,
+    limit: number,
+    tenantId?: string
+  ): Promise<{ rows: AdminUserRecord[]; total: number }> {
     const offset = (page - 1) * limit;
+    const params: Array<string | number> = [];
+    const where = tenantId ? `WHERE u.tenant_id = $1` : '';
     const countResult = await this.db.query<{ total: string }>(
-      `SELECT COUNT(*)::text AS total FROM users`
+      `
+      SELECT COUNT(*)::text AS total
+      FROM users u
+      ${where}
+      `,
+      tenantId ? [tenantId] : []
     );
     const caps = await getAuthSchemaCaps(this.db);
     const tenantRoleJoin = caps.tenantUsersTable
       ? `LEFT JOIN tenant_users tu ON tu.user_id = u.id AND tu.tenant_id = u.tenant_id`
       : '';
     const tenantRoleSelect = caps.tenantUsersTable ? `tu.role::text AS tenant_role` : `NULL::text AS tenant_role`;
+    if (tenantId) {
+      params.push(tenantId);
+    }
+    params.push(limit, offset);
+    const limitParamIndex = params.length - 1;
+    const offsetParamIndex = params.length;
     const rows = await this.db.query<AdminUserRecord>(
       `
       SELECT
@@ -387,10 +410,11 @@ export class AdminRepository {
       FROM users u
       LEFT JOIN tenants t ON t.id = u.tenant_id
       ${tenantRoleJoin}
+      ${where}
       ORDER BY u.created_at DESC
-      LIMIT $1 OFFSET $2
+      LIMIT $${limitParamIndex} OFFSET $${offsetParamIndex}
       `,
-      [limit, offset]
+      params
     );
     return {
       rows: rows.rows,

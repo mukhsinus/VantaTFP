@@ -11,6 +11,7 @@ export const listAuditLogsQuerySchema = z.object({
 export const adminListQuerySchema = z.object({
   page: z.coerce.number().int().positive().default(1),
   limit: z.coerce.number().int().positive().max(100).default(20),
+  tenantId: z.string().uuid().optional(),
 });
 
 export const adminPaymentListQuerySchema = adminListQuerySchema.extend({

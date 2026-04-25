@@ -3,13 +3,21 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { adminApi } from '@entities/admin/admin.api';
 import { EmptyState, PageSkeleton } from '@shared/components/ui';
 import { ApiError } from '@shared/api/client';
+import { useAdminScopeStore } from '@app/store/admin-scope.store';
 import { toast } from '@app/store/toast.store';
 
 export function AdminPaymentsPage() {
   const queryClient = useQueryClient();
+  const selectedTenantId = useAdminScopeStore((s) => s.selectedTenantId);
   const paymentsQuery = useQuery({
-    queryKey: ['admin', 'payments', 'pending'],
-    queryFn: () => adminApi.listPayments({ status: 'pending', page: 1, limit: 100 }),
+    queryKey: ['admin', 'payments', 'pending', selectedTenantId],
+    queryFn: () =>
+      adminApi.listPayments({
+        status: 'pending',
+        page: 1,
+        limit: 100,
+        tenantId: selectedTenantId ?? undefined,
+      }),
   });
 
   const approveMutation = useMutation({
@@ -50,6 +58,9 @@ export function AdminPaymentsPage() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <h1 style={{ fontSize: 'var(--text-xl)', fontWeight: 700, margin: 0 }}>Pending payments</h1>
+      <p style={{ margin: 0, color: 'var(--color-text-muted)', fontSize: 'var(--text-xs)' }}>
+        Tenant scope: {selectedTenantId ?? 'all tenants'}
+      </p>
       {data.length === 0 ? (
         <EmptyState title="No pending approvals" description="All payment requests are processed." />
       ) : (

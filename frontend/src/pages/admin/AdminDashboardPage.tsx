@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { adminApi } from '@entities/admin/admin.api';
 import { ApiError } from '@shared/api/client';
 import { EmptyState, PageSkeleton } from '@shared/components/ui';
+import { useAdminScopeStore } from '@app/store/admin-scope.store';
 
 const card: React.CSSProperties = {
   display: 'block',
@@ -18,6 +19,7 @@ const card: React.CSSProperties = {
 };
 
 export function AdminDashboardPage() {
+  const selectedTenantId = useAdminScopeStore((s) => s.selectedTenantId);
   const { data, isLoading, isError, error } = useQuery({
     queryKey: ['admin', 'dashboard'],
     queryFn: () => adminApi.getDashboard(),
@@ -25,6 +27,11 @@ export function AdminDashboardPage() {
   const healthQuery = useQuery({
     queryKey: ['admin', 'monitoring', 'health'],
     queryFn: () => adminApi.getSystemHealth(),
+  });
+  const tenantStatsQuery = useQuery({
+    queryKey: ['admin', 'monitoring', 'stats', selectedTenantId],
+    queryFn: () => adminApi.getTenantStats(selectedTenantId!),
+    enabled: Boolean(selectedTenantId),
   });
 
   if (isLoading) return <PageSkeleton />;
@@ -37,6 +44,9 @@ export function AdminDashboardPage() {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
       <div>
         <h1 style={{ fontSize: 'var(--text-2xl)', fontWeight: 700, margin: 0 }}>Admin dashboard</h1>
+        <p style={{ margin: '6px 0 0', color: 'var(--color-text-muted)', fontSize: 'var(--text-sm)' }}>
+          Current tenant scope: {selectedTenantId ?? 'not selected'}
+        </p>
       </div>
       <div
         style={{
@@ -64,6 +74,18 @@ export function AdminDashboardPage() {
             : healthQuery.isError
               ? 'unavailable'
               : 'checking...'}
+        </div>
+        <div style={card}>
+          Scoped users active:{' '}
+          {tenantStatsQuery.isLoading
+            ? '...'
+            : tenantStatsQuery.data?.stats.usersActive ?? 0}
+        </div>
+        <div style={card}>
+          Scoped tasks open:{' '}
+          {tenantStatsQuery.isLoading
+            ? '...'
+            : tenantStatsQuery.data?.stats.tasksOpen ?? 0}
         </div>
       </div>
       <div

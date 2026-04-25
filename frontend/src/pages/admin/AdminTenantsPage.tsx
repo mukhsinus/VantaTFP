@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { adminApi } from '@entities/admin/admin.api';
 import { EmptyState, PageSkeleton } from '@shared/components/ui';
 import { ApiError } from '@shared/api/client';
+import { useAdminScopeStore } from '@app/store/admin-scope.store';
 import { toast } from '@app/store/toast.store';
 
 const PLAN_OPTIONS: Array<'basic' | 'pro' | 'business' | 'enterprise'> = [
@@ -15,11 +16,12 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-
 
 export function AdminTenantsPage() {
   const queryClient = useQueryClient();
+  const selectedTenantId = useAdminScopeStore((s) => s.selectedTenantId);
+  const setSelectedTenantId = useAdminScopeStore((s) => s.setSelectedTenantId);
   const { data, isLoading, isError, error } = useQuery({
     queryKey: ['admin', 'tenants', 1],
     queryFn: () => adminApi.listTenants({ page: 1, limit: 50 }),
   });
-  const [selectedTenantId, setSelectedTenantId] = React.useState<string | null>(null);
   const [selectedPlans, setSelectedPlans] = React.useState<Record<string, 'basic' | 'pro' | 'business' | 'enterprise'>>({});
   const [auditPage, setAuditPage] = React.useState(1);
   const [auditAction, setAuditAction] = React.useState('');
@@ -27,10 +29,16 @@ export function AdminTenantsPage() {
   const [auditUserId, setAuditUserId] = React.useState('');
 
   React.useEffect(() => {
-    if (!selectedTenantId && data?.data?.length) {
-      setSelectedTenantId(data.data[0].id);
+    const tenants = data?.data ?? [];
+    if (!tenants.length) return;
+
+    const selectedStillExists = selectedTenantId
+      ? tenants.some((tenant) => tenant.id === selectedTenantId)
+      : false;
+    if (!selectedStillExists) {
+      setSelectedTenantId(tenants[0].id);
     }
-  }, [data, selectedTenantId]);
+  }, [data, selectedTenantId, setSelectedTenantId]);
 
   React.useEffect(() => {
     setAuditPage(1);

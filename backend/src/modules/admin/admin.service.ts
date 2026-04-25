@@ -168,6 +168,7 @@ export class AdminService {
   async listPayments(query: AdminPaymentListQuery) {
     const { rows, total } = await this.adminRepository.listPaymentRequests(
       query.status,
+      query.tenantId,
       query.page,
       query.limit
     );
@@ -259,7 +260,7 @@ export class AdminService {
   }
 
   async listUsers(query: AdminListQuery) {
-    const { rows, total } = await this.adminRepository.listUsers(query.page, query.limit);
+    const { rows, total } = await this.adminRepository.listUsers(query.page, query.limit, query.tenantId);
     const pages = Math.ceil(total / query.limit) || (total === 0 ? 0 : 1);
     return {
       data: rows.map((row) => ({

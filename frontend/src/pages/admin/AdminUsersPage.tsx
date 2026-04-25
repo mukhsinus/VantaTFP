@@ -3,13 +3,20 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { adminApi } from '@entities/admin/admin.api';
 import { EmptyState, PageSkeleton } from '@shared/components/ui';
 import { ApiError } from '@shared/api/client';
+import { useAdminScopeStore } from '@app/store/admin-scope.store';
 import { toast } from '@app/store/toast.store';
 
 export function AdminUsersPage() {
   const queryClient = useQueryClient();
+  const selectedTenantId = useAdminScopeStore((s) => s.selectedTenantId);
   const { data, isLoading, isError, error } = useQuery({
-    queryKey: ['admin', 'users', 1],
-    queryFn: () => adminApi.listUsers({ page: 1, limit: 50 }),
+    queryKey: ['admin', 'users', 1, selectedTenantId],
+    queryFn: () =>
+      adminApi.listUsers({
+        page: 1,
+        limit: 50,
+        tenantId: selectedTenantId ?? undefined,
+      }),
   });
 
   const updateRoleMutation = useMutation({
@@ -44,9 +51,14 @@ export function AdminUsersPage() {
     return <EmptyState title="Could not load users" description={msg} />;
   }
 
+  const scopedUsers = data?.data ?? [];
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <h1 style={{ fontSize: 'var(--text-xl)', fontWeight: 700, margin: 0 }}>Users</h1>
+      <p style={{ margin: 0, color: 'var(--color-text-muted)', fontSize: 'var(--text-xs)' }}>
+        Tenant scope: {selectedTenantId ?? 'all tenants'}
+      </p>
       <div style={{ overflowX: 'auto', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 'var(--text-sm)' }}>
           <thead>
@@ -60,7 +72,7 @@ export function AdminUsersPage() {
             </tr>
           </thead>
           <tbody>
-            {data?.data.map((u) => (
+            {scopedUsers.map((u) => (
               <tr key={u.id} style={{ borderTop: '1px solid var(--color-border)' }}>
                 <td style={{ padding: 12 }}>{u.email}</td>
                 <td style={{ padding: 12 }}>
@@ -100,7 +112,7 @@ export function AdminUsersPage() {
         </table>
       </div>
       <p style={{ color: 'var(--color-text-muted)', fontSize: 'var(--text-xs)' }}>
-        Total: {data?.pagination.total ?? 0}
+        Total in scope: {scopedUsers.length}
       </p>
     </div>
   );
