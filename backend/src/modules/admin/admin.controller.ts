@@ -6,6 +6,7 @@ import {
   adminForceTenantPlanSchema,
   adminListQuerySchema,
   adminPaymentListQuerySchema,
+  adminTenantScopeQuerySchema,
   adminTenantIdParamSchema,
   adminUserRoleBodySchema,
   listAuditLogsQuerySchema,
@@ -29,13 +30,16 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
   const paymentsService = new PaymentsService(paymentsRepository, billingService);
   const authenticate = app.authenticate;
   const superOnly = [authenticate, requireAuth, requireSuperAdmin];
+  const resolveTenantScope = (request: FastifyRequest) =>
+    adminTenantScopeQuerySchema.parse(request.query ?? {}).tenantId;
 
   app.get(
     '/audit-logs',
     { preHandler: superOnly },
     async (request: FastifyRequest, reply: FastifyReply) => {
       const query = listAuditLogsQuerySchema.parse(request.query);
-      const result = await adminService.listAuditLogs(request.user.tenantId, query);
+      const tenantId = resolveTenantScope(request);
+      const result = await adminService.listAuditLogs(tenantId, query);
       return sendSuccess(reply, result);
     }
   );
@@ -44,7 +48,7 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
     '/tenant',
     { preHandler: superOnly },
     async (request: FastifyRequest, reply: FastifyReply) => {
-      const tenant = await adminService.getTenantManagement(request.user.tenantId);
+      const tenant = await adminService.getTenantManagement(resolveTenantScope(request));
       return sendSuccess(reply, tenant);
     }
   );
@@ -54,8 +58,9 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
     { preHandler: superOnly },
     async (request: FastifyRequest, reply: FastifyReply) => {
       const body = updateTenantAdminSchema.parse(request.body);
+      const tenantId = resolveTenantScope(request);
       const tenant = await adminService.updateTenantManagement(
-        request.user.tenantId,
+        tenantId,
         request.user.userId,
         body
       );
@@ -67,7 +72,8 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
     '/tenant/deactivate',
     { preHandler: superOnly },
     async (request: FastifyRequest, reply: FastifyReply) => {
-      await adminService.deactivateTenant(request.user.tenantId, request.user.userId);
+      const tenantId = resolveTenantScope(request);
+      await adminService.deactivateTenant(tenantId, request.user.userId);
       return sendNoContent(reply);
     }
   );
@@ -85,7 +91,7 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
     '/monitoring/health',
     { preHandler: superOnly },
     async (request: FastifyRequest, reply: FastifyReply) => {
-      const health = await adminService.getSystemHealth(request.user.tenantId);
+      const health = await adminService.getSystemHealth();
       return sendSuccess(reply, health);
     }
   );
@@ -94,7 +100,8 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
     '/monitoring/stats',
     { preHandler: superOnly },
     async (request: FastifyRequest, reply: FastifyReply) => {
-      const stats = await adminService.getSystemStats(request.user.tenantId);
+      const tenantId = resolveTenantScope(request);
+      const stats = await adminService.getSystemStats(tenantId);
       return sendSuccess(reply, stats);
     }
   );

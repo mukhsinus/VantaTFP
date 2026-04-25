@@ -21,6 +21,10 @@ export const adminTenantIdParamSchema = z.object({
   id: z.string().uuid(),
 });
 
+export const adminTenantScopeQuerySchema = z.object({
+  tenantId: z.string().uuid(),
+});
+
 export const adminForceTenantPlanSchema = z.object({
   plan: z.enum(['basic', 'pro', 'business', 'enterprise']),
 });

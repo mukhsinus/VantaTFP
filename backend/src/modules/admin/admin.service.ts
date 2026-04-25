@@ -110,12 +110,11 @@ export class AdminService {
     });
   }
 
-  async getSystemHealth(tenantId: string) {
+  async getSystemHealth() {
     const dbOk = await this.adminRepository.dbPing();
     return {
       status: dbOk ? 'ok' : 'degraded',
       db: dbOk ? 'up' : 'down',
-      tenantId,
       now: new Date().toISOString(),
       uptimeSeconds: Math.floor((Date.now() - this.appStartedAt.getTime()) / 1000),
     };
