@@ -3,13 +3,39 @@ import { PolicyRepository } from './policy.repository.js';
 export class PolicyService {
   constructor(private readonly repo: PolicyRepository) {}
 
+  private getRoleCodeCandidates(roleCode: string): string[] {
+    const raw = roleCode.trim();
+    if (!raw) return [];
+
+    const normalized = raw.toLowerCase();
+    const upper = raw.toUpperCase();
+    const candidates = [raw, normalized, upper];
+
+    // Legacy -> canonical aliases
+    if (normalized === 'admin') candidates.push('owner');
+    if (normalized === 'manager') candidates.push('manager');
+    if (normalized === 'employee') candidates.push('employee');
+
+    // Canonical -> legacy aliases
+    if (normalized === 'owner') candidates.push('ADMIN');
+    if (normalized === 'manager') candidates.push('MANAGER');
+    if (normalized === 'employee') candidates.push('EMPLOYEE');
+
+    return [...new Set(candidates.filter(Boolean))];
+  }
+
   async checkPermission(
     tenantId: string,
     roleCode: string,
     action: string,
     resource: string
   ): Promise<boolean> {
-    const role = await this.repo.findRoleByCode(tenantId, roleCode);
+    const roleCandidates = this.getRoleCodeCandidates(roleCode);
+    let role = null as Awaited<ReturnType<PolicyRepository['findRoleByCode']>>;
+    for (const candidate of roleCandidates) {
+      role = await this.repo.findRoleByCode(tenantId, candidate);
+      if (role) break;
+    }
     if (!role) {
       return false;
     }

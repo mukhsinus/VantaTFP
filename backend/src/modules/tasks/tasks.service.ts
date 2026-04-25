@@ -18,7 +18,10 @@ const ALLOWED_STATUS_TRANSITIONS: Record<string, string[]> = {
   CANCELLED: [],
 };
 
-export type TaskRouteAccessOptions = { actingSuperAdmin?: boolean };
+export type TaskRouteAccessOptions = {
+  actingSuperAdmin?: boolean;
+  actorTenantRole?: 'owner' | 'manager' | 'employee' | null;
+};
 
 export class TasksService {
   constructor(
@@ -197,6 +200,23 @@ export class TasksService {
     const existing = await this.tasksRepository.findByIdAndTenant(taskId, effectiveTenantId);
     if (!existing) {
       throw ApplicationError.notFound('Task');
+    }
+
+    if (options?.actorTenantRole === 'employee' && !options?.actingSuperAdmin) {
+      if (existing.assignee_id !== actorUserId) {
+        throw ApplicationError.forbidden('Employees can only update their assigned tasks');
+      }
+
+      const touchesRestrictedFields =
+        data.title !== undefined ||
+        data.description !== undefined ||
+        data.assigneeId !== undefined ||
+        data.deadline !== undefined ||
+        data.priority !== undefined;
+
+      if (touchesRestrictedFields) {
+        throw ApplicationError.forbidden('Employees can only change task status');
+      }
     }
 
     if (data.assigneeId) {

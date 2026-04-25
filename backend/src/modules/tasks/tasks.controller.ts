@@ -136,7 +136,7 @@ export async function tasksRoutes(app: FastifyInstance): Promise<void> {
 
   app.patch(
     '/:taskId',
-    { preHandler: [authenticate, canWriteTasks] },
+    { preHandler: [authenticate, canReadTasks] },
     async (request: FastifyRequest, reply: FastifyReply) => {
       const { taskId } = taskIdParamSchema.parse(request.params);
       const body = updateTaskInputSchema.parse(request.body);
@@ -145,7 +145,10 @@ export async function tasksRoutes(app: FastifyInstance): Promise<void> {
         request.user.tenantId,
         request.user.userId,
         body,
-        taskAccess(request)
+        {
+          ...taskAccess(request),
+          actorTenantRole: request.user.tenant_role ?? null,
+        }
       );
       return sendSuccess(reply, task);
     }

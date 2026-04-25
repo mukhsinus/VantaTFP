@@ -55,6 +55,7 @@ interface ApiEnvelope<T> {
 const MAX_REQUEST_RETRIES = 3;
 const pendingGetRequests = new Map<string, Promise<unknown>>();
 const APP_BOOT_TIME_MS = Date.now();
+const ACCESS_TOKEN_REFRESH_SKEW_MS = 45_000;
 
 /** Browser-relative API prefix; Vite dev server proxies `/api` → backend (see vite.config.ts). */
 export const API_BASE = '/api';
@@ -90,6 +91,73 @@ function resolveApiBaseUrl(): string {
   }
 
   return 'http://localhost:3000';
+}
+
+function shouldUseRelativeApiUrl(baseUrl: string): boolean {
+  if (typeof window === 'undefined') return false;
+  if (!baseUrl) return true;
+  try {
+    const resolved = new URL(baseUrl, window.location.origin);
+    return resolved.origin === window.location.origin;
+  } catch {
+    return true;
+  }
+}
+
+function buildRequestUrl(
+  path: string,
+  baseUrl: string,
+  params?: Record<string, string | number | boolean | undefined | null>
+): string {
+  if (shouldUseRelativeApiUrl(baseUrl)) {
+    const relative = new URL(path, window.location.origin);
+    if (params) {
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined && value !== null) {
+          relative.searchParams.set(key, String(value));
+        }
+      });
+    }
+    return `${relative.pathname}${relative.search}`;
+  }
+
+  const absolute = new URL(path, baseUrl);
+  if (params) {
+    Object.entries(params).forEach(([key, value]) => {
+      if (value !== undefined && value !== null) {
+        absolute.searchParams.set(key, String(value));
+      }
+    });
+  }
+  return absolute.toString();
+}
+
+function decodeJwtPayload(token: string): { exp?: number } | null {
+  const [, payloadPart] = token.split('.');
+  if (!payloadPart) return null;
+
+  try {
+    const normalized = payloadPart.replace(/-/g, '+').replace(/_/g, '/');
+    const padded = normalized + '='.repeat((4 - (normalized.length % 4)) % 4);
+    const decoded = atob(padded);
+    return JSON.parse(decoded) as { exp?: number };
+  } catch {
+    return null;
+  }
+}
+
+function isAccessTokenExpiringSoon(token: string): boolean {
+  const payload = decodeJwtPayload(token);
+  if (!payload?.exp) return false;
+  const expiresAtMs = payload.exp * 1000;
+  return expiresAtMs - Date.now() <= ACCESS_TOKEN_REFRESH_SKEW_MS;
+}
+
+async function ensureFreshAccessToken(): Promise<void> {
+  const { accessToken, refreshToken } = useAuthStore.getState();
+  if (!accessToken || !refreshToken) return;
+  if (!isAccessTokenExpiringSoon(accessToken)) return;
+  await tryRefreshToken();
 }
 
 async function fetchWithRetry(url: string, init: RequestInit): Promise<Response> {
@@ -135,17 +203,12 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
     ...init
   } = options;
 
-  // Build URL with query params
-  const baseUrl = resolveApiBaseUrl();
-  const url = new URL(path, baseUrl);
-
-  if (params) {
-    Object.entries(params).forEach(([key, value]) => {
-      if (value !== undefined && value !== null) {
-        url.searchParams.set(key, String(value));
-      }
-    });
+  if (retryOnUnauthorized) {
+    await ensureFreshAccessToken();
   }
+
+  const baseUrl = resolveApiBaseUrl();
+  const url = buildRequestUrl(path, baseUrl, params);
 
   // Inject JWT from Zustand + mirrored storage (mobile / `ugc_token` fallback)
   const accessToken = useAuthStore.getState().accessToken;
@@ -165,9 +228,9 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
     (headers as Record<string, string>)['Content-Type'] = 'application/json';
   }
 
-  const requestKey = `${init.method ?? 'GET'}:${url.toString()}:${accessToken ?? ''}`;
+  const requestKey = `${init.method ?? 'GET'}:${url}:${accessToken ?? ''}`;
   const run = async () => {
-    const response = await fetchWithRetry(url.toString(), {
+    const response = await fetchWithRetry(url, {
       ...init,
       headers,
       body: shouldSendJsonBody
@@ -241,7 +304,7 @@ async function tryRefreshToken(): Promise<boolean> {
 
     try {
       const baseUrl = resolveApiBaseUrl();
-      const url = new URL('/api/v1/auth/refresh', baseUrl);
+      const url = buildRequestUrl('/api/v1/auth/refresh', baseUrl);
       const response = await fetch(url.toString(), {
         method: 'POST',
         headers: {

@@ -15,8 +15,8 @@ async function databasePlugin(app: FastifyInstance): Promise<void> {
     connectionString: databaseUrl,
     max: 20,
     idleTimeoutMillis: 30_000,
-    // Shorter connect timeout in development to avoid long blocking during dev
-    connectionTimeoutMillis: env.NODE_ENV === 'production' ? 15_000 : 3_000,
+    // Avoid flaky startup/runtime 500s during short DB network hiccups.
+    connectionTimeoutMillis: env.PG_CONNECTION_TIMEOUT_MS,
     keepAlive: true,
     ssl: isLocalDatabase ? undefined : { rejectUnauthorized: false },
   });

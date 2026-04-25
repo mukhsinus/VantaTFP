@@ -5,6 +5,7 @@ import { useIsMobile } from '@shared/hooks/useIsMobile';
 import { useCreateTask } from '../hooks/useCreateTask';
 import { useEmployees } from '../../employees/hooks/useEmployees';
 import type { CreateTaskPayload, TaskPriority } from '@entities/task/task.types';
+import { usePermissions } from '@shared/hooks/useCanPerform';
 
 interface CreateTaskModalProps {
   isOpen: boolean;
@@ -41,8 +42,12 @@ const INITIAL_STATE: FormState = {
 export function CreateTaskModal({ isOpen, onClose }: CreateTaskModalProps) {
   const { t } = useTranslation();
   const isMobile = useIsMobile();
+  const { can } = usePermissions();
+  const canCreateTask = can('task:create');
   const { createTask, isPending } = useCreateTask();
-  const { employees, isLoading: isLoadingEmployees } = useEmployees();
+  const { employees, isLoading: isLoadingEmployees } = useEmployees({
+    enabled: isOpen && canCreateTask,
+  });
   const priorityOptions = PRIORITY_OPTIONS.map((opt) => ({ value: opt.value, label: t(opt.labelKey) }));
 
   // Build assignee options: 'everyone' (empty string) + employees

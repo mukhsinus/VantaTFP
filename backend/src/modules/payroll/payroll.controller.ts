@@ -2,7 +2,9 @@ import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { PayrollService } from './payroll.service.js';
 import { PayrollRepository } from './payroll.repository.js';
 import { requireRole } from '../../shared/middleware/rbac.middleware.js';
+import type { AuthenticatedUser } from '../../shared/types/common.types.js';
 import { sendSuccess, successEnvelope } from '../../shared/utils/response.js';
+import { payrollReadBypassesTenantPolicy } from './payroll.read-access.js';
 import { attachIdempotencyKey } from '../../shared/middleware/idempotency.middleware.js';
 import { IdempotencyService } from '../../shared/idempotency/idempotency.service.js';
 import { ApplicationError } from '../../shared/utils/application-error.js';
@@ -17,6 +19,28 @@ import {
   listPayrollRecordsQuerySchema,
 } from './payroll.schema.js';
 
+/**
+ * Employees must see their own payroll only — list/detail/records routes enforce scope below.
+ * Owner/manager still need `read:payroll` from tenant policy (DB).
+ */
+function requirePayrollSelfReadOrPolicy(
+  policyReadPayroll: (request: FastifyRequest, reply: FastifyReply) => Promise<void>
+) {
+  return async function payrollSelfReadOrPolicyGuard(
+    request: FastifyRequest,
+    reply: FastifyReply
+  ): Promise<void> {
+    const user = request.user as AuthenticatedUser | undefined;
+    if (!user) {
+      throw ApplicationError.unauthorized();
+    }
+    if (payrollReadBypassesTenantPolicy(user)) {
+      return;
+    }
+    await policyReadPayroll(request, reply);
+  };
+}
+
 export async function payrollRoutes(app: FastifyInstance): Promise<void> {
   const payrollRepository = new PayrollRepository(app.db);
   const payrollService = new PayrollService(payrollRepository);
@@ -25,6 +49,7 @@ export async function payrollRoutes(app: FastifyInstance): Promise<void> {
   const authenticate = app.authenticate;
   const canReadPayroll = requireRole('read', 'payroll');
   const canWritePayroll = requireRole('write', 'payroll');
+  const canReadPayrollEntries = requirePayrollSelfReadOrPolicy(canReadPayroll);
 
   app.get(
     '/rules',
@@ -93,7 +118,7 @@ export async function payrollRoutes(app: FastifyInstance): Promise<void> {
 
   app.get(
     '/records',
-    { preHandler: [authenticate, canReadPayroll] },
+    { preHandler: [authenticate, canReadPayrollEntries] },
     async (request: FastifyRequest, reply: FastifyReply) => {
       const query = listPayrollRecordsQuerySchema.parse(request.query);
       const scopedUserId =
@@ -111,7 +136,7 @@ export async function payrollRoutes(app: FastifyInstance): Promise<void> {
 
   app.get(
     '/',
-    { preHandler: [authenticate, canReadPayroll] },
+    { preHandler: [authenticate, canReadPayrollEntries] },
     async (request: FastifyRequest, reply: FastifyReply) => {
       const query = listPayrollQuerySchema.parse(request.query);
       const scopedQuery =
@@ -125,7 +150,7 @@ export async function payrollRoutes(app: FastifyInstance): Promise<void> {
 
   app.get(
     '/:payrollId',
-    { preHandler: [authenticate, canReadPayroll] },
+    { preHandler: [authenticate, canReadPayrollEntries] },
     async (request: FastifyRequest, reply: FastifyReply) => {
       const { payrollId } = payrollIdParamSchema.parse(request.params);
       const entry = await payrollService.getPayrollEntryById(payrollId, request.user.tenantId);

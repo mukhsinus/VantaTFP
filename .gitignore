@@ -6,6 +6,7 @@ node_modules/
 
 # Testing
 /coverage
+**/coverage/
 
 # Production
 /dist
@@ -43,7 +44,16 @@ Thumbs.db
 
 # Vite
 .vite/
+frontend/node_modules/.vite/
 
 # Build cache
 .tsc/
 tsconfig.tsbuildinfo
+*.tsbuildinfo
+.eslintcache
+.cache/
+
+# Runtime artifacts
+*.pid
+*.pid.lock
+*.seed

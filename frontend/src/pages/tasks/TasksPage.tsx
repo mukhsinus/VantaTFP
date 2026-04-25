@@ -245,10 +245,12 @@ export function TasksPage() {
         </button>
       )}
 
-      <CreateTaskModal
-        isOpen={showCreateModal}
-        onClose={() => setShowCreateModal(false)}
-      />
+      {can('task:create') && (
+        <CreateTaskModal
+          isOpen={showCreateModal}
+          onClose={() => setShowCreateModal(false)}
+        />
+      )}
     </>
   );
 }

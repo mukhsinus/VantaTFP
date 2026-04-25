@@ -33,11 +33,15 @@ interface UseEmployeesResult {
   error: Error | null;
 }
 
-export function useEmployees(): UseEmployeesResult {
+interface UseEmployeesOptions {
+  enabled?: boolean;
+}
+
+export function useEmployees(options?: UseEmployeesOptions): UseEmployeesResult {
   const accessToken = useAuthStore((s) => s.accessToken);
   const { data, isLoading, isError, error } = useQuery({
     queryKey: employeesKeys.list(),
-    enabled: Boolean(accessToken),
+    enabled: Boolean(accessToken) && (options?.enabled ?? true),
     queryFn: employeesApi.list,
     select: (payload) => payload.data.map(toUi),
   });
