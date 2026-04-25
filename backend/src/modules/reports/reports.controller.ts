@@ -23,7 +23,11 @@ export async function reportsRoutes(app: FastifyInstance): Promise<void> {
       const body = generateReportSchema.parse(request.body);
       const result = await reportsService.generateReport(
         request.user.tenantId,
-        { userId: request.user.userId, role: request.user.role },
+        {
+          userId: request.user.userId,
+          tenantRole: request.user.tenant_role,
+          systemRole: request.user.system_role,
+        },
         body
       );
       return sendSuccess(reply, result, 201);
@@ -37,7 +41,11 @@ export async function reportsRoutes(app: FastifyInstance): Promise<void> {
       const body = exportReportSchema.parse(request.body);
       const file = await reportsService.exportReport(
         request.user.tenantId,
-        { userId: request.user.userId, role: request.user.role },
+        {
+          userId: request.user.userId,
+          tenantRole: request.user.tenant_role,
+          systemRole: request.user.system_role,
+        },
         body
       );
       reply.header('Content-Type', file.contentType);

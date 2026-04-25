@@ -1,5 +1,5 @@
 import { ApplicationError } from '../../shared/utils/application-error.js';
-import type { Role } from '../../shared/types/common.types.js';
+import type { SystemRole, TenantRole } from '../../shared/types/common.types.js';
 import { assertTenantEntityMatch } from '../../shared/utils/tenant-scope.js';
 import type {
   ExportReportInput,
@@ -33,7 +33,7 @@ export class ReportsService {
 
   async generateReport(
     tenantId: string,
-    actor: { userId: string; role: Role },
+    actor: { userId: string; tenantRole: TenantRole | null; systemRole: SystemRole },
     input: GenerateReportInput,
     storeAs: 'JSON' | 'CSV' | 'PDF' = 'JSON'
   ): Promise<{ report: GeneratedReport; historyId: string }> {
@@ -91,7 +91,7 @@ export class ReportsService {
 
   async exportReport(
     tenantId: string,
-    actor: { userId: string; role: Role },
+    actor: { userId: string; tenantRole: TenantRole | null; systemRole: SystemRole },
     input: ExportReportInput
   ): Promise<{ filename: string; contentType: string; body: Buffer }> {
     const { report } = await this.generateReport(tenantId, actor, input, input.format.toUpperCase() as
@@ -237,13 +237,13 @@ export class ReportsService {
 
   private async applyAccessControl(
     tenantId: string,
-    actor: { userId: string; role: Role },
+    actor: { userId: string; tenantRole: TenantRole | null; systemRole: SystemRole },
     requested: { userId?: string; teamId?: string }
   ): Promise<{ userId?: string; teamId?: string }> {
-    if (actor.role === 'ADMIN') {
+    if (actor.systemRole === 'super_admin' || actor.tenantRole === 'owner') {
       return requested;
     }
-    if (actor.role === 'EMPLOYEE') {
+    if (actor.tenantRole === 'employee') {
       if (requested.teamId) {
         throw ApplicationError.forbidden('Employees cannot filter by team');
       }
@@ -251,6 +251,10 @@ export class ReportsService {
         throw ApplicationError.forbidden('You can only access your own reports');
       }
       return { userId: actor.userId };
+    }
+
+    if (actor.tenantRole !== 'manager') {
+      throw ApplicationError.forbidden('Insufficient role to access reports');
     }
 
     // MANAGER

@@ -31,7 +31,11 @@ export async function kpiRoutes(app: FastifyInstance): Promise<void> {
       const result = await kpiService.getAnalyticsByEmployee(
         request.user.tenantId,
         query,
-        { userId: request.user.userId, role: request.user.role }
+        {
+          userId: request.user.userId,
+          tenantRole: request.user.tenant_role,
+          systemRole: request.user.system_role,
+        }
       );
       return sendSuccess(reply, result);
     }
@@ -45,7 +49,11 @@ export async function kpiRoutes(app: FastifyInstance): Promise<void> {
       const result = await kpiService.getAnalyticsAggregated(
         request.user.tenantId,
         query,
-        { userId: request.user.userId, role: request.user.role }
+        {
+          userId: request.user.userId,
+          tenantRole: request.user.tenant_role,
+          systemRole: request.user.system_role,
+        }
       );
       return sendSuccess(reply, result);
     }

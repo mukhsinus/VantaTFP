@@ -47,7 +47,7 @@ describe('KpiService deterministic aggregation', () => {
         periodEnd: '2026-04-30T23:59:59.000Z',
         refresh: false,
       },
-      { userId: 'owner-1', role: 'ADMIN' }
+      { userId: 'owner-1', tenantRole: 'owner', systemRole: 'user' }
     );
 
     expect(result.completedTasks).toBe(15);

@@ -7,7 +7,7 @@ import {
 import { PayrollService } from '../payroll/payroll.service.js';
 import { ApplicationError } from '../../shared/utils/application-error.js';
 import { logger } from '../../shared/utils/logger.js';
-import type { Role } from '../../shared/types/common.types.js';
+import type { SystemRole, TenantRole } from '../../shared/types/common.types.js';
 import type { KpiAnalyticsQuery } from './kpi.schema.js';
 import { assertTenantEntityMatch } from '../../shared/utils/tenant-scope.js';
 
@@ -228,7 +228,7 @@ export class KpiService {
   async getAnalyticsByEmployee(
     tenantId: string,
     query: KpiAnalyticsQuery,
-    access: { userId: string; role: Role }
+    access: { userId: string; tenantRole: TenantRole | null; systemRole: SystemRole }
   ): Promise<KpiAnalyticsByEmployeeResponse> {
     if (!tenantId) {
       throw ApplicationError.badRequest('Missing tenant context');
@@ -300,7 +300,7 @@ export class KpiService {
   async getAnalyticsAggregated(
     tenantId: string,
     query: KpiAnalyticsQuery,
-    access: { userId: string; role: Role }
+    access: { userId: string; tenantRole: TenantRole | null; systemRole: SystemRole }
   ): Promise<KpiAnalyticsAggregatedResponse> {
     if (!tenantId) {
       throw ApplicationError.badRequest('Missing tenant context');
@@ -561,7 +561,7 @@ export class KpiService {
   private async guardAnalyticsFilters(
     tenantId: string,
     query: KpiAnalyticsQuery,
-    access: { userId: string; role: Role }
+    access: { userId: string; tenantRole: TenantRole | null; systemRole: SystemRole }
   ): Promise<{ userId?: string; teamId?: string }> {
     return this.guardReportScope(
       tenantId,
@@ -576,7 +576,7 @@ export class KpiService {
   async resolveReportAssigneeIds(
     tenantId: string,
     filters: { userId?: string; teamId?: string },
-    access: { userId: string; role: Role }
+    access: { userId: string; tenantRole: TenantRole | null; systemRole: SystemRole }
   ): Promise<string[]> {
     const guarded = await this.guardReportScope(tenantId, filters, access);
     return this.kpiRepository.resolveAnalyticsAssigneeIds({
@@ -589,12 +589,16 @@ export class KpiService {
   private async guardReportScope(
     tenantId: string,
     filters: { userId?: string; teamId?: string },
-    access: { userId: string; role: Role }
+    access: { userId: string; tenantRole: TenantRole | null; systemRole: SystemRole }
   ): Promise<{ userId?: string; teamId?: string }> {
     void tenantId;
     let { userId, teamId } = filters;
 
-    if (access.role === 'EMPLOYEE') {
+    if (access.systemRole === 'super_admin' || access.tenantRole === 'owner') {
+      return { userId, teamId };
+    }
+
+    if (access.tenantRole === 'employee') {
       if (teamId) {
         throw ApplicationError.forbidden('Employees cannot filter analytics by team');
       }
@@ -604,7 +608,7 @@ export class KpiService {
       return { userId: access.userId };
     }
 
-    if (access.role === 'MANAGER') {
+    if (access.tenantRole === 'manager') {
       if (teamId && teamId !== access.userId) {
         throw ApplicationError.forbidden('Managers may only query analytics for their own team');
       }
@@ -620,7 +624,7 @@ export class KpiService {
       return { userId, teamId };
     }
 
-    return { userId, teamId };
+    throw ApplicationError.forbidden('Insufficient role to access KPI analytics');
   }
 
   private toResponse(kpi: KpiRecord): KpiResponse {
