@@ -43,6 +43,13 @@ import { invitesRoutes } from './modules/invites/invites.controller.js';
 import { paymentsRoutes } from './modules/payments/payments.controller.js';
 import { financialRoutes } from './modules/financial/financial.controller.js';
 import { messagesRoutes } from './modules/messages/messages.controller.js';
+import { featureFlagsRoutes } from './modules/feature-flags/feature-flags.controller.js';
+import { projectsRoutes } from './modules/projects/projects.controller.js';
+import { commentsRoutes } from './modules/comments/comments.controller.js';
+import { documentsRoutes } from './modules/documents/documents.controller.js';
+import { templatesRoutes } from './modules/templates/templates.controller.js';
+import { automationsRoutes } from './modules/automations/automations.controller.js';
+import { labelsRoutes } from './modules/labels/labels.controller.js';
 
 export async function buildApp(): Promise<FastifyInstance> {
   initSentry();
@@ -140,6 +147,13 @@ export async function buildApp(): Promise<FastifyInstance> {
   await app.register(paymentsRoutes, { prefix: '/api/v1/payments' });
   await app.register(financialRoutes, { prefix: '/api/v1/financial' });
   await app.register(messagesRoutes, { prefix: '/api/v1/messages' });
+  await app.register(featureFlagsRoutes, { prefix: '/api/v1/feature-flags' });
+  await app.register(projectsRoutes, { prefix: '/api/v1/projects' });
+  await app.register(commentsRoutes, { prefix: '/api/v1/tasks' });
+  await app.register(documentsRoutes, { prefix: '/api/v1/documents' });
+  await app.register(templatesRoutes, { prefix: '/api/v1/templates' });
+  await app.register(automationsRoutes, { prefix: '/api/v1/automations' });
+  await app.register(labelsRoutes, { prefix: '/api/v1/labels' });
 
   return app;
 }

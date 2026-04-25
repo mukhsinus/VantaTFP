@@ -49,11 +49,16 @@ export class FinancialService {
   }
 
   async updatePayoutStatus(
+    tenantId: string,
     id: string,
     status: 'processing' | 'completed' | 'failed',
     payoutRef?: string
   ) {
-    return this.repo.updatePayoutStatus(id, status, payoutRef);
+    const payout = await this.repo.updatePayoutStatus(id, tenantId, status, payoutRef);
+    if (!payout) {
+      throw ApplicationError.notFound('Payout not found');
+    }
+    return payout;
   }
 
   /**

@@ -2,7 +2,6 @@ import { useAuthStore } from '@app/store/auth.store';
 import i18n from '@shared/i18n/i18n';
 import { normalizeMeUser } from '@shared/utils/normalize-me-user';
 import { waitUntilBackendReady } from '@shared/api/backend-readiness';
-import { readMirroredAccessToken } from '@shared/lib/access-token-storage';
 
 // ─── Error type ───────────────────────────────────────────────────────────────
 
@@ -140,8 +139,6 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
   const baseUrl = resolveApiBaseUrl();
   const url = new URL(path, baseUrl);
 
-  console.log('API REQUEST', url.toString());
-
   if (params) {
     Object.entries(params).forEach(([key, value]) => {
       if (value !== undefined && value !== null) {
@@ -151,8 +148,7 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
   }
 
   // Inject JWT from Zustand + mirrored storage (mobile / `ugc_token` fallback)
-  const accessToken =
-    useAuthStore.getState().accessToken ?? readMirroredAccessToken();
+  const accessToken = useAuthStore.getState().accessToken;
 
   const headers: HeadersInit = {
     ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
@@ -287,7 +283,6 @@ async function tryRefreshToken(): Promise<boolean> {
         const normalized = normalizeMeUser(mePayload, useAuthStore.getState().user);
         if (normalized) {
           useAuthStore.getState().setUser(normalized);
-          console.log('CLIENT SET USER', normalized);
         }
       } catch {
         // Tokens are valid; session bootstrap or the retried call can still load profile.

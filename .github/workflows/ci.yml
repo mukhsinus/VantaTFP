@@ -7,6 +7,43 @@ on:
     branches: [main, develop]
 
 jobs:
+  branch-name:
+    name: Branch Name
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Validate branch naming
+        run: npm run validate:branch
+
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run lint
+        run: npm run lint
+
   backend:
     name: Backend
     runs-on: ubuntu-latest
@@ -27,6 +64,9 @@ jobs:
 
       - name: Build
         run: npm run build --workspace=backend
+
+      - name: Run backend tests
+        run: npm run test --workspace=backend
 
   frontend:
     name: Frontend
@@ -55,6 +95,23 @@ jobs:
   migrations:
     name: Validate Migrations
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: tfp_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d tfp_ci"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/tfp_ci
 
     steps:
       - uses: actions/checkout@v4
@@ -69,3 +126,15 @@ jobs:
 
       - name: Validate migration files
         run: npm run migrate:validate --workspace=backend
+
+      - name: Apply migrations on fresh database
+        run: npm run migrate:up --workspace=backend
+
+      - name: Verify migration status
+        run: npm run migrate:status --workspace=backend
+
+      - name: Roll back latest migration smoke
+        run: npm run migrate:down --workspace=backend -- --steps 1
+
+      - name: Re-apply rolled back migration
+        run: npm run migrate:up --workspace=backend

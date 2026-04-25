@@ -1,4 +1,5 @@
 import bcrypt from 'bcrypt';
+import { createHash } from 'node:crypto';
 import { AuthRepository } from './auth.repository.js';
 import { LoginRequest, RegisterRequest, RegisterEmployerRequest } from './auth.schema.js';
 import { ApplicationError } from '../../shared/utils/application-error.js';
@@ -6,7 +7,7 @@ import { AuthenticatedUser } from '../../shared/types/common.types.js';
 import { validatePassword } from '../../shared/utils/password-validator.js';
 import type { BillingService } from '../billing/billing.service.js';
 import { parseJwtTenantIdFromPayload } from '../../shared/auth/jwt-tenant.js';
-import { buildAuthenticatedUser, isSuperAdmin } from '../../shared/auth/principal.js';
+import { buildAuthenticatedUser } from '../../shared/auth/principal.js';
 import type { EmployeesRepository } from '../employees/employees.repository.js';
 
 export interface TokenPair {
@@ -253,10 +254,16 @@ export class AuthService {
       }
 
       const jwtTenant = parseJwtTenantIdFromPayload(decoded);
+      const refreshTokenHash = this.hashToken(refreshToken);
 
       const active = await this.authRepository.findActiveUserById(userId);
       if (!active) {
         throw ApplicationError.unauthorized('User no longer exists');
+      }
+
+      const tokenSession = await this.authRepository.findActiveRefreshTokenSession(refreshTokenHash);
+      if (!tokenSession || tokenSession.user_id !== userId) {
+        throw ApplicationError.unauthorized('Refresh session is not active');
       }
 
       const ctx = await this.authRepository.findAuthContextById(userId, jwtTenant);
@@ -265,16 +272,53 @@ export class AuthService {
       }
 
       const principal = buildAuthenticatedUser(ctx, jwtTenant);
+      const nextAccessToken = this.signAccessToken({ ...principal, tokenType: 'access' }, '15m');
+      const nextRefreshToken = this.signRefreshToken({ ...principal, tokenType: 'refresh' }, '7d');
+      const nextRefreshTokenHash = this.hashToken(nextRefreshToken);
+      const nextRefreshExpiresAt = this.extractExpiry(nextRefreshToken);
+
+      await this.authRepository.withTransaction(async (tx) => {
+        await this.authRepository.revokeRefreshTokenSession(
+          refreshTokenHash,
+          nextRefreshTokenHash,
+          tx
+        );
+        await this.authRepository.createRefreshTokenSession(
+          {
+            userId: principal.userId,
+            tenantId: principal.tenant_id,
+            tokenHash: nextRefreshTokenHash,
+            expiresAt: nextRefreshExpiresAt,
+          },
+          tx
+        );
+      });
 
       return {
-        accessToken: this.signAccessToken({ ...principal, tokenType: 'access' }, '15m'),
-        refreshToken: this.signRefreshToken({ ...principal, tokenType: 'refresh' }, '7d'),
+        accessToken: nextAccessToken,
+        refreshToken: nextRefreshToken,
       };
     } catch (error) {
       if (error instanceof ApplicationError) {
         throw error;
       }
       throw ApplicationError.unauthorized('Invalid or expired refresh token');
+    }
+  }
+
+  async revokeRefreshToken(refreshToken: string, userId: string): Promise<void> {
+    try {
+      const decoded = this.verifyRefreshToken(refreshToken);
+      if (decoded.tokenType && decoded.tokenType !== 'refresh') {
+        return;
+      }
+      if (decoded.userId && decoded.userId !== userId) {
+        return;
+      }
+      const tokenHash = this.hashToken(refreshToken);
+      await this.authRepository.revokeRefreshTokenSession(tokenHash, null);
+    } catch {
+      // Revocation endpoint is intentionally idempotent to avoid leaking token validity.
     }
   }
 
@@ -286,10 +330,7 @@ export class AuthService {
     if (!full) {
       throw ApplicationError.unauthorized('Invalid user session');
     }
-    const userIsSuperAdmin = isSuperAdmin({
-      email: full.email,
-      system_role: full.system_role,
-    });
+    const userIsSuperAdmin = full.system_role === 'super_admin';
     const authCtx = await this.authRepository.findAuthContextById(
       full.id,
       userIsSuperAdmin ? null : requestedTenantId
@@ -315,9 +356,18 @@ export class AuthService {
       ...principal,
     };
 
+    const accessToken = this.signAccessToken(jwtPayload, '15m');
+    const refreshToken = this.signRefreshToken(jwtPayload, '7d');
+    await this.authRepository.createRefreshTokenSession({
+      userId: principal.userId,
+      tenantId: principal.tenant_id,
+      tokenHash: this.hashToken(refreshToken),
+      expiresAt: this.extractExpiry(refreshToken),
+    });
+
     return {
-      accessToken: this.signAccessToken(jwtPayload, '15m'),
-      refreshToken: this.signRefreshToken(jwtPayload, '7d'),
+      accessToken,
+      refreshToken,
       user: {
         id: full.id,
         email: full.email,
@@ -373,5 +423,17 @@ export class AuthService {
       candidate = `${base}-${suffix}`;
     }
     return candidate;
+  }
+
+  private hashToken(token: string): string {
+    return createHash('sha256').update(token).digest('hex');
+  }
+
+  private extractExpiry(token: string): Date {
+    const decoded = this.verifyRefreshToken(token) as JwtPrincipalPayload & { exp?: number };
+    if (!decoded.exp) {
+      return new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+    }
+    return new Date(decoded.exp * 1000);
   }
 }

@@ -8,6 +8,7 @@ import {
   walletIdParamSchema,
   payoutIdParamSchema,
   createPayoutSchema,
+  updatePayoutStatusSchema,
 } from './financial.schema.js';
 
 export async function financialRoutes(app: FastifyInstance): Promise<void> {
@@ -85,11 +86,8 @@ export async function financialRoutes(app: FastifyInstance): Promise<void> {
       const tenantId = request.tenantId;
       if (!tenantId) throw ApplicationError.forbidden('Tenant context required');
       const { id } = payoutIdParamSchema.parse(request.params);
-      const { status, payoutRef } = (request.body as any) ?? {};
-      if (!['processing', 'completed', 'failed'].includes(status)) {
-        throw ApplicationError.badRequest('Invalid status');
-      }
-      const payout = await financialService.updatePayoutStatus(id, status, payoutRef);
+      const { status, payoutRef } = updatePayoutStatusSchema.parse(request.body);
+      const payout = await financialService.updatePayoutStatus(tenantId, id, status, payoutRef);
       return sendSuccess(reply, payout);
     }
   );

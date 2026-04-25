@@ -9,6 +9,7 @@ import {
   registerRequestSchema,
   registerEmployerSchema,
   refreshTokenRequestSchema,
+  revokeTokenRequestSchema,
 } from './auth.schema.js';
 
 export async function authRoutes(app: FastifyInstance): Promise<void> {
@@ -46,6 +47,16 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
     const tokens = await authService.refreshTokens(body.refreshToken);
     return sendSuccess(reply, tokens);
   });
+
+  app.post(
+    '/revoke',
+    { preHandler: [app.authenticate] },
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      const body = revokeTokenRequestSchema.parse(request.body);
+      await authService.revokeRefreshToken(body.refreshToken, request.user.userId);
+      return sendSuccess(reply, { revoked: true });
+    }
+  );
 
   /** Public employer self-registration — no auth required */
   app.post('/register-employer', async (request: FastifyRequest, reply: FastifyReply) => {

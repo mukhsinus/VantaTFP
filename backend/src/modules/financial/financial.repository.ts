@@ -195,19 +195,20 @@ export class FinancialRepository {
 
   async updatePayoutStatus(
     id: string,
+    tenantId: string,
     status: 'processing' | 'completed' | 'failed',
     payoutRef?: string
   ): Promise<PayoutRow> {
     const result = await this.db.query<PayoutRow>(
       `
       UPDATE payouts
-      SET status = $2, payout_ref = COALESCE($3, payout_ref),
-          processed_at = CASE WHEN $2 IN ('completed', 'failed') THEN NOW() ELSE processed_at END,
+      SET status = $3, payout_ref = COALESCE($4, payout_ref),
+          processed_at = CASE WHEN $3 IN ('completed', 'failed') THEN NOW() ELSE processed_at END,
           updated_at = NOW()
-      WHERE id = $1
+      WHERE id = $1 AND tenant_id = $2
       RETURNING *
       `,
-      [id, status, payoutRef ?? null]
+      [id, tenantId, status, payoutRef ?? null]
     );
     return result.rows[0];
   }

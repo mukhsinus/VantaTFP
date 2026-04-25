@@ -81,7 +81,6 @@ export function useNotificationsRealtime() {
       if (isConnectingRef.current) return;
 
       isConnectingRef.current = true;
-      console.log('WS CONNECT ATTEMPT');
 
       clearConnectDelayTimer();
       connectDelayTimerRef.current = window.setTimeout(() => {
@@ -100,8 +99,8 @@ export function useNotificationsRealtime() {
           return;
         }
 
-        const wsUrl = `${WS_BASE_URL}${API.notifications.ws}?token=${encodeURIComponent(token)}`;
-        const socket = new WebSocket(wsUrl);
+        const wsUrl = `${WS_BASE_URL}${API.notifications.ws}`;
+        const socket = new WebSocket(wsUrl, [`tfp.jwt.${token}`]);
         wsRef.current = socket;
 
         socket.onopen = () => {

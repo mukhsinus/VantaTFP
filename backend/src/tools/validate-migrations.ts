@@ -50,12 +50,138 @@ async function validateLatestRollbackExecution(
   }
 
   const downSql = await readFile(pair.down, 'utf8');
+  const statements = splitSqlStatements(downSql);
   await client.query('BEGIN');
   try {
-    await client.query(downSql);
+    for (const statement of statements) {
+      if (/CONCURRENTLY/i.test(statement)) {
+        continue;
+      }
+      await client.query(statement);
+    }
   } finally {
     await client.query('ROLLBACK');
   }
+}
+
+function splitSqlStatements(sql: string): string[] {
+  const statements: string[] = [];
+  let current = '';
+  let i = 0;
+  let inSingleQuote = false;
+  let inDoubleQuote = false;
+  let inLineComment = false;
+  let inBlockComment = false;
+  let dollarTag: string | null = null;
+
+  while (i < sql.length) {
+    const ch = sql[i];
+    const next = sql[i + 1];
+
+    if (inLineComment) {
+      current += ch;
+      if (ch === '\n') inLineComment = false;
+      i += 1;
+      continue;
+    }
+
+    if (inBlockComment) {
+      current += ch;
+      if (ch === '*' && next === '/') {
+        current += next;
+        inBlockComment = false;
+        i += 2;
+        continue;
+      }
+      i += 1;
+      continue;
+    }
+
+    if (inSingleQuote) {
+      current += ch;
+      if (ch === "'" && next === "'") {
+        current += next;
+        i += 2;
+        continue;
+      }
+      if (ch === "'") inSingleQuote = false;
+      i += 1;
+      continue;
+    }
+
+    if (inDoubleQuote) {
+      current += ch;
+      if (ch === '"') inDoubleQuote = false;
+      i += 1;
+      continue;
+    }
+
+    if (dollarTag) {
+      current += ch;
+      if (sql.startsWith(dollarTag, i)) {
+        const rest = dollarTag.slice(1);
+        current += rest;
+        i += dollarTag.length;
+        dollarTag = null;
+        continue;
+      }
+      i += 1;
+      continue;
+    }
+
+    if (ch === '-' && next === '-') {
+      current += ch + next;
+      inLineComment = true;
+      i += 2;
+      continue;
+    }
+
+    if (ch === '/' && next === '*') {
+      current += ch + next;
+      inBlockComment = true;
+      i += 2;
+      continue;
+    }
+
+    if (ch === "'") {
+      inSingleQuote = true;
+      current += ch;
+      i += 1;
+      continue;
+    }
+
+    if (ch === '"') {
+      inDoubleQuote = true;
+      current += ch;
+      i += 1;
+      continue;
+    }
+
+    if (ch === '$') {
+      const match = sql.slice(i).match(/^\$[A-Za-z0-9_]*\$/);
+      if (match) {
+        dollarTag = match[0];
+        current += dollarTag;
+        i += dollarTag.length;
+        continue;
+      }
+    }
+
+    if (ch === ';') {
+      const statement = current.trim();
+      if (statement) statements.push(statement);
+      current = '';
+      i += 1;
+      continue;
+    }
+
+    current += ch;
+    i += 1;
+  }
+
+  const tail = current.trim();
+  if (tail) statements.push(tail);
+  return statements;
 }
 
 async function run(): Promise<void> {

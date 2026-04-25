@@ -12,3 +12,10 @@ export const createPayoutSchema = z.object({
 });
 
 export type CreatePayoutBody = z.infer<typeof createPayoutSchema>;
+
+export const updatePayoutStatusSchema = z.object({
+  status: z.enum(['processing', 'completed', 'failed']),
+  payoutRef: z.string().max(255).optional(),
+});
+
+export type UpdatePayoutStatusBody = z.infer<typeof updatePayoutStatusSchema>;

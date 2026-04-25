@@ -1,7 +1,0 @@
-import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
-import { Skeleton } from '@shared/components/ui';
-import styles from './EmployeesListSkeleton.module.css';
-const CARD_COUNT = 6;
-export function EmployeesListSkeleton() {
-    return (_jsxs("div", { className: styles.root, children: [_jsx(Skeleton, { height: 28, width: 180, borderRadius: "var(--radius-md)" }), _jsx(Skeleton, { height: 14, width: 120, borderRadius: "var(--radius-sm)" }), _jsxs("div", { className: styles.filters, children: [_jsx(Skeleton, { height: 40, borderRadius: "var(--radius-lg)" }), _jsx("div", { className: styles.chips, children: [1, 2, 3, 4].map((i) => (_jsx(Skeleton, { height: 32, width: 72, borderRadius: "var(--radius-full)" }, i))) })] }), _jsx("div", { className: styles.grid, children: Array.from({ length: CARD_COUNT }, (_, i) => (_jsx("div", { className: styles.card, children: _jsxs("div", { className: styles.cardTop, children: [_jsx(Skeleton, { height: 44, width: 44, borderRadius: "var(--radius-full)" }), _jsxs("div", { className: styles.cardText, children: [_jsx(Skeleton, { height: 18, width: "70%", borderRadius: "var(--radius-sm)" }), _jsx(Skeleton, { height: 14, width: "90%", borderRadius: "var(--radius-sm)" })] }), _jsx(Skeleton, { height: 28, width: 64, borderRadius: "var(--radius-full)" }), _jsx(Skeleton, { height: 44, width: 44, borderRadius: "var(--radius-md)" })] }) }, i))) })] }));
-}

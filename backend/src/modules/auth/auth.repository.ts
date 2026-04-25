@@ -69,6 +69,18 @@ export interface AuthTenantRecord {
   is_active: boolean;
 }
 
+export interface RefreshTokenSessionRecord {
+  id: string;
+  user_id: string;
+  tenant_id: string | null;
+  token_hash: string;
+  expires_at: Date;
+  revoked_at: Date | null;
+  replaced_by_token_hash: string | null;
+  created_at: Date;
+  last_used_at: Date | null;
+}
+
 export class AuthRepository {
   constructor(private readonly db: Pool) {}
   private tenantPlanIdColumnCache: boolean | null = null;
@@ -548,6 +560,73 @@ export class AuthRepository {
     );
 
     return result.rows[0] ?? null;
+  }
+
+  async createRefreshTokenSession(
+    data: {
+      userId: string;
+      tenantId: string | null;
+      tokenHash: string;
+      expiresAt: Date;
+    },
+    executor: Pick<Pool, 'query'> | Pick<PoolClient, 'query'> = this.db
+  ): Promise<void> {
+    await executor.query(
+      `
+      INSERT INTO refresh_token_sessions (
+        id, user_id, tenant_id, token_hash, expires_at, revoked_at, replaced_by_token_hash, created_at, last_used_at
+      )
+      VALUES (
+        gen_random_uuid(), $1::uuid, $2::uuid, $3, $4, NULL, NULL, NOW(), NULL
+      )
+      `,
+      [data.userId, data.tenantId, data.tokenHash, data.expiresAt]
+    );
+  }
+
+  async findActiveRefreshTokenSession(
+    tokenHash: string,
+    executor: Pick<Pool, 'query'> | Pick<PoolClient, 'query'> = this.db
+  ): Promise<RefreshTokenSessionRecord | null> {
+    const result = await executor.query<RefreshTokenSessionRecord>(
+      `
+      SELECT
+        id,
+        user_id,
+        tenant_id,
+        token_hash,
+        expires_at,
+        revoked_at,
+        replaced_by_token_hash,
+        created_at,
+        last_used_at
+      FROM refresh_token_sessions
+      WHERE token_hash = $1
+        AND revoked_at IS NULL
+        AND expires_at > NOW()
+      LIMIT 1
+      `,
+      [tokenHash]
+    );
+    return result.rows[0] ?? null;
+  }
+
+  async revokeRefreshTokenSession(
+    tokenHash: string,
+    replacedByTokenHash: string | null,
+    executor: Pick<Pool, 'query'> | Pick<PoolClient, 'query'> = this.db
+  ): Promise<void> {
+    await executor.query(
+      `
+      UPDATE refresh_token_sessions
+      SET revoked_at = NOW(),
+          replaced_by_token_hash = COALESCE($2, replaced_by_token_hash),
+          last_used_at = NOW()
+      WHERE token_hash = $1
+        AND revoked_at IS NULL
+      `,
+      [tokenHash, replacedByTokenHash]
+    );
   }
 
   async findUserByIdAndTenant(userId: string, tenantId: string): Promise<UserRecord | null> {

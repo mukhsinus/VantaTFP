@@ -46,7 +46,12 @@ export const refreshTokenRequestSchema = z.object({
   refreshToken: z.string().min(1),
 });
 
+export const revokeTokenRequestSchema = z.object({
+  refreshToken: z.string().min(1),
+});
+
 export type LoginRequest = z.infer<typeof loginRequestSchema>;
 export type RegisterEmployerRequest = z.infer<typeof registerEmployerSchema>;
 export type RegisterRequest = z.infer<typeof registerRequestSchema>;
 export type RefreshTokenRequest = z.infer<typeof refreshTokenRequestSchema>;
+export type RevokeTokenRequest = z.infer<typeof revokeTokenRequestSchema>;
