@@ -9,6 +9,21 @@ import { toast } from '@app/store/toast.store';
 export function AdminUsersPage() {
   const queryClient = useQueryClient();
   const selectedTenantId = useAdminScopeStore((s) => s.selectedTenantId);
+  const invalidateAdminCaches = React.useCallback(async () => {
+    await queryClient.invalidateQueries({ queryKey: ['admin', 'users'] });
+    await queryClient.invalidateQueries({ queryKey: ['admin', 'dashboard'] });
+    await queryClient.invalidateQueries({ queryKey: ['admin', 'monitoring', 'stats'] });
+    await queryClient.invalidateQueries({ queryKey: ['admin', 'tenant'] });
+    if (selectedTenantId) {
+      await queryClient.invalidateQueries({
+        queryKey: ['admin', 'monitoring', 'stats', selectedTenantId],
+      });
+      await queryClient.invalidateQueries({
+        queryKey: ['admin', 'tenant', selectedTenantId],
+      });
+    }
+  }, [queryClient, selectedTenantId]);
+
   const { data, isLoading, isError, error } = useQuery({
     queryKey: ['admin', 'users', 1, selectedTenantId],
     queryFn: () =>
@@ -24,7 +39,7 @@ export function AdminUsersPage() {
       adminApi.updateUserRole(id, role),
     onSuccess: async () => {
       toast.success('User role updated');
-      await queryClient.invalidateQueries({ queryKey: ['admin', 'users'] });
+      await invalidateAdminCaches();
     },
     onError: (e) => {
       const msg = e instanceof ApiError ? e.message : 'Role update failed';
@@ -36,7 +51,7 @@ export function AdminUsersPage() {
     mutationFn: (id: string) => adminApi.banUser(id),
     onSuccess: async () => {
       toast.info('User banned');
-      await queryClient.invalidateQueries({ queryKey: ['admin', 'users'] });
+      await invalidateAdminCaches();
     },
     onError: (e) => {
       const msg = e instanceof ApiError ? e.message : 'Ban failed';

@@ -9,6 +9,19 @@ import { toast } from '@app/store/toast.store';
 export function AdminPaymentsPage() {
   const queryClient = useQueryClient();
   const selectedTenantId = useAdminScopeStore((s) => s.selectedTenantId);
+  const invalidateAdminCaches = React.useCallback(async () => {
+    await queryClient.invalidateQueries({ queryKey: ['admin', 'payments'] });
+    await queryClient.invalidateQueries({ queryKey: ['admin', 'dashboard'] });
+    await queryClient.invalidateQueries({ queryKey: ['admin', 'subscriptions'] });
+    await queryClient.invalidateQueries({ queryKey: ['admin', 'tenants'] });
+    await queryClient.invalidateQueries({ queryKey: ['admin', 'monitoring', 'stats'] });
+    if (selectedTenantId) {
+      await queryClient.invalidateQueries({
+        queryKey: ['admin', 'monitoring', 'stats', selectedTenantId],
+      });
+    }
+  }, [queryClient, selectedTenantId]);
+
   const paymentsQuery = useQuery({
     queryKey: ['admin', 'payments', 'pending', selectedTenantId],
     queryFn: () =>
@@ -24,9 +37,7 @@ export function AdminPaymentsPage() {
     mutationFn: (id: string) => adminApi.approvePayment(id),
     onSuccess: async () => {
       toast.success('Payment approved', 'Tenant plan is activated.');
-      await queryClient.invalidateQueries({ queryKey: ['admin', 'payments'] });
-      await queryClient.invalidateQueries({ queryKey: ['admin', 'dashboard'] });
-      await queryClient.invalidateQueries({ queryKey: ['admin', 'subscriptions'] });
+      await invalidateAdminCaches();
     },
     onError: (error) => {
       const message = error instanceof ApiError ? error.message : 'Approval failed';
@@ -38,8 +49,7 @@ export function AdminPaymentsPage() {
     mutationFn: (id: string) => adminApi.rejectPayment(id),
     onSuccess: async () => {
       toast.info('Payment rejected');
-      await queryClient.invalidateQueries({ queryKey: ['admin', 'payments'] });
-      await queryClient.invalidateQueries({ queryKey: ['admin', 'dashboard'] });
+      await invalidateAdminCaches();
     },
     onError: (error) => {
       const message = error instanceof ApiError ? error.message : 'Reject failed';

@@ -16,6 +16,13 @@ const PLAN_OPTIONS: Array<'basic' | 'pro' | 'business' | 'enterprise'> = [
 export function AdminSubscriptionsPage() {
   const queryClient = useQueryClient();
   const selectedTenantId = useAdminScopeStore((s) => s.selectedTenantId);
+  const invalidateAdminCaches = React.useCallback(async () => {
+    await queryClient.invalidateQueries({ queryKey: ['admin', 'subscriptions'] });
+    await queryClient.invalidateQueries({ queryKey: ['admin', 'tenants'] });
+    await queryClient.invalidateQueries({ queryKey: ['admin', 'dashboard'] });
+    await queryClient.invalidateQueries({ queryKey: ['admin', 'payments'] });
+  }, [queryClient]);
+
   const { data, isLoading, isError, error } = useQuery({
     queryKey: ['admin', 'subscriptions', 1, selectedTenantId],
     queryFn: () =>
@@ -33,8 +40,7 @@ export function AdminSubscriptionsPage() {
       adminApi.setTenantPlan(tenantId, plan),
     onSuccess: async () => {
       toast.success('Plan changed');
-      await queryClient.invalidateQueries({ queryKey: ['admin', 'subscriptions'] });
-      await queryClient.invalidateQueries({ queryKey: ['admin', 'tenants'] });
+      await invalidateAdminCaches();
     },
     onError: (e) => {
       const msg = e instanceof ApiError ? e.message : 'Failed to force change plan';

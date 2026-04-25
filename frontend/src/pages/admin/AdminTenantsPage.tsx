@@ -18,6 +18,17 @@ export function AdminTenantsPage() {
   const queryClient = useQueryClient();
   const selectedTenantId = useAdminScopeStore((s) => s.selectedTenantId);
   const setSelectedTenantId = useAdminScopeStore((s) => s.setSelectedTenantId);
+  const invalidateAdminCaches = React.useCallback(async () => {
+    await queryClient.invalidateQueries({ queryKey: ['admin', 'tenants'] });
+    await queryClient.invalidateQueries({ queryKey: ['admin', 'tenant'] });
+    await queryClient.invalidateQueries({ queryKey: ['admin', 'monitoring', 'stats'] });
+    await queryClient.invalidateQueries({ queryKey: ['admin', 'audit-logs'] });
+    await queryClient.invalidateQueries({ queryKey: ['admin', 'subscriptions'] });
+    await queryClient.invalidateQueries({ queryKey: ['admin', 'payments'] });
+    await queryClient.invalidateQueries({ queryKey: ['admin', 'users'] });
+    await queryClient.invalidateQueries({ queryKey: ['admin', 'dashboard'] });
+  }, [queryClient]);
+
   const { data, isLoading, isError, error } = useQuery({
     queryKey: ['admin', 'tenants', 1],
     queryFn: () => adminApi.listTenants({ page: 1, limit: 50 }),
@@ -80,7 +91,7 @@ export function AdminTenantsPage() {
     mutationFn: (tenantId: string) => adminApi.suspendTenant(tenantId),
     onSuccess: async () => {
       toast.info('Tenant suspended');
-      await queryClient.invalidateQueries({ queryKey: ['admin', 'tenants'] });
+      await invalidateAdminCaches();
     },
     onError: (e) => {
       const msg = e instanceof ApiError ? e.message : 'Suspend failed';
@@ -92,7 +103,7 @@ export function AdminTenantsPage() {
     mutationFn: (tenantId: string) => adminApi.activateTenant(tenantId),
     onSuccess: async () => {
       toast.success('Tenant activated');
-      await queryClient.invalidateQueries({ queryKey: ['admin', 'tenants'] });
+      await invalidateAdminCaches();
     },
     onError: (e) => {
       const msg = e instanceof ApiError ? e.message : 'Activation failed';
@@ -105,8 +116,7 @@ export function AdminTenantsPage() {
       adminApi.setTenantPlan(tenantId, plan),
     onSuccess: async () => {
       toast.success('Plan changed');
-      await queryClient.invalidateQueries({ queryKey: ['admin', 'tenants'] });
-      await queryClient.invalidateQueries({ queryKey: ['admin', 'subscriptions'] });
+      await invalidateAdminCaches();
     },
     onError: (e) => {
       const msg = e instanceof ApiError ? e.message : 'Plan change failed';
@@ -117,10 +127,7 @@ export function AdminTenantsPage() {
     mutationFn: (tenantId: string) => adminApi.deactivateTenantManagement(tenantId),
     onSuccess: async () => {
       toast.info('Tenant deactivated');
-      await queryClient.invalidateQueries({ queryKey: ['admin', 'tenants'] });
-      await queryClient.invalidateQueries({ queryKey: ['admin', 'tenant'] });
-      await queryClient.invalidateQueries({ queryKey: ['admin', 'monitoring', 'stats'] });
-      await queryClient.invalidateQueries({ queryKey: ['admin', 'audit-logs'] });
+      await invalidateAdminCaches();
     },
     onError: (e) => {
       const msg = e instanceof ApiError ? e.message : 'Deactivation failed';
