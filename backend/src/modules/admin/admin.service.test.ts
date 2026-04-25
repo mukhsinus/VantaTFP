@@ -9,6 +9,9 @@ process.env.JWT_SECRET ??= 'test-secret-123456789012345678901234567890';
 async function createService() {
   const { AdminService } = await import('./admin.service.js');
   const adminRepository = {
+    getTenant: vi.fn(),
+    setTenantActiveState: vi.fn(),
+    insertAuditLog: vi.fn(),
     listSubscriptions: vi.fn(),
     listPaymentRequests: vi.fn(),
     listUsers: vi.fn(),
@@ -18,16 +21,25 @@ async function createService() {
     upsertTenantRoleForUser: vi.fn(),
     banUser: vi.fn(),
   } as unknown as AdminRepository;
+  const billingRepository = {
+    upgradeSubscriptionToPlan: vi.fn(),
+  } as unknown as BillingRepository;
 
   const service = new AdminService(
     adminRepository,
     new Date('2026-01-01T00:00:00.000Z'),
-    {} as BillingRepository
+    billingRepository
   );
 
   return {
     service,
+    billingRepository: billingRepository as unknown as {
+      upgradeSubscriptionToPlan: ReturnType<typeof vi.fn>;
+    },
     adminRepository: adminRepository as unknown as {
+      getTenant: ReturnType<typeof vi.fn>;
+      setTenantActiveState: ReturnType<typeof vi.fn>;
+      insertAuditLog: ReturnType<typeof vi.fn>;
       listSubscriptions: ReturnType<typeof vi.fn>;
       listPaymentRequests: ReturnType<typeof vi.fn>;
       listUsers: ReturnType<typeof vi.fn>;
@@ -71,9 +83,10 @@ describe('AdminService user protection rules', () => {
       id: 'u1',
       tenant_id: null,
       system_role: 'super_admin',
+      role: 'ADMIN',
     });
 
-    await expect(service.updateUserRole('u1', 'MANAGER')).rejects.toThrow(
+    await expect(service.updateUserRole('u1', 'MANAGER', 'actor-1')).rejects.toThrow(
       'Cannot change role for super admin accounts'
     );
   });
@@ -84,9 +97,10 @@ describe('AdminService user protection rules', () => {
       id: 'u1',
       tenant_id: null,
       system_role: 'super_admin',
+      role: 'ADMIN',
     });
 
-    await expect(service.banUser('u1')).rejects.toThrow('Cannot ban super admin accounts');
+    await expect(service.banUser('u1', 'actor-1')).rejects.toThrow('Cannot ban super admin accounts');
   });
 
   it('supports global admin listing when tenant scope is omitted', async () => {
@@ -111,5 +125,68 @@ describe('AdminService user protection rules', () => {
     expect(adminRepository.listPaymentRequests).toHaveBeenCalledWith('pending', undefined, 1, 20);
     expect(adminRepository.listUsers).toHaveBeenCalledWith(1, 20, undefined);
     expect(adminRepository.getDashboardStats).toHaveBeenCalledWith(undefined);
+  });
+
+  it('writes audit log when forcing tenant plan change', async () => {
+    const { service, adminRepository, billingRepository } = await createService();
+    adminRepository.getTenant.mockResolvedValue({
+      id: 'b713a2ec-9d2e-445f-bab0-03e4f8d643b4',
+      name: 'Acme',
+      slug: 'acme',
+      plan: 'basic',
+      is_active: true,
+      created_at: new Date(),
+      updated_at: new Date(),
+    });
+    billingRepository.upgradeSubscriptionToPlan.mockResolvedValue({ updated: true });
+
+    await service.forceChangeTenantPlan(
+      'b713a2ec-9d2e-445f-bab0-03e4f8d643b4',
+      'pro',
+      'actor-1'
+    );
+
+    expect(adminRepository.insertAuditLog).toHaveBeenCalledWith(
+      expect.objectContaining({
+        tenantId: 'b713a2ec-9d2e-445f-bab0-03e4f8d643b4',
+        action: 'TENANT_PLAN_FORCED',
+        userId: 'actor-1',
+      })
+    );
+  });
+
+  it('writes audit log when updating tenant user role', async () => {
+    const { service, adminRepository } = await createService();
+    adminRepository.getUserById.mockResolvedValue({
+      id: 'user-1',
+      tenant_id: 'b713a2ec-9d2e-445f-bab0-03e4f8d643b4',
+      system_role: 'user',
+      role: 'EMPLOYEE',
+    });
+    adminRepository.updateUserRole.mockResolvedValue(true);
+
+    await service.updateUserRole('user-1', 'MANAGER', 'actor-1');
+
+    expect(adminRepository.insertAuditLog).toHaveBeenCalledWith(
+      expect.objectContaining({
+        tenantId: 'b713a2ec-9d2e-445f-bab0-03e4f8d643b4',
+        action: 'USER_ROLE_UPDATED',
+        userId: 'actor-1',
+      })
+    );
+  });
+
+  it('blocks banning platform accounts without tenant context', async () => {
+    const { service, adminRepository } = await createService();
+    adminRepository.getUserById.mockResolvedValue({
+      id: 'platform-user-1',
+      tenant_id: null,
+      system_role: 'user',
+      role: 'ADMIN',
+    });
+
+    await expect(service.banUser('platform-user-1', 'actor-1')).rejects.toThrow(
+      'Cannot ban platform accounts'
+    );
   });
 });

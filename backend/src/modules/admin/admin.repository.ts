@@ -479,10 +479,12 @@ export class AdminRepository {
     return (result.rowCount ?? 0) > 0;
   }
 
-  async getUserById(userId: string): Promise<{ id: string; tenant_id: string | null; system_role: string } | null> {
-    const result = await this.db.query<{ id: string; tenant_id: string | null; system_role: string }>(
+  async getUserById(
+    userId: string
+  ): Promise<{ id: string; tenant_id: string | null; system_role: string; role: string } | null> {
+    const result = await this.db.query<{ id: string; tenant_id: string | null; system_role: string; role: string }>(
       `
-      SELECT id, tenant_id, COALESCE(system_role::text, 'user') AS system_role
+      SELECT id, tenant_id, COALESCE(system_role::text, 'user') AS system_role, role::text AS role
       FROM users
       WHERE id = $1
       LIMIT 1

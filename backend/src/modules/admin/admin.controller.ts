@@ -172,7 +172,7 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
     { preHandler: superOnly },
     async (request: FastifyRequest, reply: FastifyReply) => {
       const { id } = adminTenantIdParamSchema.parse(request.params);
-      const result = await adminService.suspendTenant(id);
+      const result = await adminService.suspendTenant(id, request.user.userId);
       return sendSuccess(reply, result);
     }
   );
@@ -182,7 +182,7 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
     { preHandler: superOnly },
     async (request: FastifyRequest, reply: FastifyReply) => {
       const { id } = adminTenantIdParamSchema.parse(request.params);
-      const result = await adminService.activateTenant(id);
+      const result = await adminService.activateTenant(id, request.user.userId);
       return sendSuccess(reply, result);
     }
   );
@@ -193,7 +193,7 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
     async (request: FastifyRequest, reply: FastifyReply) => {
       const { id } = adminTenantIdParamSchema.parse(request.params);
       const body = adminForceTenantPlanSchema.parse(request.body ?? {});
-      const result = await adminService.forceChangeTenantPlan(id, body.plan);
+      const result = await adminService.forceChangeTenantPlan(id, body.plan, request.user.userId);
       return sendSuccess(reply, result);
     }
   );
@@ -214,7 +214,7 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
     async (request: FastifyRequest, reply: FastifyReply) => {
       const { id } = adminTenantIdParamSchema.parse(request.params);
       const body = adminUserRoleBodySchema.parse(request.body ?? {});
-      const result = await adminService.updateUserRole(id, body.role);
+      const result = await adminService.updateUserRole(id, body.role, request.user.userId);
       return sendSuccess(reply, result);
     }
   );
@@ -224,7 +224,7 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
     { preHandler: superOnly },
     async (request: FastifyRequest, reply: FastifyReply) => {
       const { id } = adminTenantIdParamSchema.parse(request.params);
-      const result = await adminService.banUser(id);
+      const result = await adminService.banUser(id, request.user.userId);
       return sendSuccess(reply, result);
     }
   );

@@ -241,25 +241,68 @@ export class AdminService {
     };
   }
 
-  async suspendTenant(tenantId: string) {
+  async suspendTenant(tenantId: string, actorUserId: string) {
+    const tenant = await this.adminRepository.getTenant(tenantId);
+    if (!tenant) throw ApplicationError.notFound('Tenant');
+
     const ok = await this.adminRepository.setTenantActiveState(tenantId, false);
     if (!ok) throw ApplicationError.notFound('Tenant');
+    await this.adminRepository.insertAuditLog({
+      tenantId,
+      action: 'TENANT_SUSPENDED',
+      entity: 'TENANT',
+      userId: actorUserId,
+      metadata: {
+        tenantId,
+        before: { isActive: tenant.is_active },
+        after: { isActive: false },
+      },
+    });
     return { ok: true };
   }
 
-  async activateTenant(tenantId: string) {
+  async activateTenant(tenantId: string, actorUserId: string) {
+    const tenant = await this.adminRepository.getTenant(tenantId);
+    if (!tenant) throw ApplicationError.notFound('Tenant');
+
     const ok = await this.adminRepository.setTenantActiveState(tenantId, true);
     if (!ok) throw ApplicationError.notFound('Tenant');
+    await this.adminRepository.insertAuditLog({
+      tenantId,
+      action: 'TENANT_ACTIVATED',
+      entity: 'TENANT',
+      userId: actorUserId,
+      metadata: {
+        tenantId,
+        before: { isActive: tenant.is_active },
+        after: { isActive: true },
+      },
+    });
     return { ok: true };
   }
 
-  async forceChangeTenantPlan(tenantId: string, plan: 'basic' | 'pro' | 'business' | 'enterprise') {
+  async forceChangeTenantPlan(
+    tenantId: string,
+    plan: 'basic' | 'pro' | 'business' | 'enterprise',
+    actorUserId: string
+  ) {
     const tenant = await this.adminRepository.getTenant(tenantId);
     if (!tenant) throw ApplicationError.notFound('Tenant');
     const { updated } = await this.billingRepository.upgradeSubscriptionToPlan(tenantId, plan);
     if (!updated) {
       throw ApplicationError.badRequest('Could not change tenant plan');
     }
+    await this.adminRepository.insertAuditLog({
+      tenantId,
+      action: 'TENANT_PLAN_FORCED',
+      entity: 'TENANT',
+      userId: actorUserId,
+      metadata: {
+        tenantId,
+        before: { plan: tenant.plan },
+        after: { plan },
+      },
+    });
     return { ok: true };
   }
 
@@ -289,7 +332,11 @@ export class AdminService {
     };
   }
 
-  async updateUserRole(userId: string, role: 'ADMIN' | 'MANAGER' | 'EMPLOYEE') {
+  async updateUserRole(
+    userId: string,
+    role: 'ADMIN' | 'MANAGER' | 'EMPLOYEE',
+    actorUserId: string
+  ) {
     const user = await this.adminRepository.getUserById(userId);
     if (!user) throw ApplicationError.notFound('User');
     if (user.system_role === 'super_admin') {
@@ -302,17 +349,40 @@ export class AdminService {
     if (!ok) throw ApplicationError.badRequest('Could not update user role');
     const tenantRole = role === 'ADMIN' ? 'owner' : role === 'MANAGER' ? 'manager' : 'employee';
     await this.adminRepository.upsertTenantRoleForUser(userId, user.tenant_id, tenantRole);
+    await this.adminRepository.insertAuditLog({
+      tenantId: user.tenant_id,
+      action: 'USER_ROLE_UPDATED',
+      entity: 'USER',
+      userId: actorUserId,
+      metadata: {
+        targetUserId: userId,
+        before: { role: user.role },
+        after: { role },
+      },
+    });
     return { ok: true };
   }
 
-  async banUser(userId: string) {
+  async banUser(userId: string, actorUserId: string) {
     const user = await this.adminRepository.getUserById(userId);
     if (!user) throw ApplicationError.notFound('User');
     if (user.system_role === 'super_admin') {
       throw ApplicationError.forbidden('Cannot ban super admin accounts');
     }
+    if (!user.tenant_id) {
+      throw ApplicationError.forbidden('Cannot ban platform accounts');
+    }
     const ok = await this.adminRepository.banUser(userId);
     if (!ok) throw ApplicationError.badRequest('Could not ban user');
+    await this.adminRepository.insertAuditLog({
+      tenantId: user.tenant_id,
+      action: 'USER_BANNED',
+      entity: 'USER',
+      userId: actorUserId,
+      metadata: {
+        targetUserId: userId,
+      },
+    });
     return { ok: true };
   }
 }
