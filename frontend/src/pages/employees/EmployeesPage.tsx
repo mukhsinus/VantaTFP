@@ -166,6 +166,7 @@ export function EmployeesPage() {
                 key={r}
                 type="button"
                 onClick={() => setRoleFilter(r)}
+                aria-pressed={roleFilter === r}
                 style={{
                   padding: '10px 16px',
                   minHeight: 44,

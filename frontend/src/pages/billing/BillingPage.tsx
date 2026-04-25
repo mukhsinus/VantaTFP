@@ -18,7 +18,7 @@ function pctUsed(used: number, limit: number | null | undefined): number {
   return Math.min(100, (used / limit) * 100);
 }
 
-function formatRenewal(data: BillingCurrentDto, t: (k: string, o?: { defaultValue?: string }) => string): string {
+function formatRenewal(data: BillingCurrentDto): string {
   const value = data.renewal_date ?? data.trial_ends_at;
   if (value) {
     return new Date(value).toLocaleDateString(undefined, {
@@ -318,7 +318,7 @@ export function BillingPage() {
 
           <div className={styles.metaRow}>
             <span className={styles.metaKey}>{t('billing.renewal', { defaultValue: 'Renewal date' })}</span>
-            <span className={styles.metaVal}>{isPlatform ? '—' : formatRenewal(data, t)}</span>
+            <span className={styles.metaVal}>{isPlatform ? '—' : formatRenewal(data)}</span>
           </div>
           <div className={styles.metaRow}>
             <span className={styles.metaKey}>{t('billing.paymentMethod', { defaultValue: 'Payment method' })}</span>
@@ -344,7 +344,7 @@ export function BillingPage() {
             <div>
               <p className={styles.overviewItemTitle}>{t('billing.nextPayment', { defaultValue: 'Next payment' })}</p>
               <p className={styles.overviewItemValue}>
-                {isPlatform ? '—' : formatRenewal(data, t)}
+                {isPlatform ? '—' : formatRenewal(data)}
               </p>
             </div>
             <div>

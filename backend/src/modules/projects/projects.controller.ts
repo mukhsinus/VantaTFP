@@ -1,5 +1,5 @@
 import { FastifyInstance } from 'fastify';
-import { requireRoles } from '../../shared/middleware/role-guard.middleware.js';
+import { requireTenantRole } from '../../shared/middleware/rbac.middleware.js';
 import { sendSuccess, sendNoContent } from '../../shared/utils/response.js';
 import { ProjectsRepository } from './projects.repository.js';
 import { ProjectsService } from './projects.service.js';
@@ -9,9 +9,11 @@ export async function projectsRoutes(app: FastifyInstance): Promise<void> {
   const repo = new ProjectsRepository(app.db);
   const service = new ProjectsService(repo);
   const authenticate = app.authenticate;
+  const tenantMemberAccess = requireTenantRole('owner', 'manager', 'employee');
+  const tenantAdminAccess = requireTenantRole('owner', 'manager');
 
   app.get('/', {
-    preHandler: [authenticate, requireRoles('ADMIN', 'MANAGER', 'EMPLOYEE')],
+    preHandler: [authenticate, tenantMemberAccess],
   }, async (request, reply) => {
     const query = listProjectsQuerySchema.parse(request.query);
     const result = await service.list(request.user.tenantId, query);
@@ -19,7 +21,7 @@ export async function projectsRoutes(app: FastifyInstance): Promise<void> {
   });
 
   app.get('/:projectId', {
-    preHandler: [authenticate, requireRoles('ADMIN', 'MANAGER', 'EMPLOYEE')],
+    preHandler: [authenticate, tenantMemberAccess],
   }, async (request, reply) => {
     const { projectId } = request.params as { projectId: string };
     const result = await service.getById(request.user.tenantId, projectId);
@@ -27,7 +29,7 @@ export async function projectsRoutes(app: FastifyInstance): Promise<void> {
   });
 
   app.post('/', {
-    preHandler: [authenticate, requireRoles('ADMIN', 'MANAGER')],
+    preHandler: [authenticate, tenantAdminAccess],
   }, async (request, reply) => {
     const input = createProjectSchema.parse(request.body);
     const result = await service.create(request.user.tenantId, request.user.id, input);
@@ -35,7 +37,7 @@ export async function projectsRoutes(app: FastifyInstance): Promise<void> {
   });
 
   app.patch('/:projectId', {
-    preHandler: [authenticate, requireRoles('ADMIN', 'MANAGER')],
+    preHandler: [authenticate, tenantAdminAccess],
   }, async (request, reply) => {
     const { projectId } = request.params as { projectId: string };
     const input = updateProjectSchema.parse(request.body);
@@ -44,7 +46,7 @@ export async function projectsRoutes(app: FastifyInstance): Promise<void> {
   });
 
   app.delete('/:projectId', {
-    preHandler: [authenticate, requireRoles('ADMIN', 'MANAGER')],
+    preHandler: [authenticate, tenantAdminAccess],
   }, async (request, reply) => {
     const { projectId } = request.params as { projectId: string };
     await service.delete(request.user.tenantId, projectId);

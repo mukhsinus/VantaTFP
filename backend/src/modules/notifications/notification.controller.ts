@@ -1,5 +1,5 @@
 import { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
-import { requireRoles } from '../../shared/middleware/role-guard.middleware.js';
+import { requireTenantRole } from '../../shared/middleware/rbac.middleware.js';
 import { sendSuccess } from '../../shared/utils/response.js';
 import type { AuthenticatedUser } from '../../shared/types/common.types.js';
 import { parseJwtTenantIdFromPayload } from '../../shared/auth/jwt-tenant.js';
@@ -9,10 +9,11 @@ import { buildAuthenticatedUser } from '../../shared/auth/principal.js';
 export async function notificationRoutes(app: FastifyInstance): Promise<void> {
   const authenticate = app.authenticate;
   const authRepository = new AuthRepository(app.db);
+  const tenantMemberAccess = requireTenantRole('owner', 'manager', 'employee');
 
   app.get(
     '/unread',
-    { preHandler: [authenticate, requireRoles('ADMIN', 'MANAGER', 'EMPLOYEE')] },
+    { preHandler: [authenticate, tenantMemberAccess] },
     async (request: FastifyRequest, reply: FastifyReply) => {
       if (request.user.system_role === 'super_admin') {
         return sendSuccess(reply, []);

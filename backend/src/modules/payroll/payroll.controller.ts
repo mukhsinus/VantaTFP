@@ -1,7 +1,7 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { PayrollService } from './payroll.service.js';
 import { PayrollRepository } from './payroll.repository.js';
-import { requireRoles } from '../../shared/middleware/role-guard.middleware.js';
+import { requireRole } from '../../shared/middleware/rbac.middleware.js';
 import { sendSuccess, successEnvelope } from '../../shared/utils/response.js';
 import { attachIdempotencyKey } from '../../shared/middleware/idempotency.middleware.js';
 import { IdempotencyService } from '../../shared/idempotency/idempotency.service.js';
@@ -23,10 +23,12 @@ export async function payrollRoutes(app: FastifyInstance): Promise<void> {
   const idempotency = new IdempotencyService(app.db);
 
   const authenticate = app.authenticate;
+  const canReadPayroll = requireRole('read', 'payroll');
+  const canWritePayroll = requireRole('write', 'payroll');
 
   app.get(
     '/rules',
-    { preHandler: [authenticate, requireRoles('ADMIN', 'MANAGER')] },
+    { preHandler: [authenticate, canReadPayroll] },
     async (request: FastifyRequest, reply: FastifyReply) => {
       const query = listPayrollRulesQuerySchema.parse(request.query);
       const rules = await payrollService.listPayrollRules(
@@ -39,7 +41,7 @@ export async function payrollRoutes(app: FastifyInstance): Promise<void> {
 
   app.post(
     '/rules',
-    { preHandler: [authenticate, requireRoles('ADMIN', 'MANAGER')] },
+    { preHandler: [authenticate, canWritePayroll] },
     async (request: FastifyRequest, reply: FastifyReply) => {
       const body = createPayrollRuleSchema.parse(request.body);
       const rule = await payrollService.createPayrollRule(request.user.tenantId, body);
@@ -49,7 +51,7 @@ export async function payrollRoutes(app: FastifyInstance): Promise<void> {
 
   app.patch(
     '/rules/:ruleId',
-    { preHandler: [authenticate, requireRoles('ADMIN', 'MANAGER')] },
+    { preHandler: [authenticate, canWritePayroll] },
     async (request: FastifyRequest, reply: FastifyReply) => {
       const { ruleId } = payrollRuleIdParamSchema.parse(request.params);
       const body = updatePayrollRuleSchema.parse(request.body);
@@ -64,7 +66,7 @@ export async function payrollRoutes(app: FastifyInstance): Promise<void> {
 
   app.post(
     '/rules/:ruleId/apply',
-    { preHandler: [authenticate, attachIdempotencyKey, requireRoles('ADMIN', 'MANAGER')] },
+    { preHandler: [authenticate, attachIdempotencyKey, canWritePayroll] },
     async (request: FastifyRequest, reply: FastifyReply) => {
       const { ruleId } = payrollRuleIdParamSchema.parse(request.params);
       const body = applyPayrollRuleBodySchema.parse(request.body);
@@ -91,7 +93,7 @@ export async function payrollRoutes(app: FastifyInstance): Promise<void> {
 
   app.get(
     '/records',
-    { preHandler: [authenticate, requireRoles('ADMIN', 'MANAGER', 'EMPLOYEE')] },
+    { preHandler: [authenticate, canReadPayroll] },
     async (request: FastifyRequest, reply: FastifyReply) => {
       const query = listPayrollRecordsQuerySchema.parse(request.query);
       const scopedUserId =
@@ -109,7 +111,7 @@ export async function payrollRoutes(app: FastifyInstance): Promise<void> {
 
   app.get(
     '/',
-    { preHandler: [authenticate, requireRoles('ADMIN', 'MANAGER', 'EMPLOYEE')] },
+    { preHandler: [authenticate, canReadPayroll] },
     async (request: FastifyRequest, reply: FastifyReply) => {
       const query = listPayrollQuerySchema.parse(request.query);
       const scopedQuery =
@@ -123,7 +125,7 @@ export async function payrollRoutes(app: FastifyInstance): Promise<void> {
 
   app.get(
     '/:payrollId',
-    { preHandler: [authenticate, requireRoles('ADMIN', 'MANAGER', 'EMPLOYEE')] },
+    { preHandler: [authenticate, canReadPayroll] },
     async (request: FastifyRequest, reply: FastifyReply) => {
       const { payrollId } = payrollIdParamSchema.parse(request.params);
       const entry = await payrollService.getPayrollEntryById(payrollId, request.user.tenantId);
@@ -137,7 +139,7 @@ export async function payrollRoutes(app: FastifyInstance): Promise<void> {
   // Dedicated approve action — semantic clarity over generic PATCH status
   app.post(
     '/:payrollId/approve',
-    { preHandler: [authenticate, requireRoles('ADMIN')] },
+    { preHandler: [authenticate, canWritePayroll] },
     async (request: FastifyRequest, reply: FastifyReply) => {
       const { payrollId } = payrollIdParamSchema.parse(request.params);
       const entry = await payrollService.approvePayrollEntry(

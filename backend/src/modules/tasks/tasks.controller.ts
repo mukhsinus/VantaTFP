@@ -1,7 +1,7 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { TasksService } from './tasks.service.js';
 import { TasksRepository } from './tasks.repository.js';
-import { requireRoles } from '../../shared/middleware/role-guard.middleware.js';
+import { requireRole } from '../../shared/middleware/rbac.middleware.js';
 import { sendNoContent, sendSuccess, successEnvelope } from '../../shared/utils/response.js';
 import { attachIdempotencyKey } from '../../shared/middleware/idempotency.middleware.js';
 import { IdempotencyService } from '../../shared/idempotency/idempotency.service.js';
@@ -18,6 +18,8 @@ export async function tasksRoutes(app: FastifyInstance): Promise<void> {
   const idempotency = new IdempotencyService(app.db);
 
   const authenticate = app.authenticate;
+  const canReadTasks = requireRole('read', 'tasks');
+  const canWriteTasks = requireRole('write', 'tasks');
 
   function taskAccess(request: FastifyRequest) {
     return { actingSuperAdmin: request.user.system_role === 'super_admin' };
@@ -25,7 +27,7 @@ export async function tasksRoutes(app: FastifyInstance): Promise<void> {
 
   app.get(
     '/',
-    { preHandler: [authenticate, requireRoles('ADMIN', 'MANAGER', 'EMPLOYEE')] },
+    { preHandler: [authenticate, canReadTasks] },
     async (request: FastifyRequest, reply: FastifyReply) => {
       app.log.info(
         {
@@ -49,7 +51,7 @@ export async function tasksRoutes(app: FastifyInstance): Promise<void> {
 
   app.get(
     '/:taskId/history',
-    { preHandler: [authenticate, requireRoles('ADMIN', 'MANAGER', 'EMPLOYEE')] },
+    { preHandler: [authenticate, canReadTasks] },
     async (request: FastifyRequest, reply: FastifyReply) => {
       const { taskId } = taskIdParamSchema.parse(request.params);
       const history = await tasksService.getUnifiedTaskHistory(
@@ -63,7 +65,7 @@ export async function tasksRoutes(app: FastifyInstance): Promise<void> {
 
   app.post(
     '/:taskId/timer/start',
-    { preHandler: [authenticate, requireRoles('ADMIN', 'MANAGER', 'EMPLOYEE')] },
+    { preHandler: [authenticate, canWriteTasks] },
     async (request: FastifyRequest, reply: FastifyReply) => {
       const { taskId } = taskIdParamSchema.parse(request.params);
       const timer = await tasksService.startTaskTimer(
@@ -78,7 +80,7 @@ export async function tasksRoutes(app: FastifyInstance): Promise<void> {
 
   app.post(
     '/:taskId/timer/stop',
-    { preHandler: [authenticate, requireRoles('ADMIN', 'MANAGER', 'EMPLOYEE')] },
+    { preHandler: [authenticate, canWriteTasks] },
     async (request: FastifyRequest, reply: FastifyReply) => {
       const { taskId } = taskIdParamSchema.parse(request.params);
       const timer = await tasksService.stopTaskTimer(
@@ -93,7 +95,7 @@ export async function tasksRoutes(app: FastifyInstance): Promise<void> {
 
   app.get(
     '/:taskId',
-    { preHandler: [authenticate, requireRoles('ADMIN', 'MANAGER', 'EMPLOYEE')] },
+    { preHandler: [authenticate, canReadTasks] },
     async (request: FastifyRequest, reply: FastifyReply) => {
       const { taskId } = taskIdParamSchema.parse(request.params);
       const task = await tasksService.getTaskById(
@@ -107,7 +109,7 @@ export async function tasksRoutes(app: FastifyInstance): Promise<void> {
 
   app.post(
     '/',
-    { preHandler: [authenticate, attachIdempotencyKey, requireRoles('ADMIN', 'MANAGER')] },
+    { preHandler: [authenticate, attachIdempotencyKey, canWriteTasks] },
     async (request: FastifyRequest, reply: FastifyReply) => {
       const body = createTaskInputSchema.parse(request.body);
       const idempotent = await idempotency.execute(
@@ -134,7 +136,7 @@ export async function tasksRoutes(app: FastifyInstance): Promise<void> {
 
   app.patch(
     '/:taskId',
-    { preHandler: [authenticate, requireRoles('ADMIN', 'MANAGER')] },
+    { preHandler: [authenticate, canWriteTasks] },
     async (request: FastifyRequest, reply: FastifyReply) => {
       const { taskId } = taskIdParamSchema.parse(request.params);
       const body = updateTaskInputSchema.parse(request.body);
@@ -151,7 +153,7 @@ export async function tasksRoutes(app: FastifyInstance): Promise<void> {
 
   app.delete(
     '/:taskId',
-    { preHandler: [authenticate, requireRoles('ADMIN', 'MANAGER')] },
+    { preHandler: [authenticate, canWriteTasks] },
     async (request: FastifyRequest, reply: FastifyReply) => {
       const { taskId } = taskIdParamSchema.parse(request.params);
       await tasksService.deleteTask(

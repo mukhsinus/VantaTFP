@@ -1,5 +1,5 @@
 import { FastifyInstance } from 'fastify';
-import { requireRoles } from '../../shared/middleware/role-guard.middleware.js';
+import { requireTenantRole } from '../../shared/middleware/rbac.middleware.js';
 import { sendSuccess, sendNoContent } from '../../shared/utils/response.js';
 import { CommentsRepository } from './comments.repository.js';
 import { CommentsService } from './comments.service.js';
@@ -9,10 +9,11 @@ export async function commentsRoutes(app: FastifyInstance): Promise<void> {
   const repo = new CommentsRepository(app.db);
   const service = new CommentsService(repo);
   const authenticate = app.authenticate;
+  const tenantMemberAccess = requireTenantRole('owner', 'manager', 'employee');
 
   // GET /tasks/:taskId/comments
   app.get('/:taskId/comments', {
-    preHandler: [authenticate, requireRoles('ADMIN', 'MANAGER', 'EMPLOYEE')],
+    preHandler: [authenticate, tenantMemberAccess],
   }, async (request, reply) => {
     const { taskId } = request.params as { taskId: string };
     const query = listCommentsQuerySchema.parse(request.query);
@@ -22,7 +23,7 @@ export async function commentsRoutes(app: FastifyInstance): Promise<void> {
 
   // POST /tasks/:taskId/comments
   app.post('/:taskId/comments', {
-    preHandler: [authenticate, requireRoles('ADMIN', 'MANAGER', 'EMPLOYEE')],
+    preHandler: [authenticate, tenantMemberAccess],
   }, async (request, reply) => {
     const { taskId } = request.params as { taskId: string };
     const input = createCommentSchema.parse(request.body);
@@ -32,7 +33,7 @@ export async function commentsRoutes(app: FastifyInstance): Promise<void> {
 
   // PATCH /tasks/:taskId/comments/:commentId
   app.patch('/:taskId/comments/:commentId', {
-    preHandler: [authenticate, requireRoles('ADMIN', 'MANAGER', 'EMPLOYEE')],
+    preHandler: [authenticate, tenantMemberAccess],
   }, async (request, reply) => {
     const { commentId } = request.params as { taskId: string; commentId: string };
     const input = updateCommentSchema.parse(request.body);
@@ -42,7 +43,7 @@ export async function commentsRoutes(app: FastifyInstance): Promise<void> {
 
   // DELETE /tasks/:taskId/comments/:commentId
   app.delete('/:taskId/comments/:commentId', {
-    preHandler: [authenticate, requireRoles('ADMIN', 'MANAGER', 'EMPLOYEE')],
+    preHandler: [authenticate, tenantMemberAccess],
   }, async (request, reply) => {
     const { commentId } = request.params as { taskId: string; commentId: string };
     await service.delete(request.user.tenantId, commentId, request.user.id, request.user.role);

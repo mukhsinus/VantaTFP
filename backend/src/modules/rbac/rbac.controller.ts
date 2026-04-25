@@ -1,5 +1,5 @@
 import { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
-import { requirePermission, requireRoles } from '../../shared/middleware/role-guard.middleware.js';
+import { requireRole } from '../../shared/middleware/rbac.middleware.js';
 import { sendSuccess } from '../../shared/utils/response.js';
 import { RbacRepository } from './rbac.repository.js';
 import { RbacService } from './rbac.service.js';
@@ -13,10 +13,12 @@ export async function rbacRoutes(app: FastifyInstance): Promise<void> {
   const rbacRepository = new RbacRepository(app.db);
   const rbacService = new RbacService(rbacRepository);
   const authenticate = app.authenticate;
+  const canReadUsers = requireRole('read', 'users');
+  const canWriteUsers = requireRole('write', 'users');
 
   app.get(
     '/permissions',
-    { preHandler: [authenticate, requireRoles('ADMIN', 'MANAGER')] },
+    { preHandler: [authenticate, canReadUsers] },
     async (_request: FastifyRequest, reply: FastifyReply) => {
       const permissions = await rbacService.listPermissions();
       return sendSuccess(reply, permissions);
@@ -28,7 +30,7 @@ export async function rbacRoutes(app: FastifyInstance): Promise<void> {
     {
       preHandler: [
         authenticate,
-        requirePermission('read', 'users'),
+        canReadUsers,
       ],
     },
     async (request: FastifyRequest, reply: FastifyReply) => {
@@ -42,7 +44,7 @@ export async function rbacRoutes(app: FastifyInstance): Promise<void> {
     {
       preHandler: [
         authenticate,
-        requirePermission('write', 'users'),
+        canWriteUsers,
       ],
     },
     async (request: FastifyRequest, reply: FastifyReply) => {
@@ -57,7 +59,7 @@ export async function rbacRoutes(app: FastifyInstance): Promise<void> {
     {
       preHandler: [
         authenticate,
-        requirePermission('write', 'users'),
+        canWriteUsers,
       ],
     },
     async (request: FastifyRequest, reply: FastifyReply) => {

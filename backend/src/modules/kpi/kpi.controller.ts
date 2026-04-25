@@ -3,7 +3,7 @@ import { KpiService } from './kpi.service.js';
 import { KpiRepository } from './kpi.repository.js';
 import { PayrollRepository } from '../payroll/payroll.repository.js';
 import { PayrollService } from '../payroll/payroll.service.js';
-import { requireRoles } from '../../shared/middleware/role-guard.middleware.js';
+import { requireRole } from '../../shared/middleware/rbac.middleware.js';
 import { sendSuccess } from '../../shared/utils/response.js';
 import {
   kpiAnalyticsQuerySchema,
@@ -20,10 +20,12 @@ export async function kpiRoutes(app: FastifyInstance): Promise<void> {
   const kpiService = new KpiService(kpiRepository, payrollService);
 
   const authenticate = app.authenticate;
+  const canReadKpi = requireRole('read', 'kpi');
+  const canWriteKpi = requireRole('write', 'kpi');
 
   app.get(
     '/analytics/by-employee',
-    { preHandler: [authenticate, requireRoles('ADMIN', 'MANAGER', 'EMPLOYEE')] },
+    { preHandler: [authenticate, canReadKpi] },
     async (request: FastifyRequest, reply: FastifyReply) => {
       const query = kpiAnalyticsQuerySchema.parse(request.query);
       const result = await kpiService.getAnalyticsByEmployee(
@@ -37,7 +39,7 @@ export async function kpiRoutes(app: FastifyInstance): Promise<void> {
 
   app.get(
     '/analytics/aggregated',
-    { preHandler: [authenticate, requireRoles('ADMIN', 'MANAGER', 'EMPLOYEE')] },
+    { preHandler: [authenticate, canReadKpi] },
     async (request: FastifyRequest, reply: FastifyReply) => {
       const query = kpiAnalyticsQuerySchema.parse(request.query);
       const result = await kpiService.getAnalyticsAggregated(
@@ -51,7 +53,7 @@ export async function kpiRoutes(app: FastifyInstance): Promise<void> {
 
   app.get(
     '/calculate/:userId',
-    { preHandler: [authenticate, requireRoles('ADMIN', 'MANAGER', 'EMPLOYEE')] },
+    { preHandler: [authenticate, canWriteKpi] },
     async (request: FastifyRequest, reply: FastifyReply) => {
       const { userId } = kpiCalculationParamsSchema.parse(request.params);
       const { periodStart, periodEnd } = kpiCalculationQuerySchema.parse(request.query);
@@ -67,7 +69,7 @@ export async function kpiRoutes(app: FastifyInstance): Promise<void> {
 
   app.get(
     '/',
-    { preHandler: [authenticate, requireRoles('ADMIN', 'MANAGER', 'EMPLOYEE')] },
+    { preHandler: [authenticate, canReadKpi] },
     async (request: FastifyRequest, reply: FastifyReply) => {
       const query = listKpiQuerySchema.parse(request.query);
       const result = await kpiService.listKpisPaginated(request.user.tenantId, query.page, query.limit);
@@ -77,7 +79,7 @@ export async function kpiRoutes(app: FastifyInstance): Promise<void> {
 
   app.get(
     '/:kpiId',
-    { preHandler: [authenticate, requireRoles('ADMIN', 'MANAGER', 'EMPLOYEE')] },
+    { preHandler: [authenticate, canReadKpi] },
     async (request: FastifyRequest, reply: FastifyReply) => {
       const { kpiId } = kpiIdParamSchema.parse(request.params);
       const kpi = await kpiService.getKpiById(kpiId, request.user.tenantId);
@@ -87,7 +89,7 @@ export async function kpiRoutes(app: FastifyInstance): Promise<void> {
 
   app.get(
     '/:kpiId/progress',
-    { preHandler: [authenticate, requireRoles('ADMIN', 'MANAGER', 'EMPLOYEE')] },
+    { preHandler: [authenticate, canReadKpi] },
     async (request: FastifyRequest, reply: FastifyReply) => {
       const { kpiId } = kpiIdParamSchema.parse(request.params);
       const progress = await kpiService.getKpiProgress(kpiId, request.user.tenantId);

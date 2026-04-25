@@ -8,14 +8,15 @@ import {
   type UpdateMyProfileDto,
 } from './users.schema.js';
 import { ApplicationError } from '../../shared/utils/application-error.js';
-import type { AuthenticatedUser, Role } from '../../shared/types/common.types.js';
+import type { AuthenticatedUser, Role, SystemRole, TenantRole } from '../../shared/types/common.types.js';
 import bcrypt from 'bcrypt';
 import type { BillingService } from '../billing/billing.service.js';
 import type { EmployeesRepository } from '../employees/employees.repository.js';
 
 interface ActorContext {
   actorUserId: string;
-  actorRole: Role;
+  actorTenantRole: TenantRole | null;
+  actorSystemRole: SystemRole;
   /** Platform super_admin: skip seat caps / subscription when adding tenant users. */
   bypassSubscriptionChecks?: boolean;
 }
@@ -238,7 +239,7 @@ export class UsersService {
     data: CreateUserDto,
     context: ActorContext
   ): Promise<UserResponse> {
-    this.assertCreateRoleAllowed(context.actorRole, data.role);
+    this.assertCreateRoleAllowed(context.actorSystemRole, context.actorTenantRole, data.role);
 
     const existing = await this.usersRepository.findByEmail(data.email, tenantId);
     if (existing) {
@@ -299,8 +300,8 @@ export class UsersService {
     data: InviteUserDto,
     context: ActorContext
   ): Promise<UserResponse> {
-    if (context.actorRole !== 'ADMIN') {
-      throw ApplicationError.forbidden('Only tenant admins can invite users');
+    if (context.actorSystemRole !== 'super_admin' && context.actorTenantRole !== 'owner') {
+      throw ApplicationError.forbidden('Only tenant owners can invite users');
     }
 
     const email = data.email.trim().toLowerCase();
@@ -374,7 +375,7 @@ export class UsersService {
     }
 
     if (data.role) {
-      this.assertCreateRoleAllowed(context.actorRole, data.role);
+      this.assertCreateRoleAllowed(context.actorSystemRole, context.actorTenantRole, data.role);
     }
 
     if (data.email && data.email.toLowerCase() !== existing.email.toLowerCase()) {
@@ -430,7 +431,8 @@ export class UsersService {
 
     // Managers cannot deactivate ADMIN or MANAGER.
     if (
-      context.actorRole === 'MANAGER' &&
+      context.actorSystemRole !== 'super_admin' &&
+      context.actorTenantRole === 'manager' &&
       ['ADMIN', 'MANAGER'].includes(existing.role)
     ) {
       throw ApplicationError.forbidden('Managers can only deactivate EMPLOYEE users');
@@ -442,9 +444,19 @@ export class UsersService {
     }
   }
 
-  private assertCreateRoleAllowed(actorRole: Role, targetRole: Role): void {
-    if (actorRole === 'MANAGER' && targetRole !== 'EMPLOYEE') {
+  private assertCreateRoleAllowed(
+    actorSystemRole: SystemRole,
+    actorTenantRole: TenantRole | null,
+    targetRole: Role
+  ): void {
+    if (actorSystemRole === 'super_admin') {
+      return;
+    }
+    if (actorTenantRole === 'manager' && targetRole !== 'EMPLOYEE') {
       throw ApplicationError.forbidden('Managers can only create EMPLOYEE users');
+    }
+    if (!actorTenantRole || actorTenantRole === 'employee') {
+      throw ApplicationError.forbidden('Insufficient role to manage users');
     }
   }
 

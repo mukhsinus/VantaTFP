@@ -1,5 +1,5 @@
 import { FastifyInstance } from 'fastify';
-import { requireRoles } from '../../shared/middleware/role-guard.middleware.js';
+import { requireTenantRole } from '../../shared/middleware/rbac.middleware.js';
 import { sendSuccess, sendNoContent } from '../../shared/utils/response.js';
 import { LabelsRepository } from './labels.repository.js';
 import { LabelsService } from './labels.service.js';
@@ -9,10 +9,12 @@ export async function labelsRoutes(app: FastifyInstance): Promise<void> {
   const repo = new LabelsRepository(app.db);
   const service = new LabelsService(repo);
   const authenticate = app.authenticate;
+  const tenantMemberAccess = requireTenantRole('owner', 'manager', 'employee');
+  const tenantAdminAccess = requireTenantRole('owner', 'manager');
 
   // GET /labels — all tenant labels
   app.get('/', {
-    preHandler: [authenticate, requireRoles('ADMIN', 'MANAGER', 'EMPLOYEE')],
+    preHandler: [authenticate, tenantMemberAccess],
   }, async (request, reply) => {
     const result = await service.list(request.user.tenantId);
     return sendSuccess(reply, result);
@@ -20,7 +22,7 @@ export async function labelsRoutes(app: FastifyInstance): Promise<void> {
 
   // POST /labels
   app.post('/', {
-    preHandler: [authenticate, requireRoles('ADMIN', 'MANAGER')],
+    preHandler: [authenticate, tenantAdminAccess],
   }, async (request, reply) => {
     const input = createLabelSchema.parse(request.body);
     const result = await service.create(request.user.tenantId, input);
@@ -29,7 +31,7 @@ export async function labelsRoutes(app: FastifyInstance): Promise<void> {
 
   // PATCH /labels/:labelId
   app.patch('/:labelId', {
-    preHandler: [authenticate, requireRoles('ADMIN', 'MANAGER')],
+    preHandler: [authenticate, tenantAdminAccess],
   }, async (request, reply) => {
     const { labelId } = request.params as { labelId: string };
     const input = updateLabelSchema.parse(request.body);
@@ -39,7 +41,7 @@ export async function labelsRoutes(app: FastifyInstance): Promise<void> {
 
   // DELETE /labels/:labelId
   app.delete('/:labelId', {
-    preHandler: [authenticate, requireRoles('ADMIN', 'MANAGER')],
+    preHandler: [authenticate, tenantAdminAccess],
   }, async (request, reply) => {
     const { labelId } = request.params as { labelId: string };
     await service.delete(request.user.tenantId, labelId);
@@ -48,7 +50,7 @@ export async function labelsRoutes(app: FastifyInstance): Promise<void> {
 
   // GET /labels/task/:taskId — labels on a task
   app.get('/task/:taskId', {
-    preHandler: [authenticate, requireRoles('ADMIN', 'MANAGER', 'EMPLOYEE')],
+    preHandler: [authenticate, tenantMemberAccess],
   }, async (request, reply) => {
     const { taskId } = request.params as { taskId: string };
     const result = await service.getTaskLabels(request.user.tenantId, taskId);
@@ -57,7 +59,7 @@ export async function labelsRoutes(app: FastifyInstance): Promise<void> {
 
   // PUT /labels/task/:taskId — set labels on a task
   app.put('/task/:taskId', {
-    preHandler: [authenticate, requireRoles('ADMIN', 'MANAGER')],
+    preHandler: [authenticate, tenantAdminAccess],
   }, async (request, reply) => {
     const { taskId } = request.params as { taskId: string };
     const { labelIds } = assignLabelsSchema.parse(request.body);

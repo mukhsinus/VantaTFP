@@ -10,7 +10,7 @@ export function MobileBottomTabs() {
   const tabs = (user ? getNavByRole(user.role) : []).slice(0, 5);
 
   return (
-    <nav className={styles.nav}>
+    <nav className={styles.nav} aria-label="Primary mobile navigation">
       {tabs.map((tab) => {
         const active = location.pathname.startsWith(tab.to);
         return (
@@ -18,6 +18,7 @@ export function MobileBottomTabs() {
             key={tab.to}
             to={tab.to}
             className={`${styles.tab} ${active ? styles.tabActive : ''}`}
+            aria-label={tab.label}
           >
             {tab.icon}
             <span>{tab.label}</span>

@@ -1,5 +1,5 @@
 import { FastifyInstance } from 'fastify';
-import { requireRoles } from '../../shared/middleware/role-guard.middleware.js';
+import { requireTenantRole } from '../../shared/middleware/rbac.middleware.js';
 import { sendSuccess, sendNoContent } from '../../shared/utils/response.js';
 import { AutomationsRepository } from './automations.repository.js';
 import { AutomationsService } from './automations.service.js';
@@ -9,9 +9,10 @@ export async function automationsRoutes(app: FastifyInstance): Promise<void> {
   const repo = new AutomationsRepository(app.db);
   const service = new AutomationsService(repo);
   const authenticate = app.authenticate;
+  const tenantAdminAccess = requireTenantRole('owner', 'manager');
 
   app.get('/', {
-    preHandler: [authenticate, requireRoles('ADMIN', 'MANAGER')],
+    preHandler: [authenticate, tenantAdminAccess],
   }, async (request, reply) => {
     const query = listAutomationsQuerySchema.parse(request.query);
     const result = await service.list(request.user.tenantId, query);
@@ -19,7 +20,7 @@ export async function automationsRoutes(app: FastifyInstance): Promise<void> {
   });
 
   app.get('/:ruleId', {
-    preHandler: [authenticate, requireRoles('ADMIN', 'MANAGER')],
+    preHandler: [authenticate, tenantAdminAccess],
   }, async (request, reply) => {
     const { ruleId } = request.params as { ruleId: string };
     const result = await service.getById(request.user.tenantId, ruleId);
@@ -27,7 +28,7 @@ export async function automationsRoutes(app: FastifyInstance): Promise<void> {
   });
 
   app.post('/', {
-    preHandler: [authenticate, requireRoles('ADMIN')],
+    preHandler: [authenticate, tenantAdminAccess],
   }, async (request, reply) => {
     const input = createAutomationSchema.parse(request.body);
     const result = await service.create(request.user.tenantId, request.user.id, input);
@@ -35,7 +36,7 @@ export async function automationsRoutes(app: FastifyInstance): Promise<void> {
   });
 
   app.patch('/:ruleId', {
-    preHandler: [authenticate, requireRoles('ADMIN')],
+    preHandler: [authenticate, tenantAdminAccess],
   }, async (request, reply) => {
     const { ruleId } = request.params as { ruleId: string };
     const input = updateAutomationSchema.parse(request.body);
@@ -44,7 +45,7 @@ export async function automationsRoutes(app: FastifyInstance): Promise<void> {
   });
 
   app.delete('/:ruleId', {
-    preHandler: [authenticate, requireRoles('ADMIN')],
+    preHandler: [authenticate, tenantAdminAccess],
   }, async (request, reply) => {
     const { ruleId } = request.params as { ruleId: string };
     await service.delete(request.user.tenantId, ruleId);

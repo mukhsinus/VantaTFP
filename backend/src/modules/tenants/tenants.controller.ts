@@ -1,7 +1,10 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { TenantsService } from './tenants.service.js';
 import { TenantsRepository } from './tenants.repository.js';
-import { requireRoles, requireTenantMemberRoles } from '../../shared/middleware/role-guard.middleware.js';
+import {
+  requireRole,
+  requireSuperAdmin,
+} from '../../shared/middleware/rbac.middleware.js';
 import { sendNoContent, sendSuccess } from '../../shared/utils/response.js';
 import {
   createTenantSchema,
@@ -15,11 +18,13 @@ export async function tenantsRoutes(app: FastifyInstance): Promise<void> {
   const tenantsService = new TenantsService(tenantsRepository, app.billing);
 
   const authenticate = app.authenticate;
+  const superAdminOnly = requireSuperAdmin;
+  const canWriteTenants = requireRole('write', 'tenants');
 
   // Platform-level admin only — list all tenants
   app.get(
     '/',
-    { preHandler: [authenticate, requireRoles('ADMIN')] },
+    { preHandler: [authenticate, superAdminOnly] },
     async (request: FastifyRequest, reply: FastifyReply) => {
       const query = listTenantsQuerySchema.parse(request.query);
       const result = await tenantsService.listCurrentTenant(
@@ -33,7 +38,7 @@ export async function tenantsRoutes(app: FastifyInstance): Promise<void> {
 
   app.get(
     '/:tenantId',
-    { preHandler: [authenticate, requireRoles('ADMIN')] },
+    { preHandler: [authenticate, superAdminOnly] },
     async (request: FastifyRequest, reply: FastifyReply) => {
       const { tenantId } = tenantIdParamSchema.parse(request.params);
       const tenant = await tenantsService.getTenantById(tenantId, request.tenantId!);
@@ -43,7 +48,7 @@ export async function tenantsRoutes(app: FastifyInstance): Promise<void> {
 
   app.post(
     '/',
-    { preHandler: [authenticate, requireRoles('ADMIN')] },
+    { preHandler: [authenticate, superAdminOnly] },
     async (request: FastifyRequest, reply: FastifyReply) => {
       const body = createTenantSchema.parse(request.body);
       const tenant = await tenantsService.createTenant(body);
@@ -53,10 +58,9 @@ export async function tenantsRoutes(app: FastifyInstance): Promise<void> {
 
   app.patch(
     '/:tenantId',
-    { preHandler: [authenticate, requireTenantMemberRoles('ADMIN')] },
+    { preHandler: [authenticate, canWriteTenants] },
     async (request: FastifyRequest, reply: FastifyReply) => {
       const { tenantId } = tenantIdParamSchema.parse(request.params);
-      console.log('req.body', request.body);
       const body = updateTenantSchema.parse(request.body);
       const tenant = await tenantsService.updateTenant(tenantId, request.tenantId!, body);
       return sendSuccess(reply, tenant);
@@ -65,7 +69,7 @@ export async function tenantsRoutes(app: FastifyInstance): Promise<void> {
 
   app.delete(
     '/:tenantId',
-    { preHandler: [authenticate, requireRoles('ADMIN')] },
+    { preHandler: [authenticate, superAdminOnly] },
     async (request: FastifyRequest, reply: FastifyReply) => {
       const { tenantId } = tenantIdParamSchema.parse(request.params);
       await tenantsService.deactivateTenant(tenantId, request.tenantId!);

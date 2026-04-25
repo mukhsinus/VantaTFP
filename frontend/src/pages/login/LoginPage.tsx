@@ -32,6 +32,8 @@ const Logo = () => (
 
 const ErrorBanner = ({ message }: { message: string }) => (
   <div
+    role="alert"
+    aria-live="assertive"
     style={{
       display: 'flex',
       alignItems: 'flex-start',

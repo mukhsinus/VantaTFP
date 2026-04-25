@@ -2,8 +2,7 @@ import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { UsersService } from './users.service.js';
 import { UsersRepository } from './users.repository.js';
 import { EmployeesRepository } from '../employees/employees.repository.js';
-import { requireRoles } from '../../shared/middleware/role-guard.middleware.js';
-import { requireOwner } from '../../shared/middleware/rbac.middleware.js';
+import { requireOwner, requireRole } from '../../shared/middleware/rbac.middleware.js';
 import { ApplicationError } from '../../shared/utils/application-error.js';
 import { sendNoContent, sendSuccess, successEnvelope } from '../../shared/utils/response.js';
 import { attachIdempotencyKey } from '../../shared/middleware/idempotency.middleware.js';
@@ -26,6 +25,8 @@ export async function usersRoutes(app: FastifyInstance): Promise<void> {
   const idempotency = new IdempotencyService(app.db);
 
   const authenticate = app.authenticate;
+  const canReadUsers = requireRole('read', 'users');
+  const canWriteUsers = requireRole('write', 'users');
 
   app.get(
     '/me',
@@ -41,7 +42,6 @@ export async function usersRoutes(app: FastifyInstance): Promise<void> {
     '/profile',
     { preHandler: [authenticate] },
     async (request: FastifyRequest, reply: FastifyReply) => {
-      console.log('req.body', request.body);
       const body = updateMyProfileSchema.parse(request.body);
       const me = await usersService.updateMyProfile(request.user, body);
       return sendSuccess(reply, me);
@@ -53,14 +53,7 @@ export async function usersRoutes(app: FastifyInstance): Promise<void> {
     '/password',
     { preHandler: [authenticate] },
     async (request: FastifyRequest, reply: FastifyReply) => {
-      const raw = request.body;
-      console.log(
-        'req.body',
-        raw && typeof raw === 'object' && !Array.isArray(raw)
-          ? { ...raw, currentPassword: '[REDACTED]', newPassword: '[REDACTED]' }
-          : raw
-      );
-      const body = updateMyPasswordSchema.parse(raw);
+      const body = updateMyPasswordSchema.parse(request.body);
       await usersService.updateMyPassword(request.user, body);
       return sendSuccess(reply, { ok: true });
     }
@@ -70,7 +63,6 @@ export async function usersRoutes(app: FastifyInstance): Promise<void> {
     '/me/profile',
     { preHandler: [authenticate] },
     async (request: FastifyRequest, reply: FastifyReply) => {
-      console.log('req.body', request.body);
       const body = updateMyProfileSchema.parse(request.body);
       const me = await usersService.updateMyProfile(request.user, body);
       return sendSuccess(reply, me);
@@ -81,14 +73,7 @@ export async function usersRoutes(app: FastifyInstance): Promise<void> {
     '/me/password',
     { preHandler: [authenticate] },
     async (request: FastifyRequest, reply: FastifyReply) => {
-      const raw = request.body;
-      console.log(
-        'req.body',
-        raw && typeof raw === 'object' && !Array.isArray(raw)
-          ? { ...raw, currentPassword: '[REDACTED]', newPassword: '[REDACTED]' }
-          : raw
-      );
-      const body = updateMyPasswordSchema.parse(raw);
+      const body = updateMyPasswordSchema.parse(request.body);
       await usersService.updateMyPassword(request.user, body);
       return sendSuccess(reply, { ok: true });
     }
@@ -98,7 +83,6 @@ export async function usersRoutes(app: FastifyInstance): Promise<void> {
     '/me/notifications',
     { preHandler: [authenticate] },
     async (request: FastifyRequest, reply: FastifyReply) => {
-      console.log('req.body', request.body);
       const body = updateMyNotificationsSchema.parse(request.body);
       const notifications = await usersService.updateMyNotifications(request.user, body);
       return sendSuccess(reply, { notifications });
@@ -107,7 +91,7 @@ export async function usersRoutes(app: FastifyInstance): Promise<void> {
 
   app.get(
     '/',
-    { preHandler: [authenticate, requireRoles('ADMIN', 'MANAGER')] },
+    { preHandler: [authenticate, canReadUsers] },
     async (request: FastifyRequest, reply: FastifyReply) => {
       const query = listUsersQuerySchema.parse(request.query);
       const result = await usersService.listUsers(request.user.tenantId, query.page, query.limit);
@@ -117,7 +101,7 @@ export async function usersRoutes(app: FastifyInstance): Promise<void> {
 
   app.get(
     '/:id',
-    { preHandler: [authenticate, requireRoles('ADMIN', 'MANAGER')] },
+    { preHandler: [authenticate, canReadUsers] },
     async (request: FastifyRequest, reply: FastifyReply) => {
       const { id } = userIdParamSchema.parse(request.params);
       const user = await usersService.getUserById(id, request.user.tenantId);
@@ -136,7 +120,8 @@ export async function usersRoutes(app: FastifyInstance): Promise<void> {
       const body = inviteUserSchema.parse(request.body);
       const invited = await usersService.inviteUser(tenantId, body, {
         actorUserId: request.user.userId,
-        actorRole: request.user.role,
+        actorTenantRole: request.user.tenant_role,
+        actorSystemRole: request.user.system_role,
       });
       return sendSuccess(reply, invited, 201);
     }
@@ -144,7 +129,7 @@ export async function usersRoutes(app: FastifyInstance): Promise<void> {
 
   app.post(
     '/',
-    { preHandler: [authenticate, attachIdempotencyKey, requireRoles('ADMIN', 'MANAGER')] },
+    { preHandler: [authenticate, attachIdempotencyKey, canWriteUsers] },
     async (request: FastifyRequest, reply: FastifyReply) => {
       const body = createUserSchema.parse(request.body);
       const idempotent = await idempotency.execute(
@@ -153,7 +138,8 @@ export async function usersRoutes(app: FastifyInstance): Promise<void> {
         async () => {
           const user = await usersService.createUser(request.user.tenantId, body, {
             actorUserId: request.user.userId,
-            actorRole: request.user.role,
+            actorTenantRole: request.user.tenant_role,
+            actorSystemRole: request.user.system_role,
             bypassSubscriptionChecks: request.user.system_role === 'super_admin',
           });
           return {
@@ -168,13 +154,14 @@ export async function usersRoutes(app: FastifyInstance): Promise<void> {
 
   app.patch(
     '/:id',
-    { preHandler: [authenticate, requireRoles('ADMIN', 'MANAGER')] },
+    { preHandler: [authenticate, canWriteUsers] },
     async (request: FastifyRequest, reply: FastifyReply) => {
       const { id } = userIdParamSchema.parse(request.params);
       const body = updateUserSchema.parse(request.body);
       const user = await usersService.updateUser(id, request.user.tenantId, body, {
         actorUserId: request.user.userId,
-        actorRole: request.user.role,
+        actorTenantRole: request.user.tenant_role,
+        actorSystemRole: request.user.system_role,
       });
       return sendSuccess(reply, user);
     }
@@ -182,12 +169,13 @@ export async function usersRoutes(app: FastifyInstance): Promise<void> {
 
   app.delete(
     '/:id',
-    { preHandler: [authenticate, requireRoles('ADMIN', 'MANAGER')] },
+    { preHandler: [authenticate, canWriteUsers] },
     async (request: FastifyRequest, reply: FastifyReply) => {
       const { id } = userIdParamSchema.parse(request.params);
       await usersService.deactivateUser(id, request.user.tenantId, {
         actorUserId: request.user.userId,
-        actorRole: request.user.role,
+        actorTenantRole: request.user.tenant_role,
+        actorSystemRole: request.user.system_role,
       });
       return sendNoContent(reply);
     }

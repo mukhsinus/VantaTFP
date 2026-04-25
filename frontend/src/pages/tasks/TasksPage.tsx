@@ -219,8 +219,10 @@ export function TasksPage() {
 
       {isMobile && can('task:create') && (
         <button
+          type="button"
           onClick={() => setShowCreateModal(true)}
           disabled={creationBlocked}
+          aria-label={t('tasks.create')}
           style={{
             position: 'fixed',
             left: 12,
@@ -376,7 +378,6 @@ function BoardView({ tasks }: { tasks: TaskUiModel[] }) {
 
 function TaskCard({ task, canChangeStatus }: { task: TaskUiModel; canChangeStatus: boolean }) {
   const { t } = useTranslation();
-  const [menuOpen, setMenuOpen] = useState(false);
   const [hovered, setHovered] = useState(false);
   const { updateStatus } = useUpdateTaskStatus();
 
@@ -402,7 +403,7 @@ function TaskCard({ task, canChangeStatus }: { task: TaskUiModel; canChangeStatu
         transform: 'none',
       }}
       onMouseEnter={() => { if (!isDone) setHovered(true); }}
-      onMouseLeave={() => { setHovered(false); setMenuOpen(false); }}
+      onMouseLeave={() => { setHovered(false); }}
     >
       {/* Title row */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8, marginBottom: 8 }}>

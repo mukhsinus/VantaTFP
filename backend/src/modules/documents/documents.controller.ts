@@ -1,5 +1,5 @@
 import { FastifyInstance } from 'fastify';
-import { requireRoles } from '../../shared/middleware/role-guard.middleware.js';
+import { requireTenantRole } from '../../shared/middleware/rbac.middleware.js';
 import { sendSuccess, sendNoContent } from '../../shared/utils/response.js';
 import { DocumentsRepository } from './documents.repository.js';
 import { DocumentsService } from './documents.service.js';
@@ -9,9 +9,11 @@ export async function documentsRoutes(app: FastifyInstance): Promise<void> {
   const repo = new DocumentsRepository(app.db);
   const service = new DocumentsService(repo);
   const authenticate = app.authenticate;
+  const tenantMemberAccess = requireTenantRole('owner', 'manager', 'employee');
+  const tenantAdminAccess = requireTenantRole('owner', 'manager');
 
   app.get('/', {
-    preHandler: [authenticate, requireRoles('ADMIN', 'MANAGER', 'EMPLOYEE')],
+    preHandler: [authenticate, tenantMemberAccess],
   }, async (request, reply) => {
     const query = listDocumentsQuerySchema.parse(request.query);
     const result = await service.list(request.user.tenantId, query);
@@ -19,7 +21,7 @@ export async function documentsRoutes(app: FastifyInstance): Promise<void> {
   });
 
   app.get('/:docId', {
-    preHandler: [authenticate, requireRoles('ADMIN', 'MANAGER', 'EMPLOYEE')],
+    preHandler: [authenticate, tenantMemberAccess],
   }, async (request, reply) => {
     const { docId } = request.params as { docId: string };
     const result = await service.getById(request.user.tenantId, docId);
@@ -27,7 +29,7 @@ export async function documentsRoutes(app: FastifyInstance): Promise<void> {
   });
 
   app.post('/', {
-    preHandler: [authenticate, requireRoles('ADMIN', 'MANAGER', 'EMPLOYEE')],
+    preHandler: [authenticate, tenantMemberAccess],
   }, async (request, reply) => {
     const input = createDocumentSchema.parse(request.body);
     const result = await service.create(request.user.tenantId, request.user.id, input);
@@ -35,7 +37,7 @@ export async function documentsRoutes(app: FastifyInstance): Promise<void> {
   });
 
   app.patch('/:docId', {
-    preHandler: [authenticate, requireRoles('ADMIN', 'MANAGER', 'EMPLOYEE')],
+    preHandler: [authenticate, tenantMemberAccess],
   }, async (request, reply) => {
     const { docId } = request.params as { docId: string };
     const input = updateDocumentSchema.parse(request.body);
@@ -44,7 +46,7 @@ export async function documentsRoutes(app: FastifyInstance): Promise<void> {
   });
 
   app.delete('/:docId', {
-    preHandler: [authenticate, requireRoles('ADMIN', 'MANAGER')],
+    preHandler: [authenticate, tenantAdminAccess],
   }, async (request, reply) => {
     const { docId } = request.params as { docId: string };
     await service.delete(request.user.tenantId, docId);

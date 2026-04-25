@@ -1,5 +1,5 @@
 import { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
-import { requireRoles } from '../../shared/middleware/role-guard.middleware.js';
+import { requireRole } from '../../shared/middleware/rbac.middleware.js';
 import { sendSuccess } from '../../shared/utils/response.js';
 import { ReportsRepository } from './reports.repository.js';
 import { ReportsService } from './reports.service.js';
@@ -13,10 +13,12 @@ export async function reportsRoutes(app: FastifyInstance): Promise<void> {
   const reportsRepository = new ReportsRepository(app.db);
   const reportsService = new ReportsService(reportsRepository);
   const authenticate = app.authenticate;
+  const canReadReports = requireRole('read', 'reports');
+  const canWriteReports = requireRole('write', 'reports');
 
   app.post(
     '/generate',
-    { preHandler: [authenticate, requireRoles('ADMIN', 'MANAGER', 'EMPLOYEE')] },
+    { preHandler: [authenticate, canWriteReports] },
     async (request: FastifyRequest, reply: FastifyReply) => {
       const body = generateReportSchema.parse(request.body);
       const result = await reportsService.generateReport(
@@ -30,7 +32,7 @@ export async function reportsRoutes(app: FastifyInstance): Promise<void> {
 
   app.post(
     '/export',
-    { preHandler: [authenticate, requireRoles('ADMIN', 'MANAGER', 'EMPLOYEE')] },
+    { preHandler: [authenticate, canReadReports] },
     async (request: FastifyRequest, reply: FastifyReply) => {
       const body = exportReportSchema.parse(request.body);
       const file = await reportsService.exportReport(
@@ -46,7 +48,7 @@ export async function reportsRoutes(app: FastifyInstance): Promise<void> {
 
   app.get(
     '/history',
-    { preHandler: [authenticate, requireRoles('ADMIN', 'MANAGER', 'EMPLOYEE')] },
+    { preHandler: [authenticate, canReadReports] },
     async (request: FastifyRequest, reply: FastifyReply) => {
       const query = listReportHistorySchema.parse(request.query);
       const history = await reportsService.listHistory(request.user.tenantId, query);

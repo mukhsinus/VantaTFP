@@ -5,7 +5,7 @@ import { useIsMobile } from '@shared/hooks/useIsMobile';
 import { formatCurrency } from '@shared/utils/currency';
 import { usePayroll } from '@features/payroll/hooks/usePayroll';
 import { useApprovePayroll } from '@features/payroll/hooks/useApprovePayroll';
-import type { PayrollStatus, PayrollApiDto } from '@entities/payroll/payroll.types';
+import type { PayrollStatus } from '@entities/payroll/payroll.types';
 import { PayrollRulesPanel } from '@features/payroll/components/PayrollRulesPanel';
 import { useCurrentUser } from '@shared/hooks/useCurrentUser';
 
@@ -102,7 +102,9 @@ export function PayrollPage() {
         {(['ALL', 'DRAFT', 'APPROVED', 'PAID', 'CANCELLED'] as const).map((s) => (
           <button
             key={s}
+            type="button"
             onClick={() => setStatusFilter(s)}
+            aria-pressed={statusFilter === s}
             style={{
               padding: isMobile ? '8px 12px' : '5px 12px',
               fontSize: 'var(--text-sm)',

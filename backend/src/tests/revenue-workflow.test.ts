@@ -142,7 +142,7 @@ describe('Revenue workflow integration', () => {
         role: 'EMPLOYEE',
         managerId: undefined,
       },
-      { actorUserId: 'owner-1', actorRole: 'ADMIN' }
+      { actorUserId: 'owner-1', actorTenantRole: 'owner', actorSystemRole: 'user' }
     );
 
     const task = await tasksService.createTask('tenant-1', 'owner-1', {

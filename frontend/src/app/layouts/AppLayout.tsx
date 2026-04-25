@@ -21,6 +21,9 @@ export function AppLayout() {
 
   return (
     <div className={styles.container}>
+      <a href="#main-content" className="skip-link">
+        Skip to main content
+      </a>
       {!isMobile && <Sidebar />}
       
       <div
@@ -31,7 +34,7 @@ export function AppLayout() {
       >
         <Topbar />
         
-        <main className={styles.mainContent}>
+        <main id="main-content" className={styles.mainContent}>
           {user ? <TenantTrialExperience /> : null}
           <div className="page-container">
             <Outlet />
