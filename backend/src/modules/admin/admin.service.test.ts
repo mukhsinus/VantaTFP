@@ -88,4 +88,28 @@ describe('AdminService user protection rules', () => {
 
     await expect(service.banUser('u1')).rejects.toThrow('Cannot ban super admin accounts');
   });
+
+  it('supports global admin listing when tenant scope is omitted', async () => {
+    const { service, adminRepository } = await createService();
+    adminRepository.listSubscriptions.mockResolvedValue({ rows: [], total: 0 });
+    adminRepository.listPaymentRequests.mockResolvedValue({ rows: [], total: 0 });
+    adminRepository.listUsers.mockResolvedValue({ rows: [], total: 0 });
+    adminRepository.getDashboardStats.mockResolvedValue({
+      total_tenants: 4,
+      active_subscriptions: 3,
+      pending_payments: 1,
+      mrr: 215,
+    });
+
+    const query = { page: 1, limit: 20 };
+    await service.listSubscriptions(query);
+    await service.listPayments({ ...query, status: 'pending' as const });
+    await service.listUsers(query);
+    await service.getDashboardSummary();
+
+    expect(adminRepository.listSubscriptions).toHaveBeenCalledWith(1, 20, undefined);
+    expect(adminRepository.listPaymentRequests).toHaveBeenCalledWith('pending', undefined, 1, 20);
+    expect(adminRepository.listUsers).toHaveBeenCalledWith(1, 20, undefined);
+    expect(adminRepository.getDashboardStats).toHaveBeenCalledWith(undefined);
+  });
 });
