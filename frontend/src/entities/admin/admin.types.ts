@@ -58,3 +58,48 @@ export interface AdminDashboardSummary {
   pendingPayments: number;
   mrr: number;
 }
+
+export interface AdminAuditLog {
+  id: string;
+  action: string;
+  entity: string;
+  userId: string;
+  metadata: Record<string, unknown>;
+  timestamp: string;
+}
+
+export interface AdminTenantManagement {
+  id: string;
+  name: string;
+  slug: string;
+  plan: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+  stats: {
+    usersTotal: number;
+    usersActive: number;
+    tasksTotal: number;
+    tasksOpen: number;
+    tasksDone: number;
+  };
+}
+
+export interface AdminSystemHealth {
+  status: 'ok' | 'degraded';
+  db: 'up' | 'down';
+  now: string;
+  uptimeSeconds: number;
+}
+
+export interface AdminTenantStats {
+  tenantId: string;
+  generatedAt: string;
+  stats: {
+    usersTotal: number;
+    usersActive: number;
+    tasksTotal: number;
+    tasksOpen: number;
+    tasksDone: number;
+  };
+}

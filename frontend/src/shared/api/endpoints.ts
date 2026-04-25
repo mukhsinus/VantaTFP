@@ -83,6 +83,11 @@ export const API = {
 
   admin: {
     dashboard: '/api/v1/admin/dashboard',
+    auditLogs: '/api/v1/admin/audit-logs',
+    tenant: '/api/v1/admin/tenant',
+    deactivateTenantScope: '/api/v1/admin/tenant/deactivate',
+    monitoringHealth: '/api/v1/admin/monitoring/health',
+    monitoringStats: '/api/v1/admin/monitoring/stats',
     payments: '/api/v1/admin/payments',
     approvePayment: (paymentId: string) => `/api/v1/admin/payments/${paymentId}/approve`,
     rejectPayment: (paymentId: string) => `/api/v1/admin/payments/${paymentId}/reject`,
