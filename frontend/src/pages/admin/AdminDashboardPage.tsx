@@ -22,6 +22,10 @@ export function AdminDashboardPage() {
     queryKey: ['admin', 'dashboard'],
     queryFn: () => adminApi.getDashboard(),
   });
+  const healthQuery = useQuery({
+    queryKey: ['admin', 'monitoring', 'health'],
+    queryFn: () => adminApi.getSystemHealth(),
+  });
 
   if (isLoading) return <PageSkeleton />;
   if (isError) {
@@ -52,6 +56,14 @@ export function AdminDashboardPage() {
         </div>
         <div style={card}>
           MRR: ${data?.mrr ?? 0}
+        </div>
+        <div style={card}>
+          DB health:{' '}
+          {healthQuery.data?.db === 'up'
+            ? 'up'
+            : healthQuery.isError
+              ? 'unavailable'
+              : 'checking...'}
         </div>
       </div>
       <div
