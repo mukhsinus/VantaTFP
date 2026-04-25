@@ -27,6 +27,18 @@ const roleVariant: Record<string, 'accent' | 'warning' | 'success'> = {
   EMPLOYEE: 'success',
 };
 
+const NAV_LABEL_FALLBACK_BY_ROUTE: Record<string, string> = {
+  '/dashboard': 'Dashboard',
+  '/employees': 'Employees',
+  '/tasks': 'Tasks',
+  '/kpi': 'KPI',
+  '/payroll': 'Payroll',
+  '/messages': 'Messages',
+  '/reports': 'Reports',
+  '/billing': 'Billing',
+  '/settings': 'Settings',
+};
+
 export function Topbar() {
   const { t } = useTranslation();
   const location = useLocation();
@@ -43,17 +55,9 @@ export function Topbar() {
   const navItems = user ? getNavByRole(user.role) : [];
 
   const baseRoute = '/' + location.pathname.split('/')[1];
-  const titleByRoute: Record<string, string> = {
-    '/dashboard': role === 'MANAGER' ? 'Team Dashboard' : 'Dashboard',
-    '/tasks': role === 'EMPLOYEE' ? 'My Tasks' : role === 'MANAGER' ? 'Team Tasks' : 'Tasks',
-    '/employees': 'Employees',
-    '/kpi': role === 'EMPLOYEE' ? 'My KPI' : role === 'MANAGER' ? 'Team KPI' : 'KPI',
-    '/payroll': role === 'EMPLOYEE' ? 'My Payroll' : 'Payroll',
-    '/reports': 'Reports',
-    '/billing': 'Billing',
-    '/settings': 'Settings',
-  };
-  const title = titleByRoute[baseRoute] ?? 'Dashboard';
+  const title = t(`nav.${baseRoute.slice(1)}`, {
+    defaultValue: NAV_LABEL_FALLBACK_BY_ROUTE[baseRoute] ?? NAV_LABEL_FALLBACK_BY_ROUTE['/dashboard'],
+  });
   const subtitleKey = mobileSubtitleKeys[baseRoute];
   const fullName = user ? `${user.firstName} ${user.lastName}` : '';
 
@@ -286,6 +290,9 @@ export function Topbar() {
               <div className={styles.mobileNavList}>
                 {navItems.map((item) => {
                   const isActive = location.pathname.startsWith(item.to);
+                  const navLabel = t(item.label, {
+                    defaultValue: NAV_LABEL_FALLBACK_BY_ROUTE[item.to] ?? item.label,
+                  });
                   return (
                     <button
                       key={item.to}
@@ -296,7 +303,7 @@ export function Topbar() {
                       className={`${styles.mobileNavItem} ${isActive ? styles.mobileNavItemActive : ''}`}
                     >
                       <span className={styles.mobileNavIcon}>{item.icon}</span>
-                      <span>{t(item.label)}</span>
+                      <span>{navLabel}</span>
                     </button>
                   );
                 })}
