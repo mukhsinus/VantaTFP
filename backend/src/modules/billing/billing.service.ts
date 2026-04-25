@@ -91,7 +91,12 @@ export const BILLING_PLANS_CATALOG: BillingPlanCatalogEntry[] = [
   { name: 'enterprise', price: 200, users: 100, tasks: 10000 },
 ];
 
-function shouldApplyTenantApiRate(url: string): boolean {
+function shouldApplyTenantApiRate(method: string, url: string): boolean {
+  const normalizedMethod = method.toUpperCase();
+  // Keep read-only traffic available on mobile/web even when quota is tight.
+  if (normalizedMethod === 'GET' || normalizedMethod === 'HEAD' || normalizedMethod === 'OPTIONS') {
+    return false;
+  }
   if (url === '/health' || url.startsWith('/health?')) {
     return false;
   }
@@ -285,8 +290,8 @@ export class BillingService {
   /**
    * Per-tenant API quota (hourly), applied after JWT auth. Complements global/IP rate limiting.
    */
-  async enforceTenantApiRate(requestUrl: string, tenantId: string): Promise<void> {
-    if (!shouldApplyTenantApiRate(requestUrl)) {
+  async enforceTenantApiRate(requestMethod: string, requestUrl: string, tenantId: string): Promise<void> {
+    if (!shouldApplyTenantApiRate(requestMethod, requestUrl)) {
       return;
     }
     const plan = await this.getTenantPlan(tenantId);

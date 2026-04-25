@@ -65,7 +65,7 @@ export async function authenticateMiddleware(
         request.method,
         request.url
       );
-      await request.server.billing.enforceTenantApiRate(request.url, tenantId);
+      await request.server.billing.enforceTenantApiRate(request.method, request.url, tenantId);
     }
   } catch (err) {
     console.error('MIDDLEWARE ERROR:', err);

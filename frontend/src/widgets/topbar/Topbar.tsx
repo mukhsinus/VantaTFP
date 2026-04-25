@@ -6,6 +6,7 @@ import { Avatar, Badge } from '@shared/components/ui';
 import { LanguageSwitcher } from '@shared/components/language-switcher/LanguageSwitcher';
 import { useAuthStore } from '@app/store/auth.store';
 import { useSidebarStore } from '@app/store/sidebar.store';
+import { getNavByRole } from '@shared/config/role-ui';
 import { useIsMobile } from '@shared/hooks/useIsMobile';
 import { useCurrentUser } from '@shared/hooks/useCurrentUser';
 import { useUnreadNotifications } from '@features/notifications/hooks/useNotifications';
@@ -35,9 +36,11 @@ export function Topbar() {
   const clearAuth = useAuthStore((s) => s.clearAuth);
   const toggleSidebar = useSidebarStore((s) => s.toggleCollapsed);
   const isMobile = useIsMobile();
+  const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
   const [isAccountSheetOpen, setIsAccountSheetOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const unread = useUnreadNotifications();
+  const navItems = user ? getNavByRole(user.role) : [];
 
   const baseRoute = '/' + location.pathname.split('/')[1];
   const titleByRoute: Record<string, string> = {
@@ -55,15 +58,17 @@ export function Topbar() {
   const fullName = user ? `${user.firstName} ${user.lastName}` : '';
 
   useEffect(() => {
+    setIsMobileNavOpen(false);
     setIsAccountSheetOpen(false);
     setIsNotificationsOpen(false);
   }, [location.pathname, location.search]);
 
   useEffect(() => {
-    if (!isAccountSheetOpen) return;
+    if (!isAccountSheetOpen && !isMobileNavOpen) return;
 
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
+        setIsMobileNavOpen(false);
         setIsAccountSheetOpen(false);
       }
     };
@@ -75,7 +80,7 @@ export function Topbar() {
       document.removeEventListener('keydown', onKeyDown);
       document.body.style.overflow = '';
     };
-  }, [isAccountSheetOpen]);
+  }, [isAccountSheetOpen, isMobileNavOpen]);
 
   useEffect(() => {
     if (!isNotificationsOpen) return;
@@ -88,6 +93,7 @@ export function Topbar() {
     return () => document.removeEventListener('click', onClick);
   }, [isNotificationsOpen]);
 
+  const closeMobileNav = () => setIsMobileNavOpen(false);
   const closeAccountSheet = () => setIsAccountSheetOpen(false);
 
   const goToSettings = () => {
@@ -103,7 +109,6 @@ export function Topbar() {
 
   return (
     <header className={`${styles.header} ${isMobile ? styles.headerMobile : styles.headerDesktop}`}>
-      {/* Sidebar toggle button (desktop only) */}
       {!isMobile && (
         <button
           onClick={toggleSidebar}
@@ -118,21 +123,30 @@ export function Topbar() {
         </button>
       )}
 
-      {/* Page title */}
       {isMobile ? (
-        <div className={styles.mobileTitleWrap}>
-          <h1 className={`${styles.title} ${styles.titleMobile}`}>{title}</h1>
-          {subtitleKey && <p className={styles.mobileSubtitle}>{t(subtitleKey)}</p>}
-        </div>
+        <>
+          <button
+            onClick={() => setIsMobileNavOpen(true)}
+            aria-label={t('nav.account.openMenu')}
+            className={styles.mobileMenuButton}
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+              <line x1="3" y1="6" x2="21" y2="6" />
+              <line x1="3" y1="12" x2="21" y2="12" />
+              <line x1="3" y1="18" x2="21" y2="18" />
+            </svg>
+          </button>
+          <div className={styles.mobileTitleWrap}>
+            <h1 className={`${styles.title} ${styles.titleMobile}`}>{title}</h1>
+            {subtitleKey && <p className={styles.mobileSubtitle}>{t(subtitleKey)}</p>}
+          </div>
+        </>
       ) : (
         <h1 className={styles.title}>{title}</h1>
       )}
 
-      {/* Actions */}
       <div className={`${styles.actions} ${isMobile ? styles.actionsMobile : ''}`}>
         {!isMobile && <LanguageSwitcher />}
-
-        {/* Divider */}
         {!isMobile && <div className={styles.divider} />}
 
         {user && (
@@ -212,7 +226,6 @@ export function Topbar() {
           </div>
         )}
 
-        {/* User */}
         {user && (
           <div className={styles.userSection}>
             {isMobile ? (
@@ -246,6 +259,53 @@ export function Topbar() {
         )}
       </div>
 
+      {isMobile && user && isMobileNavOpen &&
+        createPortal(
+          <div className={styles.mobileNavRoot}>
+            <button
+              onClick={closeMobileNav}
+              aria-label={t('nav.account.closeSheet')}
+              className={styles.mobileNavBackdrop}
+            />
+            <nav className={styles.mobileNavDrawer} aria-label="Mobile menu">
+              <div className={styles.mobileNavHeader}>
+                <p className={styles.mobileNavTitle}>
+                  {t('nav.section.main', { defaultValue: 'Navigation' })}
+                </p>
+                <button
+                  onClick={closeMobileNav}
+                  aria-label={t('nav.account.closeSheet')}
+                  className={styles.mobileNavClose}
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                    <line x1="18" y1="6" x2="6" y2="18" />
+                    <line x1="6" y1="6" x2="18" y2="18" />
+                  </svg>
+                </button>
+              </div>
+              <div className={styles.mobileNavList}>
+                {navItems.map((item) => {
+                  const isActive = location.pathname.startsWith(item.to);
+                  return (
+                    <button
+                      key={item.to}
+                      onClick={() => {
+                        closeMobileNav();
+                        navigate(item.to);
+                      }}
+                      className={`${styles.mobileNavItem} ${isActive ? styles.mobileNavItemActive : ''}`}
+                    >
+                      <span className={styles.mobileNavIcon}>{item.icon}</span>
+                      <span>{t(item.label)}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </nav>
+          </div>,
+          document.body
+        )}
+
       {isMobile && user && isAccountSheetOpen &&
         createPortal(
           <div className={styles.mobileSheet}>
@@ -254,7 +314,6 @@ export function Topbar() {
               aria-label={t('nav.account.closeSheet')}
               className={styles.sheetBackdrop}
             />
-
             <div
               role="dialog"
               aria-modal="true"
