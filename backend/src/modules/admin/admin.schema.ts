@@ -18,6 +18,10 @@ export const adminPaymentListQuerySchema = adminListQuerySchema.extend({
   status: z.enum(['pending', 'approved', 'rejected']).optional(),
 });
 
+export const adminDashboardQuerySchema = z.object({
+  tenantId: z.string().uuid().optional(),
+});
+
 export const adminTenantIdParamSchema = z.object({
   id: z.string().uuid(),
 });

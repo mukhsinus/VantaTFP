@@ -21,8 +21,8 @@ const card: React.CSSProperties = {
 export function AdminDashboardPage() {
   const selectedTenantId = useAdminScopeStore((s) => s.selectedTenantId);
   const { data, isLoading, isError, error } = useQuery({
-    queryKey: ['admin', 'dashboard'],
-    queryFn: () => adminApi.getDashboard(),
+    queryKey: ['admin', 'dashboard', selectedTenantId],
+    queryFn: () => adminApi.getDashboard({ tenantId: selectedTenantId ?? undefined }),
   });
   const healthQuery = useQuery({
     queryKey: ['admin', 'monitoring', 'health'],

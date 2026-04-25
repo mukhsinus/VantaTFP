@@ -492,12 +492,21 @@ export class AdminRepository {
     return result.rows[0] ?? null;
   }
 
-  async getDashboardStats(): Promise<{
+  async getDashboardStats(tenantId?: string): Promise<{
     total_tenants: number;
     active_subscriptions: number;
     pending_payments: number;
     mrr: number;
   }> {
+    const params: string[] = [];
+    if (tenantId) {
+      params.push(tenantId);
+    }
+    const tenantFilter = tenantId ? ` AND tenant_id = $1` : '';
+    const tenantFilterAliasS = tenantId ? ` AND s.tenant_id = $1` : '';
+    const tenantFilterAliasPr = tenantId ? ` AND pr.tenant_id = $1` : '';
+    const tenantFilterAliasT = tenantId ? ` WHERE t.id = $1` : '';
+
     const result = await this.db.query<{
       total_tenants: string;
       active_subscriptions: string;
@@ -506,9 +515,9 @@ export class AdminRepository {
     }>(
       `
       SELECT
-        (SELECT COUNT(*)::text FROM tenants) AS total_tenants,
-        (SELECT COUNT(*)::text FROM subscriptions WHERE trim(status::text) IN ('active', 'trial')) AS active_subscriptions,
-        (SELECT COUNT(*)::text FROM payment_requests WHERE status = 'pending') AS pending_payments,
+        (SELECT COUNT(*)::text FROM tenants t ${tenantFilterAliasT}) AS total_tenants,
+        (SELECT COUNT(*)::text FROM subscriptions WHERE trim(status::text) IN ('active', 'trial')${tenantFilter}) AS active_subscriptions,
+        (SELECT COUNT(*)::text FROM payment_requests pr WHERE pr.status = 'pending'${tenantFilterAliasPr}) AS pending_payments,
         (
           SELECT COALESCE(SUM(
             COALESCE(
@@ -524,9 +533,11 @@ export class AdminRepository {
           ), 0)::text
           FROM subscriptions s
           LEFT JOIN plans p ON p.id = s.plan_id
-          WHERE trim(s.status::text) IN ('active', 'trial')
+          WHERE trim(s.status::text) IN ('active', 'trial')${tenantFilterAliasS}
         ) AS mrr
       `
+      ,
+      params
     );
     return {
       total_tenants: Number(result.rows[0]?.total_tenants ?? 0),

@@ -155,8 +155,8 @@ export class AdminService {
     };
   }
 
-  async getDashboardSummary() {
-    const stats = await this.adminRepository.getDashboardStats();
+  async getDashboardSummary(tenantId?: string) {
+    const stats = await this.adminRepository.getDashboardStats(tenantId);
     return {
       totalTenants: stats.total_tenants,
       activeSubscriptions: stats.active_subscriptions,

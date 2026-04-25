@@ -4,6 +4,7 @@ import { AdminRepository } from './admin.repository.js';
 import { AdminService } from './admin.service.js';
 import {
   adminForceTenantPlanSchema,
+  adminDashboardQuerySchema,
   adminListQuerySchema,
   adminPaymentListQuerySchema,
   adminTenantScopeQuerySchema,
@@ -139,8 +140,9 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
   app.get(
     '/dashboard',
     { preHandler: superOnly },
-    async (_request: FastifyRequest, reply: FastifyReply) => {
-      const result = await adminService.getDashboardSummary();
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      const query = adminDashboardQuerySchema.parse(request.query ?? {});
+      const result = await adminService.getDashboardSummary(query.tenantId);
       return sendSuccess(reply, result);
     }
   );

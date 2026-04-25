@@ -22,7 +22,8 @@ function withTenantScope(path: string, tenantId: string): string {
 }
 
 export const adminApi = {
-  getDashboard: () => apiClient.get<AdminDashboardSummary>(API.admin.dashboard),
+  getDashboard: (params?: { tenantId?: string }) =>
+    apiClient.get<AdminDashboardSummary>(API.admin.dashboard, params),
 
   getTenantAuditLogs: (
     tenantId: string,
