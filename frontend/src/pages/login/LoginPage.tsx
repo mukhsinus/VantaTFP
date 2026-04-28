@@ -7,6 +7,10 @@ import { useAuthStore } from '@app/store/auth.store';
 import { useIsMobile } from '@shared/hooks/useIsMobile';
 import { resolvePostLoginRedirect } from '@shared/config/auth-routing';
 import { useTranslation } from 'react-i18next';
+import {
+  getCurrentSupportedLanguage,
+  setUserLanguage,
+} from '@shared/i18n/language-preferences';
 
 type AuthMode = 'select' | 'employer-login' | 'employee-login' | 'employer-register';
 
@@ -180,6 +184,7 @@ export function LoginPage() {
       const refreshToken =
         (response as any).refreshToken ?? (response as any).refresh_token;
       if (response.user && accessToken) {
+        setUserLanguage(response.user.id, getCurrentSupportedLanguage());
         const primaryMembership = response.memberships?.[0] ?? null;
         const tenant = response.tenant
           ? {

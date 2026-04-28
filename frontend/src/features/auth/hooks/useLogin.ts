@@ -4,6 +4,7 @@ import { useAuthStore } from '@app/store/auth.store';
 import { ApiError } from '@shared/api/client';
 import type { LoginPayload } from '@entities/auth/auth.types';
 import i18n from '@shared/i18n/i18n';
+import { getUserLanguage } from '@shared/i18n/language-preferences';
 
 interface UseLoginResult {
   /** Returns true on success, false on failure. Error message is exposed via `error`. */
@@ -64,6 +65,11 @@ export function useLogin(): UseLoginResult {
         role: derivedRole,
         systemRole: response.user.system_role,
       } as const;
+
+      const accountLanguage = getUserLanguage(resolvedUser.userId);
+      if (accountLanguage) {
+        await i18n.changeLanguage(accountLanguage);
+      }
 
       setSession(
         {

@@ -16,6 +16,13 @@ import {
   markBackendReadyFailOpen,
   markBackendReadyFromHealth,
 } from '@shared/api/backend-readiness';
+import i18n from '@shared/i18n/i18n';
+import {
+  getCurrentSupportedLanguage,
+  getUserLanguage,
+  setUserLanguage,
+  toSupportedLanguage,
+} from '@shared/i18n/language-preferences';
 
 /** Stable key for the current persisted session (access token preferred). */
 function sessionBootstrapKey(
@@ -344,6 +351,41 @@ function AuthQueryResetOnLogout() {
   return null;
 }
 
+function AuthLanguageBridge() {
+  const userId = useAuthStore((s) => s.user?.userId ?? null);
+
+  useEffect(() => {
+    if (!userId) return;
+
+    const accountLanguage = getUserLanguage(userId);
+    if (accountLanguage) {
+      if (getCurrentSupportedLanguage() !== accountLanguage) {
+        void i18n.changeLanguage(accountLanguage);
+      }
+      return;
+    }
+
+    setUserLanguage(userId, getCurrentSupportedLanguage());
+  }, [userId]);
+
+  useEffect(() => {
+    if (!userId) return;
+
+    const onLanguageChanged = (lang: string) => {
+      const normalized = toSupportedLanguage(lang);
+      if (!normalized) return;
+      setUserLanguage(userId, normalized);
+    };
+
+    i18n.on('languageChanged', onLanguageChanged);
+    return () => {
+      i18n.off('languageChanged', onLanguageChanged);
+    };
+  }, [userId]);
+
+  return null;
+}
+
 export function Providers({ children }: ProvidersProps) {
   return (
     <QueryClientProvider client={queryClient}>
@@ -351,6 +393,7 @@ export function Providers({ children }: ProvidersProps) {
         <AuthPersistHydrationBridge />
         <AuthQueryResetOnLogout />
         <AuthSessionBootstrap />
+        <AuthLanguageBridge />
         {children}
       </BackendStartupGate>
       {import.meta.env.DEV && <ReactQueryDevtools initialIsOpen={false} />}
