@@ -9,7 +9,6 @@ import { useUnreadNotifications } from '@features/notifications/hooks/useNotific
 import styles from './Topbar.module.css';
 
 const mobileSubtitleKeys: Partial<Record<string, string>> = {
-  '/settings': 'settings.subtitle',
 };
 
 const NAV_LABEL_FALLBACK_BY_ROUTE: Record<string, string> = {
