@@ -197,6 +197,13 @@
   background: linear-gradient(180deg, var(--color-accent-subtle) 0%, var(--color-bg) 48%);
 }
 
+.planCardMuted {
+  opacity: 0.55;
+  border-color: var(--color-border);
+  background: var(--color-bg-muted);
+  box-shadow: none;
+}
+
 @media (min-width: 900px) {
   .planCardHighlighted:hover {
     border-color: var(--color-accent-hover);

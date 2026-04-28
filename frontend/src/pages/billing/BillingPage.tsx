@@ -93,6 +93,7 @@ function ProgressRow({
 function PlanCard({
   plan,
   pendingPaymentExists,
+  isRequestedPending,
   isCurrent,
   canUpgrade,
   onUpgrade,
@@ -100,15 +101,22 @@ function PlanCard({
 }: {
   plan: BillingPlanCatalogItem;
   pendingPaymentExists: boolean;
+  isRequestedPending: boolean;
   isCurrent: boolean;
   canUpgrade: boolean;
   onUpgrade: () => void;
   t: (k: string, o?: { defaultValue?: string; count?: number }) => string;
 }) {
   const isPro = plan.name === 'pro';
+  const isMutedDuringPending = pendingPaymentExists && !isCurrent && !isRequestedPending;
+  const shouldHighlight = pendingPaymentExists ? isCurrent || isRequestedPending : isCurrent || isPro;
   const disabled = pendingPaymentExists || isCurrent || !canUpgrade;
   const ctaLabel = pendingPaymentExists
-    ? t('billing.cta.pendingApproval', { defaultValue: 'Pending approval' })
+    ? isRequestedPending
+      ? t('billing.cta.pendingApproval', { defaultValue: 'Pending approval' })
+      : isCurrent
+        ? t('billing.cta.current', { defaultValue: 'Current plan' })
+        : t('billing.cta.requestUpgrade', { defaultValue: 'Request upgrade' })
     : isCurrent
       ? t('billing.cta.current', { defaultValue: 'Current plan' })
       : t('billing.cta.requestUpgrade', { defaultValue: 'Request upgrade' });
@@ -123,7 +131,13 @@ function PlanCard({
   });
 
   return (
-    <div className={`${styles.planCard} ${isPro ? styles.planCardHighlighted : ''}`}>
+    <div
+      className={[
+        styles.planCard,
+        shouldHighlight ? styles.planCardHighlighted : '',
+        isMutedDuringPending ? styles.planCardMuted : '',
+      ].filter(Boolean).join(' ')}
+    >
       <h3 className={styles.planCardName}>{t(`billing.plans.${plan.name}.title`, { defaultValue: String(plan.name) })}</h3>
       <p className={styles.planCardPrice}>
         ${plan.price}
@@ -190,6 +204,9 @@ export function BillingPage() {
   const isPastDue = statusLower === 'past_due';
   const isPlatform = data.plan.name.toLowerCase() === 'platform';
   const pendingApproval = data.pending_payment?.status === 'pending';
+  const pendingRequestedPlan = pendingApproval
+    ? String(data.pending_payment?.plan ?? '').toLowerCase()
+    : '';
   const daysLeft = isTrial && data.trial_ends_at ? trialDaysLeft(data.trial_ends_at) : null;
   const plans = Array.isArray(data.available_plans) ? data.available_plans : [];
   return (
@@ -232,11 +249,13 @@ export function BillingPage() {
               {plans.map((plan) => {
                 const id = plan.name as BillingPlanId;
                 const isCurrent = !isPlatform && currentPlan === id;
+                const isRequestedPending = pendingApproval && pendingRequestedPlan === String(id).toLowerCase();
                 return (
                   <PlanCard
                     key={plan.name}
                     plan={plan}
                     pendingPaymentExists={pendingApproval}
+                    isRequestedPending={isRequestedPending}
                     isCurrent={isCurrent}
                     canUpgrade={canUpgrade && !isPlatform && !upgrade.isPending}
                     onUpgrade={() => upgrade.mutate(id)}
