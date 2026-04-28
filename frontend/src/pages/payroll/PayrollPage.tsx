@@ -21,8 +21,6 @@ export function PayrollPage() {
   const isMobile = useIsMobile();
   const { role } = useCurrentUser();
   const isAdmin = role === 'ADMIN';
-  const title = role === 'EMPLOYEE' ? 'My Payroll' : t('payroll.title');
-  const subtitle = role === 'EMPLOYEE' ? 'Your payroll statements and status.' : t('payroll.subtitle');
 
   const { payroll, isLoading, isError } = usePayroll();
   const { approvePayroll, isPending } = useApprovePayroll();
@@ -54,18 +52,6 @@ export function PayrollPage() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: isMobile ? 14 : 20, width: '100%', maxWidth: '100%' }}>
-      {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: isMobile ? 'flex-start' : 'center', flexDirection: isMobile ? 'column' : 'row', gap: 10 }}>
-        <div>
-          <h2 style={{ fontSize: 'var(--text-2xl)', fontWeight: 700, color: 'var(--color-text-primary)' }}>
-            {title}
-          </h2>
-          <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-secondary)', marginTop: 4 }}>
-            {subtitle}
-          </p>
-        </div>
-      </div>
-
       {/* Summary cards */}
       <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(4, 1fr)', gap: 12 }}>
         {[
