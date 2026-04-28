@@ -59,6 +59,18 @@
   },
 
   "nav": {
+    "labels": {
+      "dashboard": "Boshqaruv",
+      "tasks": "Vazifalar",
+      "employees": "Xodimlar",
+      "kpi": "KPI",
+      "payroll": "Ish haqi",
+      "reports": "Hisobotlar",
+      "billing": "Billing",
+      "settings": "Sozlamalar",
+      "messages": "Xabarlar",
+      "logout": "Chiqish"
+    },
     "overview": "Boshqaruv",
     "dashboard": "Boshqaruv",
     "tasks": "Vazifalar",

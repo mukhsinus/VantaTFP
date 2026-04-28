@@ -59,6 +59,18 @@
   },
 
   "nav": {
+    "labels": {
+      "dashboard": "Обзор",
+      "tasks": "Задачи",
+      "employees": "Сотрудники",
+      "kpi": "KPI",
+      "payroll": "Зарплата",
+      "reports": "Отчеты",
+      "billing": "Биллинг",
+      "settings": "Настройки",
+      "messages": "Сообщения",
+      "logout": "Выйти"
+    },
     "overview": "Обзор",
     "dashboard": "Обзор",
     "tasks": "Задачи",
