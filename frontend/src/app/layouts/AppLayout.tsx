@@ -7,6 +7,7 @@ import { useIsMobile } from '@shared/hooks/useIsMobile';
 import { useAuthStore } from '@app/store/auth.store';
 import { useNotificationsRealtime } from '@features/notifications/hooks/useNotifications';
 import { TenantTrialExperience } from '@features/billing/components/TenantTrialExperience';
+import { MobileBottomTabs } from '@widgets/mobile-bottom-tabs/MobileBottomTabs';
 import styles from './AppLayout.module.css';
 
 export function AppLayout() {
@@ -38,6 +39,8 @@ export function AppLayout() {
           </div>
         </main>
       </div>
+
+      {isMobile && user ? <MobileBottomTabs /> : null}
 
       {/* Global notification layer — lives outside page content */}
       <ToastRenderer />

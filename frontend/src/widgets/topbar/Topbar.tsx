@@ -10,7 +10,6 @@ import styles from './Topbar.module.css';
 
 const mobileSubtitleKeys: Partial<Record<string, string>> = {
   '/dashboard': 'overview.subtitle',
-  '/kpi': 'kpi.subtitle',
   '/payroll': 'payroll.subtitle',
   '/reports': 'reports.subtitle',
   '/billing': 'billing.subtitle',

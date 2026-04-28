@@ -343,6 +343,7 @@
     "title": "KPI Treker",
     "subtitle": "Jamoa natijalari va maqsadlarini kuzating",
     "create": "Yangi KPI",
+    "assignee": "Mas'ul",
     "avgProgress": "Jamoa o'rtachasi",
     "progress": "Progress",
     "target": "Maqsad",
@@ -358,7 +359,16 @@
       "all": "Barchasi",
       "weekly": "Haftalik",
       "monthly": "Oylik",
-      "quarterly": "Choraklik"
+      "quarterly": "Choraklik",
+      "yearly": "Yillik"
+    },
+    "analytics": {
+      "assignees": "Mas'ullar",
+      "completedTasks": "Bajarilgan vazifalar",
+      "openOverdue": "Ochiq kechikkanlar",
+      "performance": "Samaradorlik",
+      "unavailableTitle": "KPI tahlili mavjud emas",
+      "unavailableDescription": "Hozir kengaytirilgan KPI tahlilini yuklab bo'lmadi."
     }
   },
   "payroll": {

@@ -343,6 +343,7 @@
     "title": "KPI Трекер",
     "subtitle": "Контроль эффективности команды и целей",
     "create": "Новый KPI",
+    "assignee": "Исполнитель",
     "avgProgress": "Среднее по команде",
     "progress": "Прогресс",
     "target": "Цель",
@@ -358,7 +359,16 @@
       "all": "Все",
       "weekly": "Неделя",
       "monthly": "Месяц",
-      "quarterly": "Квартал"
+      "quarterly": "Квартал",
+      "yearly": "Год"
+    },
+    "analytics": {
+      "assignees": "Исполнители",
+      "completedTasks": "Выполненные задачи",
+      "openOverdue": "Открытые просроченные",
+      "performance": "Эффективность",
+      "unavailableTitle": "KPI-аналитика недоступна",
+      "unavailableDescription": "Сейчас не удалось загрузить расширенную KPI-аналитику."
     }
   },
   "payroll": {

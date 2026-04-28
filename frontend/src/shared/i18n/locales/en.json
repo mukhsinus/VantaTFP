@@ -139,6 +139,49 @@
     "chooseConversation": "Choose a chat from the left to start messaging",
     "send": "Send"
   },
+  "tasks": {
+    "title": "Tasks",
+    "moveTo": "Move to",
+    "total": "total tasks",
+    "overdue": "overdue",
+    "overdueAlert": "tasks are overdue and need attention",
+    "create": "New Task",
+    "empty": {
+      "title": "No tasks yet",
+      "subtitle": "Create your first task to start tracking work."
+    },
+    "view": {
+      "board": "Board",
+      "list": "List"
+    },
+    "col": {
+      "title": "Title",
+      "assignee": "Assignee",
+      "priority": "Priority",
+      "due": "Due Date",
+      "status": "Status"
+    },
+    "modal": {
+      "title": "New Task",
+      "description": "Add a task and assign it to your team.",
+      "submit": "Create Task",
+      "fields": {
+        "title": "Title",
+        "description": "Description",
+        "priority": "Priority",
+        "dueDate": "Due Date",
+        "assignee": "Assignee",
+        "assigneeEveryone": "Everyone"
+      },
+      "placeholders": {
+        "title": "What needs to be done?",
+        "description": "Add context or acceptance criteria..."
+      },
+      "errors": {
+        "titleRequired": "Title is required"
+      }
+    }
+  },
   "dashboard": {
     "totalTasks": "Tasks",
     "completedTasks": "Completed",
@@ -621,6 +664,7 @@
     "title": "KPI Tracker",
     "subtitle": "Monitor team performance and targets",
     "create": "New KPI",
+    "assignee": "Assignee",
     "avgProgress": "Team avg.",
     "progress": "Progress",
     "target": "Target",
@@ -636,7 +680,16 @@
       "all": "All",
       "weekly": "Weekly",
       "monthly": "Monthly",
-      "quarterly": "Quarterly"
+      "quarterly": "Quarterly",
+      "yearly": "Yearly"
+    },
+    "analytics": {
+      "assignees": "Assignees",
+      "completedTasks": "Completed Tasks",
+      "openOverdue": "Open Overdue",
+      "performance": "Performance",
+      "unavailableTitle": "KPI analytics unavailable",
+      "unavailableDescription": "Unable to load advanced KPI analytics right now."
     }
   },
   "payroll": {

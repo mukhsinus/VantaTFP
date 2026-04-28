@@ -25,14 +25,6 @@ export function KpiPage() {
     [period, kpis]
   );
 
-  const title = role === 'EMPLOYEE' ? 'My KPI' : role === 'MANAGER' ? 'Team KPI' : t('kpi.title');
-  const subtitle =
-    role === 'EMPLOYEE'
-      ? 'Personal KPI performance for your account.'
-      : role === 'MANAGER'
-        ? 'Team KPI performance and trend overview.'
-        : t('kpi.subtitle');
-
   if (isLoading) return <PageSkeleton />;
 
   if (isError) {
@@ -46,19 +38,6 @@ export function KpiPage() {
 
   return (
     <div className="page-container" style={{ display: 'flex', flexDirection: 'column', gap: isMobile ? 14 : 20, width: '100%', maxWidth: '100%' }}>
-      {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: isMobile ? 'flex-start' : 'center', gap: isMobile ? 10 : 0 }}>
-        <div>
-          <h2 style={{ fontSize: 'var(--text-2xl)', fontWeight: 700, color: 'var(--color-text-primary)' }}>
-            {title}
-          </h2>
-          <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-secondary)', marginTop: 4 }}>
-            {subtitle}
-          </p>
-        </div>
-        <Badge variant="default">{filtered.length}</Badge>
-      </div>
-
       {/* Summary + filter row */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: isMobile ? 'flex-start' : 'center', flexDirection: isMobile ? 'column' : 'row', gap: 10 }}>
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', width: '100%' }}>
@@ -84,21 +63,17 @@ export function KpiPage() {
             </button>
           ))}
         </div>
-        <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-secondary)' }}>
-          {t('kpi.subtitle')}
-        </p>
+        <Badge variant="default">{filtered.length}</Badge>
       </div>
 
       {/* KPI cards grid */}
       <KpiAnalyticsPanel role={role} userId={user?.userId} />
 
-      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fill, minmax(300px, 1fr))', gap: 12 }}>
-        {filtered.length === 0 ? (
-          <EmptyState title={t('kpi.title')} description={t('kpi.subtitle')} />
-        ) : (
-          filtered.map((kpi) => <KpiCard key={kpi.id} kpi={kpi} />)
-        )}
-      </div>
+      {filtered.length > 0 ? (
+        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fill, minmax(300px, 1fr))', gap: 12 }}>
+          {filtered.map((kpi) => <KpiCard key={kpi.id} kpi={kpi} />)}
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -125,7 +100,7 @@ function KpiCard({ kpi }: { kpi: KpiApiDto }) {
                 ? t('kpi.period.monthly')
                 : kpi.period === 'QUARTERLY'
                   ? t('kpi.period.quarterly')
-                  : 'Yearly'}
+                  : t('kpi.period.yearly')}
           </Badge>
         </div>
       </div>
@@ -138,7 +113,9 @@ function KpiCard({ kpi }: { kpi: KpiApiDto }) {
           </p>
         </div>
         <div style={{ textAlign: 'right' }}>
-          <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)' }}>Assignee</p>
+          <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)' }}>
+            {t('kpi.assignee')}
+          </p>
           <p style={{ fontSize: 'var(--text-sm)', fontWeight: 600, color: 'var(--color-text-secondary)' }}>
             {kpi.assigneeId}
           </p>

@@ -60,6 +60,10 @@ export function CreateTaskModal({ isOpen, onClose }: CreateTaskModalProps) {
   const [errors, setErrors] = useState<FormErrors>({});
 
   const handleClose = () => {
+    // Prevent mobile browser from keeping zoomed viewport after closing.
+    if (document.activeElement instanceof HTMLElement) {
+      document.activeElement.blur();
+    }
     setForm(INITIAL_STATE);
     setErrors({});
     onClose();
@@ -132,6 +136,7 @@ export function CreateTaskModal({ isOpen, onClose }: CreateTaskModalProps) {
           value={form.title}
           onChange={(e) => field('title', e.target.value)}
           error={errors.title}
+          style={{ fontSize: '16px' }}
           autoFocus
         />
 
@@ -154,7 +159,7 @@ export function CreateTaskModal({ isOpen, onClose }: CreateTaskModalProps) {
             style={{
               width: '100%',
               padding: '8px 10px',
-              fontSize: 'var(--text-base)',
+              fontSize: '16px',
               color: 'var(--color-text-primary)',
               background: 'var(--color-bg)',
               border: '1px solid var(--color-border-strong)',
@@ -182,6 +187,7 @@ export function CreateTaskModal({ isOpen, onClose }: CreateTaskModalProps) {
           value={form.assigneeId}
           options={assigneeOptions}
           onChange={(e) => field('assigneeId', e.target.value)}
+          style={{ fontSize: '16px' }}
           disabled={isLoadingEmployees}
         />
 
@@ -192,6 +198,7 @@ export function CreateTaskModal({ isOpen, onClose }: CreateTaskModalProps) {
             value={form.priority}
             options={priorityOptions}
             onChange={(e) => field('priority', e.target.value as TaskPriority)}
+            style={{ fontSize: '16px' }}
           />
 
           <Input
@@ -200,6 +207,7 @@ export function CreateTaskModal({ isOpen, onClose }: CreateTaskModalProps) {
             value={form.dueDate}
             onChange={(e) => field('dueDate', e.target.value)}
             min={new Date().toISOString().split('T')[0]}
+            style={{ fontSize: '16px' }}
           />
         </div>
 
