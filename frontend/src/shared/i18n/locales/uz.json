@@ -1,4 +1,5 @@
-  {"employees": {
+{
+  "employees": {
     "title": "Xodimlar",
     "total": "jami",
     "add": "Xodim qo'shish",
@@ -18,7 +19,10 @@
     "invite": "Xodimni taklif qilish",
     "role": "Rol",
     "search": "Xodimlarni qidirish...",
-    "empty": { "title": "Xodimlar topilmadi", "description": "Filtrlarni o'zgartiring yoki birinchi xodimni taklif qiling." },
+    "empty": {
+      "title": "Xodimlar topilmadi",
+      "description": "Filtrlarni o'zgartiring yoki birinchi xodimni taklif qiling."
+    },
     "actions": {
       "openMenu": "Amallarni ochish",
       "changeRole": "Rolni o'zgartirish",
@@ -52,7 +56,7 @@
       "joined": "Jamoada",
       "status": "Holat"
     }
-},
+  },
 
   "nav": {
     "overview": "Boshqaruv",
@@ -123,6 +127,62 @@
       "submit": "Kirish"
     }
   },
+  "authEntry": {
+    "welcome": {
+      "title": "TFP ga xush kelibsiz",
+      "subtitle": "Siz kimsiz?"
+    },
+    "roles": {
+      "employer": "Men ish beruvchiman",
+      "employee": "Men xodimman"
+    },
+    "common": {
+      "or": "yoki"
+    },
+    "actions": {
+      "back": "Orqaga",
+      "signIn": "Kirish",
+      "createEmployerAccount": "Ish beruvchi akkauntini yaratish",
+      "createAccountStartTrial": "Akkaunt yaratish va sinovni boshlash"
+    },
+    "employerLogin": {
+      "title": "Ish beruvchi kirishi",
+      "subtitle": "Email va parol bilan kiring"
+    },
+    "employeeLogin": {
+      "title": "Xodim kirishi",
+      "subtitle": "Telefon raqam va parolni kiriting"
+    },
+    "employerRegister": {
+      "title": "Ish beruvchi akkaunti",
+      "subtitle": "15 kunlik bepul sinovni boshlang. Karta kerak emas.",
+      "terms": "Akkaunt yaratish orqali siz xizmat shartlariga rozilik bildirasiz."
+    },
+    "fields": {
+      "email": "Email",
+      "phone": "Telefon raqam",
+      "password": "Parol",
+      "yourName": "Ismingiz",
+      "companyName": "Kompaniya nomi",
+      "emailOrPhone": "Email (yoki pastda telefon)",
+      "phoneOptional": "Telefon (email bo'lsa ixtiyoriy)"
+    },
+    "placeholders": {
+      "email": "you@company.com",
+      "phone": "+998 90 000 00 00",
+      "password": "Parolni kiriting",
+      "passwordRegister": "Kamida 4 ta belgi",
+      "yourName": "Ali Valiyev",
+      "companyName": "Acme Construction"
+    },
+    "errors": {
+      "emailOrPhoneRequired": "Email yoki telefon raqamingizni kiriting",
+      "registrationFailed": "Ro'yxatdan o'tib bo'lmadi. Qayta urinib ko'ring."
+    },
+    "language": {
+      "switchTo": "Tilni {{language}} ga o'tkazish"
+    }
+  },
   "topbar": {
     "search": "Qidiruv...",
     "shortcut": "⌘K"
@@ -168,14 +228,14 @@
       "title": "Yangi vazifa",
       "description": "Vazifa qo'shing va uni jamoaga biriktiring.",
       "submit": "Vazifa yaratish",
-        "fields": {
-          "title": "Nomi",
-          "description": "Tavsif",
-          "priority": "Ustuvorlik",
-          "dueDate": "Muddat",
-          "assignee": "Mas'ul",
-          "assigneeEveryone": "Barchasi"
-        },
+      "fields": {
+        "title": "Nomi",
+        "description": "Tavsif",
+        "priority": "Ustuvorlik",
+        "dueDate": "Muddat",
+        "assignee": "Mas'ul",
+        "assigneeEveryone": "Barchasi"
+      },
       "placeholders": {
         "title": "Nima qilish kerak?",
         "description": "Kontekst yoki qabul mezonlarini kiriting..."
@@ -331,11 +391,16 @@
     "empty": {
       "title": "Ish haqi yozuvlari yo'q",
       "description": "Boshlash uchun birinchi ish haqi yozuvini yarating."
-    }
-    ,
+    },
     "rules": {
-      "unavailable": { "title": "Ish haqi qoidalari mavjud emas", "description": "Ish haqi qoidalarini yuklab bo'lmadi." },
-      "empty": { "title": "Ish haqi qoidalari yo'q", "description": "Rivojlangan ish haqi hisob-kitobini yoqish uchun admin panelida qoidalar yarating." },
+      "unavailable": {
+        "title": "Ish haqi qoidalari mavjud emas",
+        "description": "Ish haqi qoidalarini yuklab bo'lmadi."
+      },
+      "empty": {
+        "title": "Ish haqi qoidalari yo'q",
+        "description": "Rivojlangan ish haqi hisob-kitobini yoqish uchun admin panelida qoidalar yarating."
+      },
       "status": { "active": "FAOL", "inactive": "NOFAOL" },
       "typeLabel": "Turi:"
     }
@@ -365,8 +430,14 @@
       "processing": "So‘rov qayta ishlanmoqda..."
     },
     "errors": {
-      "actionFailed": { "title": "Amal bajarilmadi", "description": "Iltimos, qayta urinib ko‘ring. Server bu amalni rad etdi." },
-      "loadFailed": { "title": "Tarix yuklanmadi", "description": "Iltimos, keyinroq qayta urinib ko‘ring." }
+      "actionFailed": {
+        "title": "Amal bajarilmadi",
+        "description": "Iltimos, qayta urinib ko‘ring. Server bu amalni rad etdi."
+      },
+      "loadFailed": {
+        "title": "Tarix yuklanmadi",
+        "description": "Iltimos, keyinroq qayta urinib ko‘ring."
+      }
     },
     "empty": { "title": "Hisobotlar hali yo‘q", "description": "Birinchi hisobotni yarating." }
   },
@@ -378,8 +449,7 @@
       "bannerLastDay": "Bepul sinov — bugun tugaydi",
       "expiredMessage": "Sinov muddati tugadi. Davom etish uchun tarifni yangilang.",
       "upgradeCta": "Yangilash"
-    }
-    ,
+    },
     "platform": "Platforma",
     "card": {
       "usersUpTo": "Mijozlar: {{count}} gacha",
@@ -467,10 +537,11 @@
       "workspaceOwnerOnly": "Tashkilot nomini faqat egasi (admin) o‘zgartirishi mumkin.",
       "saveFailed": "Saqlab bo‘lmadi",
       "loadFailed": "Sozlamalarni yuklab bo‘lmadi"
-    }  },
+    }
+  },
   "dashboard": {
     "title": "Boshqaruv",
-    
+
     "subtitle": "Tenant ma'lumotlari backend xizmatlaridan sinxronlashtirilgan.",
     "totalTasks": "Jami vazifalar",
     "completedTasks": "Bajarilgan vazifalar",
@@ -567,5 +638,6 @@
     "fields": {
       "name": "Shablon nomi",
       "description": "Tavsif"
-    }  }
+    }
+  }
 }

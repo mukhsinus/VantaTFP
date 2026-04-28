@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Navigate, useSearchParams, useNavigate } from 'react-router-dom';
 import { Button, Input, PageSkeleton } from '@shared/components/ui';
 import { useLogin } from '@features/auth/hooks/useLogin';
@@ -6,6 +6,7 @@ import { authApi } from '@entities/auth/auth.api';
 import { useAuthStore } from '@app/store/auth.store';
 import { useIsMobile } from '@shared/hooks/useIsMobile';
 import { resolvePostLoginRedirect } from '@shared/config/auth-routing';
+import { useTranslation } from 'react-i18next';
 
 type AuthMode = 'select' | 'employer-login' | 'employee-login' | 'employer-register';
 
@@ -53,7 +54,7 @@ const ErrorBanner = ({ message }: { message: string }) => (
   </div>
 );
 
-const BackButton = ({ onClick }: { onClick: () => void }) => (
+const BackButton = ({ onClick, label }: { onClick: () => void; label: string }) => (
   <button
     type="button"
     onClick={onClick}
@@ -73,12 +74,13 @@ const BackButton = ({ onClick }: { onClick: () => void }) => (
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
       <path d="M15 18l-6-6 6-6" />
     </svg>
-    Back
+    {label}
   </button>
 );
 
 export function LoginPage() {
   const isMobile = useIsMobile();
+  const { t, i18n } = useTranslation();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const isAuthenticated = useAuthStore((s) => Boolean(s.user && s.accessToken));
@@ -95,6 +97,21 @@ export function LoginPage() {
   const [companyName, setCompanyName] = useState('');
   const [registerError, setRegisterError] = useState<string | null>(null);
   const [isRegistering, setIsRegistering] = useState(false);
+  const [isLanguageOpen, setIsLanguageOpen] = useState(false);
+  const languageWrapRef = useRef<HTMLDivElement | null>(null);
+
+  const activeLanguage = (i18n.resolvedLanguage ?? i18n.language ?? 'uz').split('-')[0];
+  const languages = useMemo(
+    () =>
+      [
+        { code: 'uz', flag: '🇺🇿', label: 'Oʻzbek' },
+        { code: 'ru', flag: '🇷🇺', label: 'Русский' },
+        { code: 'en', flag: '🇺🇸', label: 'English' },
+      ] as const,
+    []
+  );
+  const activeLanguageMeta =
+    languages.find((lang) => lang.code === activeLanguage) ?? languages[0];
 
   useEffect(() => {
     if (error || registerError) {
@@ -102,6 +119,18 @@ export function LoginPage() {
       setRegisterError(null);
     }
   }, [email, phone, password, name, companyName, mode]);
+
+  useEffect(() => {
+    if (!isLanguageOpen) return;
+    const onPointerDown = (event: PointerEvent) => {
+      const target = event.target as HTMLElement | null;
+      if (!target) return;
+      if (languageWrapRef.current?.contains(target)) return;
+      setIsLanguageOpen(false);
+    };
+    document.addEventListener('pointerdown', onPointerDown);
+    return () => document.removeEventListener('pointerdown', onPointerDown);
+  }, [isLanguageOpen]);
 
   if (isAuthenticated) {
     const u = useAuthStore.getState().user;
@@ -133,7 +162,7 @@ export function LoginPage() {
     e.preventDefault();
     if (!name.trim() || !companyName.trim() || !password) return;
     if (!email.trim() && !phone.trim()) {
-      setRegisterError('Please enter your email or phone number');
+      setRegisterError(t('authEntry.errors.emailOrPhoneRequired'));
       return;
     }
     setIsRegistering(true);
@@ -187,11 +216,11 @@ export function LoginPage() {
         const u = useAuthStore.getState().user;
         if (u) navigate(resolvePostLoginRedirect(u, searchParams.get('redirect')), { replace: true });
       } else {
-        setRegisterError('Registration failed. Please try again.');
+        setRegisterError(t('authEntry.errors.registrationFailed'));
       }
     } catch (err: any) {
-      const msg = err?.message ?? 'Registration failed. Please try again.';
-      setRegisterError(msg.includes('already') ? msg : 'Registration failed. Please try again.');
+      const msg = (err?.message as string | undefined) ?? '';
+      setRegisterError(msg.includes('already') ? msg : t('authEntry.errors.registrationFailed'));
     } finally {
       setIsRegistering(false);
     }
@@ -221,7 +250,7 @@ export function LoginPage() {
       type="button"
       onClick={() => setShowPassword((v) => !v)}
       style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', pointerEvents: 'auto' }}
-      aria-label={showPassword ? 'Hide password' : 'Show password'}
+      aria-label={showPassword ? t('auth.password.hide') : t('auth.password.show')}
     >
       {showPassword ? (
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
@@ -257,6 +286,87 @@ export function LoginPage() {
       `}</style>
 
       <div style={innerStyle}>
+        <div
+          ref={languageWrapRef}
+          style={{ position: 'absolute', top: 14, right: 14, display: 'flex', justifyContent: 'flex-end' }}
+        >
+          <div style={{ position: 'relative' }}>
+            <button
+              type="button"
+              onClick={() => setIsLanguageOpen((v) => !v)}
+              aria-label={t('common.languageSwitcher')}
+              aria-haspopup="menu"
+              aria-expanded={isLanguageOpen}
+              style={{
+                width: 44,
+                height: 36,
+                borderRadius: 12,
+                border: '1px solid var(--color-border)',
+                background: 'var(--color-surface)',
+                cursor: 'pointer',
+                fontSize: 18,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                boxShadow: isLanguageOpen ? '0 10px 24px rgba(0,0,0,0.10)' : 'none',
+              }}
+            >
+              <span style={{ lineHeight: 1 }}>{activeLanguageMeta.flag}</span>
+            </button>
+
+            {isLanguageOpen && (
+              <div
+                role="menu"
+                aria-label={t('common.languageSwitcher')}
+                style={{
+                  position: 'absolute',
+                  top: 42,
+                  right: 0,
+                  background: 'var(--color-surface)',
+                  border: '1px solid var(--color-border)',
+                  borderRadius: 14,
+                  padding: 6,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 6,
+                  minWidth: 56,
+                  boxShadow: '0 14px 34px rgba(0,0,0,0.14)',
+                  zIndex: 50,
+                }}
+              >
+                {languages
+                  .filter((lang) => lang.code !== activeLanguageMeta.code)
+                  .map((lang) => (
+                    <button
+                      key={lang.code}
+                      type="button"
+                      role="menuitem"
+                      onClick={() => {
+                        setIsLanguageOpen(false);
+                        void i18n.changeLanguage(lang.code);
+                      }}
+                      aria-label={t('authEntry.language.switchTo', { language: lang.label })}
+                      style={{
+                        width: 44,
+                        height: 36,
+                        borderRadius: 12,
+                        border: '1px solid var(--color-border)',
+                        background: 'var(--color-bg-subtle)',
+                        cursor: 'pointer',
+                        fontSize: 18,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
+                    >
+                      <span style={{ lineHeight: 1 }}>{lang.flag}</span>
+                    </button>
+                  ))}
+              </div>
+            )}
+          </div>
+        </div>
+
         <Logo />
 
         {/* ── Mode: Select role ─────────────────────────────────────────── */}
@@ -264,10 +374,10 @@ export function LoginPage() {
           <>
             <div style={{ textAlign: 'center', marginBottom: 8 }}>
               <h1 style={{ fontSize: isMobile ? 28 : 32, fontWeight: 700, color: 'var(--color-text-primary)', letterSpacing: '-0.02em', lineHeight: 1.2 }}>
-                Welcome to TFP
+                {t('authEntry.welcome.title')}
               </h1>
               <p style={{ fontSize: 'var(--text-base)', color: 'var(--color-text-secondary)', marginTop: 8 }}>
-                Who are you?
+                {t('authEntry.welcome.subtitle')}
               </p>
             </div>
 
@@ -299,7 +409,7 @@ export function LoginPage() {
                   <rect x="2" y="7" width="20" height="14" rx="2" />
                   <path d="M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2" />
                 </svg>
-                I am an Employer
+                {t('authEntry.roles.employer')}
               </button>
 
               <button
@@ -328,13 +438,13 @@ export function LoginPage() {
                   <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" />
                   <circle cx="12" cy="7" r="4" />
                 </svg>
-                I am an Employee
+                {t('authEntry.roles.employee')}
               </button>
             </div>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, margin: '8px 0' }}>
               <div style={{ flex: 1, height: 1, background: 'var(--color-border)' }} />
-              <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)' }}>or</span>
+              <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)' }}>{t('authEntry.common.or')}</span>
               <div style={{ flex: 1, height: 1, background: 'var(--color-border)' }} />
             </div>
 
@@ -353,7 +463,7 @@ export function LoginPage() {
                 cursor: 'pointer',
               }}
             >
-              Create an employer account
+              {t('authEntry.actions.createEmployerAccount')}
             </button>
           </>
         )}
@@ -361,13 +471,13 @@ export function LoginPage() {
         {/* ── Mode: Employer login ───────────────────────────────────────── */}
         {mode === 'employer-login' && (
           <>
-            <BackButton onClick={() => setMode('select')} />
+            <BackButton onClick={() => setMode('select')} label={t('authEntry.actions.back')} />
             <div style={{ textAlign: 'center', marginBottom: 4 }}>
               <h1 style={{ fontSize: isMobile ? 24 : 28, fontWeight: 700, color: 'var(--color-text-primary)' }}>
-                Employer Sign In
+                {t('authEntry.employerLogin.title')}
               </h1>
               <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-secondary)', marginTop: 6 }}>
-                Sign in with your email and password
+                {t('authEntry.employerLogin.subtitle')}
               </p>
             </div>
 
@@ -375,9 +485,9 @@ export function LoginPage() {
 
             <form onSubmit={handleEmployerLogin} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
               <Input
-                label="Email"
+                label={t('authEntry.fields.email')}
                 type="email"
-                placeholder="you@company.com"
+                placeholder={t('authEntry.placeholders.email')}
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 autoComplete="email"
@@ -386,9 +496,9 @@ export function LoginPage() {
                 style={{ height: 48, fontSize: '16px' }}
               />
               <Input
-                label="Password"
+                label={t('authEntry.fields.password')}
                 type={showPassword ? 'text' : 'password'}
-                placeholder="Enter your password"
+                placeholder={t('authEntry.placeholders.password')}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 autoComplete="current-password"
@@ -398,7 +508,7 @@ export function LoginPage() {
               />
               <div style={{ position: 'sticky', bottom: 0, paddingTop: 4, background: 'linear-gradient(180deg, rgba(255,255,255,0) 0%, var(--color-bg) 40%)' }}>
                 <Button variant="primary" size="lg" type="submit" loading={isPending} disabled={!email.trim() || !password || isPending} style={submitBtnStyle}>
-                  Sign In
+                  {t('authEntry.actions.signIn')}
                 </Button>
               </div>
             </form>
@@ -408,13 +518,13 @@ export function LoginPage() {
         {/* ── Mode: Employee login (phone) ──────────────────────────────── */}
         {mode === 'employee-login' && (
           <>
-            <BackButton onClick={() => setMode('select')} />
+            <BackButton onClick={() => setMode('select')} label={t('authEntry.actions.back')} />
             <div style={{ textAlign: 'center', marginBottom: 4 }}>
               <h1 style={{ fontSize: isMobile ? 24 : 28, fontWeight: 700, color: 'var(--color-text-primary)' }}>
-                Employee Sign In
+                {t('authEntry.employeeLogin.title')}
               </h1>
               <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-secondary)', marginTop: 6 }}>
-                Enter your phone number and password
+                {t('authEntry.employeeLogin.subtitle')}
               </p>
             </div>
 
@@ -422,9 +532,9 @@ export function LoginPage() {
 
             <form onSubmit={handleEmployeeLogin} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
               <Input
-                label="Phone number"
+                label={t('authEntry.fields.phone')}
                 type="tel"
-                placeholder="+1 555 000 0000"
+                placeholder={t('authEntry.placeholders.phone')}
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
                 autoComplete="tel"
@@ -433,9 +543,9 @@ export function LoginPage() {
                 style={{ height: 48, fontSize: '16px' }}
               />
               <Input
-                label="Password"
+                label={t('authEntry.fields.password')}
                 type={showPassword ? 'text' : 'password'}
-                placeholder="Your password"
+                placeholder={t('authEntry.placeholders.password')}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 autoComplete="current-password"
@@ -445,7 +555,7 @@ export function LoginPage() {
               />
               <div style={{ position: 'sticky', bottom: 0, paddingTop: 4, background: 'linear-gradient(180deg, rgba(255,255,255,0) 0%, var(--color-bg) 40%)' }}>
                 <Button variant="primary" size="lg" type="submit" loading={isPending} disabled={!phone.trim() || !password || isPending} style={submitBtnStyle}>
-                  Sign In
+                  {t('authEntry.actions.signIn')}
                 </Button>
               </div>
             </form>
@@ -455,13 +565,13 @@ export function LoginPage() {
         {/* ── Mode: Employer registration ───────────────────────────────── */}
         {mode === 'employer-register' && (
           <>
-            <BackButton onClick={() => setMode('select')} />
+            <BackButton onClick={() => setMode('select')} label={t('authEntry.actions.back')} />
             <div style={{ textAlign: 'center', marginBottom: 4 }}>
               <h1 style={{ fontSize: isMobile ? 24 : 28, fontWeight: 700, color: 'var(--color-text-primary)' }}>
-                Create Employer Account
+                {t('authEntry.employerRegister.title')}
               </h1>
               <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-secondary)', marginTop: 6 }}>
-                Start your 15-day free trial. No credit card required.
+                {t('authEntry.employerRegister.subtitle')}
               </p>
             </div>
 
@@ -469,9 +579,9 @@ export function LoginPage() {
 
             <form onSubmit={handleRegisterEmployer} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
               <Input
-                label="Your name"
+                label={t('authEntry.fields.yourName')}
                 type="text"
-                placeholder="John Smith"
+                placeholder={t('authEntry.placeholders.yourName')}
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 autoComplete="name"
@@ -480,36 +590,36 @@ export function LoginPage() {
                 style={{ height: 48, fontSize: '16px' }}
               />
               <Input
-                label="Company name"
+                label={t('authEntry.fields.companyName')}
                 type="text"
-                placeholder="Acme Construction"
+                placeholder={t('authEntry.placeholders.companyName')}
                 value={companyName}
                 onChange={(e) => setCompanyName(e.target.value)}
                 required
                 style={{ height: 48, fontSize: '16px' }}
               />
               <Input
-                label="Email (or phone below)"
+                label={t('authEntry.fields.emailOrPhone')}
                 type="email"
-                placeholder="you@company.com"
+                placeholder={t('authEntry.placeholders.email')}
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 autoComplete="email"
                 style={{ height: 48, fontSize: '16px' }}
               />
               <Input
-                label="Phone (optional if email provided)"
+                label={t('authEntry.fields.phoneOptional')}
                 type="tel"
-                placeholder="+1 555 000 0000"
+                placeholder={t('authEntry.placeholders.phone')}
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
                 autoComplete="tel"
                 style={{ height: 48, fontSize: '16px' }}
               />
               <Input
-                label="Password"
+                label={t('authEntry.fields.password')}
                 type={showPassword ? 'text' : 'password'}
-                placeholder="At least 8 characters"
+                placeholder={t('authEntry.placeholders.passwordRegister')}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 autoComplete="new-password"
@@ -518,7 +628,7 @@ export function LoginPage() {
                 rightIcon={pwToggleBtn}
               />
               <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', marginTop: -4 }}>
-                By creating an account you agree to our Terms of Service.
+                {t('authEntry.employerRegister.terms')}
               </p>
               <div style={{ position: 'sticky', bottom: 0, paddingTop: 4, background: 'linear-gradient(180deg, rgba(255,255,255,0) 0%, var(--color-bg) 40%)' }}>
                 <Button
@@ -529,7 +639,7 @@ export function LoginPage() {
                   disabled={!name.trim() || !companyName.trim() || !password || isRegistering}
                   style={submitBtnStyle}
                 >
-                  Create Account & Start Trial
+                  {t('authEntry.actions.createAccountStartTrial')}
                 </Button>
               </div>
             </form>

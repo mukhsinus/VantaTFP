@@ -28,14 +28,14 @@ function mergeWithFallback(base: Record<string, unknown>, overrides: Record<stri
 }
 
 function getInitialLanguage(): SupportedLanguage {
-  if (typeof window === 'undefined') return 'ru';
+  if (typeof window === 'undefined') return 'uz';
 
   const storedLanguage = window.localStorage.getItem(LANG_STORAGE_KEY);
   if (storedLanguage && SUPPORTED_LANGUAGES.includes(storedLanguage as SupportedLanguage)) {
     return storedLanguage as SupportedLanguage;
   }
 
-  return 'ru';
+  return 'uz';
 }
 
 const initialLanguage = getInitialLanguage();
