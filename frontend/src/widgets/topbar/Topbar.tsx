@@ -9,7 +9,6 @@ import { useUnreadNotifications } from '@features/notifications/hooks/useNotific
 import styles from './Topbar.module.css';
 
 const mobileSubtitleKeys: Partial<Record<string, string>> = {
-  '/reports': 'reports.subtitle',
   '/billing': 'billing.subtitle',
   '/settings': 'settings.subtitle',
 };

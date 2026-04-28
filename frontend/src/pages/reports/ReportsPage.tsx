@@ -36,11 +36,6 @@ export function ReportsPage() {
 
   return (
     <div className="page-container" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      <div>
-        <h2 style={{ margin: 0 }}>{t('reports.title')}</h2>
-        <p style={{ margin: '6px 0 0', color: 'var(--color-text-secondary)' }}>{t('reports.subtitle')}</p>
-      </div>
-
       <ReportBuilderCard
         type={type}
         setType={setType}
