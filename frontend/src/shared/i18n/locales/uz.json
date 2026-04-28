@@ -67,7 +67,7 @@
       "kpi": "KPI",
       "payroll": "Ish haqi",
       "reports": "Hisobotlar",
-      "billing": "Billing",
+      "billing": "Тарифы",
       "settings": "Sozlamalar",
       "messages": "Xabarlar",
       "logout": "Chiqish"
@@ -79,7 +79,7 @@
     "kpi": "KPI",
     "payroll": "Ish haqi",
     "reports": "Hisobotlar",
-    "billing": "Billing",
+    "billing": "Тарифы",
     "settings": "Sozlamalar",
     "logout": "Chiqish",
     "projects": "Loyihalar",

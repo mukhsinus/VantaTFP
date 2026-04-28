@@ -192,29 +192,8 @@ export function BillingPage() {
   const pendingApproval = data.pending_payment?.status === 'pending';
   const daysLeft = isTrial && data.trial_ends_at ? trialDaysLeft(data.trial_ends_at) : null;
   const plans = Array.isArray(data.available_plans) ? data.available_plans : [];
-  const trialBannerText = daysLeft === null
-    ? null
-    : daysLeft === 0
-      ? t('billing.trial.bannerLastDay', { defaultValue: 'Free trial — ends today' })
-      : t('billing.trial.bannerDays', {
-          count: daysLeft,
-          defaultValue: 'Free trial — {{count}} days left',
-        });
-
   return (
     <div className={`page-container ${styles.billingContainer}`}>
-
-      {isTrial && trialBannerText && (
-        <div className={styles.billingTrialBanner} role="status">
-          <span className={styles.billingTrialBannerIcon} aria-hidden>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <circle cx="12" cy="12" r="10" />
-              <path d="M12 6v6l4 2" />
-            </svg>
-          </span>
-          <span>{trialBannerText}</span>
-        </div>
-      )}
       {isPastDue && !isPlatform && (
         <div className={styles.limitAlert} role="alert">
           {t('billing.trial.expiredRequired', { defaultValue: 'Trial expired — upgrade required' })}
@@ -242,15 +221,6 @@ export function BillingPage() {
           </span>
         </div>
       )}
-
-      <header className={styles.header}>
-        <h1 className={styles.title}>{t('billing.title', { defaultValue: 'Billing' })}</h1>
-        <p className={styles.subtitle}>
-          {t('billing.subtitle', {
-            defaultValue: 'Manage your subscription, usage, and payment details in one place.',
-          })}
-        </p>
-      </header>
 
       <div className={styles.billingMainGrid}>
         <section id="billing-plans-anchor" aria-labelledby="billing-plans-heading">

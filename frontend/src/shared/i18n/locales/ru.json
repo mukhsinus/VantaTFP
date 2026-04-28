@@ -67,7 +67,7 @@
       "kpi": "KPI",
       "payroll": "Зарплата",
       "reports": "Отчеты",
-      "billing": "Биллинг",
+      "billing": "Тарифы",
       "settings": "Настройки",
       "messages": "Сообщения",
       "logout": "Выйти"
@@ -79,7 +79,7 @@
     "kpi": "KPI",
     "payroll": "Зарплата",
     "reports": "Отчеты",
-    "billing": "Биллинг",
+    "billing": "Тарифы",
     "settings": "Настройки",
     "logout": "Выйти",
     "projects": "Проекты",
