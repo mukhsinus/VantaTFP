@@ -46,6 +46,9 @@ Thumbs.db
 .vite/
 frontend/node_modules/.vite/
 
+# Frontend build output
+frontend/dist/
+
 # Build cache
 .tsc/
 tsconfig.tsbuildinfo

@@ -59,6 +59,7 @@
   },
 
   "nav": {
+    "section": { "main": "Основное", "quick": "Быстрый доступ" },
     "labels": {
       "dashboard": "Обзор",
       "tasks": "Задачи",

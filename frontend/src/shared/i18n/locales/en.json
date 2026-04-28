@@ -79,7 +79,7 @@
     "errorDescription": "We couldn't load this page. Please try again."
   },
   "nav": {
-    "section": { "main": "Main" },
+    "section": { "main": "Main", "quick": "Quick access" },
     "labels": {
       "dashboard": "Dashboard",
       "tasks": "Tasks",
@@ -114,6 +114,7 @@
     "employees": "Employees",
     "kpi": "KPI",
     "payroll": "Payroll",
+    "messages": "Messages",
     "reports": "Reports",
     "billing": "Billing",
     "settings": "Settings",

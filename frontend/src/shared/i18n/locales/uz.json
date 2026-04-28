@@ -59,6 +59,7 @@
   },
 
   "nav": {
+    "section": { "main": "Asosiy", "quick": "Tezkor kirish" },
     "labels": {
       "dashboard": "Boshqaruv",
       "tasks": "Vazifalar",

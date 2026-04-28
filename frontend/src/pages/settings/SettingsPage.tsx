@@ -1,7 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router-dom';
-import { Button, Input, Badge, Card, CardHeader, Avatar } from '@shared/components/ui';
+import { Button, Input, Badge, Card, CardHeader } from '@shared/components/ui';
 import { useAuthStore } from '@app/store/auth.store';
 import { useIsMobile } from '@shared/hooks/useIsMobile';
 import { toast } from '@app/store/toast.store';
@@ -16,7 +16,7 @@ import {
   type MeNotificationPrefs,
 } from '@features/settings/settings.api';
 
-type SettingsSection = 'profile' | 'workspace' | 'notifications' | 'security';
+type SettingsSection = 'profile' | 'workspace';
 
 export function SettingsPage() {
   const { t } = useTranslation();
@@ -25,7 +25,7 @@ export function SettingsPage() {
   const tabParam = searchParams.get('tab');
 
   const initialSection: SettingsSection =
-    tabParam === 'workspace' || tabParam === 'notifications' || tabParam === 'security'
+    tabParam === 'workspace'
       ? tabParam
       : 'profile';
 
@@ -33,7 +33,7 @@ export function SettingsPage() {
 
   useEffect(() => {
     const nextSection: SettingsSection =
-      tabParam === 'workspace' || tabParam === 'notifications' || tabParam === 'security'
+      tabParam === 'workspace'
         ? tabParam
         : 'profile';
     setSection(nextSection);
@@ -50,29 +50,10 @@ export function SettingsPage() {
       label: t('settings.nav.workspace'),
       icon: <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75}><rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" /><rect x="3" y="14" width="7" height="7" rx="1" /><rect x="14" y="14" width="7" height="7" rx="1" /></svg>,
     },
-    {
-      id: 'notifications',
-      label: t('settings.nav.notifications'),
-      icon: <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75}><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 01-3.46 0" /></svg>,
-    },
-    {
-      id: 'security',
-      label: t('settings.nav.security'),
-      icon: <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75}><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /></svg>,
-    },
   ];
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: isMobile ? 14 : 24, width: '100%', maxWidth: '100%', boxSizing: 'border-box' }}>
-      <div>
-        <h2 style={{ fontSize: 'var(--text-2xl)', fontWeight: 700, color: 'var(--color-text-primary)' }}>
-          {t('settings.title')}
-        </h2>
-        <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-secondary)', marginTop: 4 }}>
-          {t('settings.subtitle')}
-        </p>
-      </div>
-
       {isMobile ? (
         <>
           {/* Mobile tabs */}
@@ -115,10 +96,19 @@ export function SettingsPage() {
           </div>
 
           <div style={{ width: '100%', maxWidth: '100%' }}>
-            {section === 'profile' && <ProfileSection isMobile />}
-            {section === 'workspace' && <WorkspaceSection isMobile />}
-            {section === 'notifications' && <NotificationsSection isMobile />}
-            {section === 'security' && <SecuritySection isMobile />}
+            {section === 'profile' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                <ProfileSection isMobile />
+                <LanguageSection isMobile />
+                <SecuritySection isMobile />
+              </div>
+            )}
+            {section === 'workspace' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                <WorkspaceSection isMobile />
+                <NotificationsSection isMobile />
+              </div>
+            )}
           </div>
         </>
       ) : (
@@ -172,14 +162,163 @@ export function SettingsPage() {
 
           {/* Content */}
           <div style={{ width: '100%', maxWidth: '100%' }}>
-            {section === 'profile' && <ProfileSection isMobile={false} />}
-            {section === 'workspace' && <WorkspaceSection isMobile={false} />}
-            {section === 'notifications' && <NotificationsSection isMobile={false} />}
-            {section === 'security' && <SecuritySection isMobile={false} />}
+            {section === 'profile' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                <ProfileSection isMobile={false} />
+                <LanguageSection isMobile={false} />
+                <SecuritySection isMobile={false} />
+              </div>
+            )}
+            {section === 'workspace' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                <WorkspaceSection isMobile={false} />
+                <NotificationsSection isMobile={false} />
+              </div>
+            )}
           </div>
         </div>
       )}
     </div>
+  );
+}
+
+function LanguageSection({ isMobile }: { isMobile: boolean }) {
+  void isMobile;
+  const { t, i18n } = useTranslation();
+  const activeLanguage = (i18n.resolvedLanguage ?? i18n.language ?? 'uz').split('-')[0];
+  const [open, setOpen] = useState(false);
+  const wrapRef = useRef<HTMLDivElement | null>(null);
+
+  const languages = [
+    { code: 'uz', flag: '🇺🇿', label: 'Oʻzbek' },
+    { code: 'ru', flag: '🇷🇺', label: 'Русский' },
+    { code: 'en', flag: '🇺🇸', label: 'English' },
+  ] as const;
+
+  useEffect(() => {
+    if (!open) return;
+    const onPointerDown = (event: PointerEvent) => {
+      const target = event.target as HTMLElement | null;
+      if (!target) return;
+      if (wrapRef.current?.contains(target)) return;
+      setOpen(false);
+    };
+    document.addEventListener('pointerdown', onPointerDown);
+    return () => document.removeEventListener('pointerdown', onPointerDown);
+  }, [open]);
+
+  const activeMeta = languages.find((l) => l.code === activeLanguage) ?? languages[0];
+
+  return (
+    <Card style={{ overflow: 'visible' }}>
+      <CardHeader
+        title={t('common.languageSwitcher', { defaultValue: 'Language' })}
+      />
+      <div
+        ref={wrapRef}
+        style={{
+          position: 'relative',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'flex-start',
+          gap: 12,
+          flexWrap: 'wrap',
+        }}
+      >
+        <button
+          type="button"
+          onClick={() => setOpen((v) => !v)}
+          aria-label={t('common.languageSwitcher', { defaultValue: 'Language' })}
+          aria-haspopup="menu"
+          aria-expanded={open}
+          style={{
+            height: 44,
+            borderRadius: 14,
+            border: `1px solid ${open ? 'var(--color-accent)' : 'var(--color-border)'}`,
+            background: 'var(--color-bg)',
+            cursor: 'pointer',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 10,
+            padding: '0 12px',
+            boxShadow: open ? '0 0 0 3px var(--color-accent-subtle)' : undefined,
+            minWidth: 132,
+          }}
+        >
+          <span style={{ fontSize: 18, lineHeight: 1 }}>{activeMeta.flag}</span>
+          <span style={{ fontSize: 'var(--text-sm)', fontWeight: 800, color: 'var(--color-text-primary)' }}>
+            {t(`common.languages.${activeMeta.code}`, { defaultValue: activeMeta.code.toUpperCase() })}
+          </span>
+          <span style={{ color: 'var(--color-text-muted)', display: 'inline-flex', alignItems: 'center', marginLeft: 'auto' }}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+              <path d="M6 9l6 6 6-6" />
+            </svg>
+          </span>
+        </button>
+
+        {open && (
+          <div
+            role="menu"
+            aria-label={t('common.languageSwitcher', { defaultValue: 'Language' })}
+            style={{
+              position: 'absolute',
+              top: 50,
+              left: 0,
+              background: 'var(--color-bg)',
+              border: '1px solid var(--color-border)',
+              borderRadius: 14,
+              padding: 6,
+              boxShadow: '0 14px 34px rgba(0,0,0,0.12)',
+              zIndex: 20,
+              width: 152,
+            }}
+          >
+            {languages.map((lang) => {
+              const active = lang.code === activeMeta.code;
+              return (
+                <button
+                  key={lang.code}
+                  type="button"
+                  role="menuitem"
+                  onClick={() => {
+                    setOpen(false);
+                    void i18n.changeLanguage(lang.code);
+                  }}
+                  aria-label={t('authEntry.language.switchTo', { language: lang.label })}
+                  style={{
+                    width: '100%',
+                    height: 44,
+                    borderRadius: 12,
+                    border: `1px solid ${active ? 'var(--color-accent)' : 'transparent'}`,
+                    background: active ? 'var(--color-accent-subtle)' : 'transparent',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    padding: '0 10px',
+                    color: active ? 'var(--color-accent)' : 'var(--color-text-primary)',
+                    fontWeight: 800,
+                    fontSize: 'var(--text-sm)',
+                  }}
+                >
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 10 }}>
+                    <span style={{ fontSize: 18, lineHeight: 1 }}>{lang.flag}</span>
+                    <span>{t(`common.languages.${lang.code}`, { defaultValue: lang.code.toUpperCase() })}</span>
+                  </span>
+                  {active ? (
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                      <path d="M20 6L9 17l-5-5" />
+                    </svg>
+                  ) : (
+                    <span style={{ color: 'var(--color-text-muted)' }}> </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </Card>
   );
 }
 
@@ -211,7 +350,6 @@ function ProfileSection({ isMobile }: { isMobile: boolean }) {
     const ln = lastName.trim();
     const em = email.trim();
     const formData = { first_name: fn, last_name: ln, email: em };
-    console.log('SUBMIT PROFILE', formData);
     if (!fn || !ln || !em) {
       toast.error(t('settings.feedback.validation'));
       return;
@@ -235,7 +373,7 @@ function ProfileSection({ isMobile }: { isMobile: boolean }) {
 
   return (
     <Card>
-      <CardHeader title={t('settings.profile.title')} subtitle={t('settings.profile.subtitle')} />
+      <CardHeader title={t('settings.profile.title')} />
       <form
         style={{ display: 'flex', flexDirection: 'column', gap: 20, width: '100%', maxWidth: '100%' }}
         onSubmit={(e) => {
@@ -243,17 +381,6 @@ function ProfileSection({ isMobile }: { isMobile: boolean }) {
           void handleSave();
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-          <Avatar name={user ? `${user.firstName} ${user.lastName}` : t('profile.placeholders.unknownUserInitial')} size="lg" />
-          <div>
-            <Button variant="secondary" size="sm" type="button">
-              {t('settings.profile.changeAvatar')}
-            </Button>
-            <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', marginTop: 4 }}>
-              {t('settings.profile.avatarHint')}
-            </p>
-          </div>
-        </div>
         <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 16, width: '100%' }}>
           <Input
             label={t('settings.profile.firstName')}
@@ -316,7 +443,6 @@ function WorkspaceSection({ isMobile }: { isMobile: boolean }) {
     }
     const name = tenantName.trim();
     const formData = { name };
-    console.log('SUBMIT WORKSPACE', formData);
     if (name.length < 2) {
       toast.error(t('settings.feedback.workspaceNameTooShort'));
       return;
@@ -353,7 +479,7 @@ function WorkspaceSection({ isMobile }: { isMobile: boolean }) {
 
   return (
     <Card>
-      <CardHeader title={t('settings.workspace.title')} subtitle={t('settings.workspace.subtitle')} />
+      <CardHeader title={t('settings.workspace.title')} />
       <form
         style={{ display: 'flex', flexDirection: 'column', gap: 16, width: '100%', maxWidth: '100%' }}
         onSubmit={(e) => {
@@ -386,9 +512,6 @@ function WorkspaceSection({ isMobile }: { isMobile: boolean }) {
           <div>
             <p style={{ fontSize: 'var(--text-sm)', fontWeight: 500, color: 'var(--color-text-primary)' }}>
               {t('settings.workspace.plan')}
-            </p>
-            <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-secondary)', marginTop: 2 }}>
-              {t('settings.workspace.planDescription')}
             </p>
           </div>
           <Badge variant="accent">{t('settings.workspace.proPlan')}</Badge>
@@ -491,7 +614,7 @@ function NotificationsSection({ isMobile }: { isMobile: boolean }) {
 
   return (
     <Card>
-      <CardHeader title={t('settings.notifications.title')} subtitle={t('settings.notifications.subtitle')} />
+      <CardHeader title={t('settings.notifications.title')} />
       <div style={{ display: 'flex', flexDirection: 'column', gap: 0, width: '100%', maxWidth: '100%' }}>
         {(Object.keys(prefs) as Array<keyof UiNotificationPrefs>).map((key, i, arr) => (
           <div
@@ -530,11 +653,6 @@ function SecuritySection({ isMobile }: { isMobile: boolean }) {
   const [saving, setSaving] = useState(false);
 
   const handleUpdate = async () => {
-    const formData = { currentPassword, newPassword };
-    console.log('SUBMIT PASSWORD', {
-      currentPassword: formData.currentPassword ? '[set]' : '[empty]',
-      newPassword: formData.newPassword ? '[set]' : '[empty]',
-    });
     if (!currentPassword.trim() || !newPassword.trim() || !confirmPassword.trim()) {
       toast.error(t('settings.feedback.validation'));
       return;
@@ -566,7 +684,7 @@ function SecuritySection({ isMobile }: { isMobile: boolean }) {
 
   return (
     <Card>
-      <CardHeader title={t('settings.security.title')} subtitle={t('settings.security.subtitle')} />
+      <CardHeader title={t('settings.security.title')} />
       <form
         style={{ display: 'flex', flexDirection: 'column', gap: 16, width: '100%', maxWidth: '100%' }}
         onSubmit={(e) => {
