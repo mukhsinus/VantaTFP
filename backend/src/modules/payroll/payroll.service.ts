@@ -5,6 +5,7 @@ import {
   PayrollRuleRecord,
   PayrollRecordHistoryRow,
 } from './payroll.repository.js';
+import { FormulaService } from '../formula/service/FormulaService.js';
 import {
   ListPayrollQuery,
   CreatePayrollRuleInput,
@@ -16,6 +17,7 @@ import {
 } from './payroll.schema.js';
 import { ApplicationError } from '../../shared/utils/application-error.js';
 import { env } from '../../shared/utils/env.js';
+import { logger } from '../../shared/utils/logger.js';
 import { assertTenantEntityMatch } from '../../shared/utils/tenant-scope.js';
 
 export interface PayrollEntryResponse {
@@ -99,7 +101,10 @@ export interface PayrollRecordHistoryResponse {
 }
 
 export class PayrollService {
-  constructor(private readonly payrollRepository: PayrollRepository) {}
+  constructor(
+    private readonly payrollRepository: PayrollRepository,
+    private readonly formulaService?: FormulaService
+  ) {}
 
   async listPayrollEntries(tenantId: string, query: ListPayrollQuery): Promise<PayrollListResponse> {
     if (!tenantId) {
@@ -199,7 +204,21 @@ export class PayrollService {
       periodEnd
     );
 
-    const comp = this.computeFromKpiRecord(kpi);
+    let comp = this.computeFromKpiRecord(kpi);
+
+    // Try to apply salary formula if one exists
+    if (this.formulaService && kpi) {
+      const formulaTotal = await this.applySalaryFormula(tenantId, comp.base, comp.score);
+      if (formulaTotal !== null) {
+        // Use formula-calculated total
+        const bonus = this.roundMoney(formulaTotal - comp.base);
+        comp = {
+          ...comp,
+          bonus,
+          total: formulaTotal,
+        };
+      }
+    }
 
     const payment = await this.payrollRepository.upsertPayment({
       tenantId,
@@ -522,6 +541,53 @@ export class PayrollService {
     const bonus = this.roundMoney((score / 100) * base);
     const total = this.roundMoney(base + bonus);
     return { base, bonus, total, score, source: 'KPI_RECORD' };
+  }
+
+  /**
+   * Apply salary formula if one exists for the tenant
+   */
+  private async applySalaryFormula(
+    tenantId: string,
+    base: number,
+    kpiScore: number
+  ): Promise<number | null> {
+    if (!this.formulaService) {
+      return null;
+    }
+
+    try {
+      // Get the salary formula for this tenant
+      const formulas = await this.formulaService.listFormulasByType(tenantId, 'salary');
+      if (formulas.length === 0) {
+        // No salary formula defined
+        return null;
+      }
+
+      // Use the most recent formula
+      const formula = formulas[0];
+
+      // Evaluate the formula with the salary context
+      const result = await this.formulaService.evaluateFormula(
+        formula.id,
+        tenantId,
+        {
+          base_salary: base,
+          kpi_score: kpiScore,
+          completed_tasks: 0, // Placeholder
+          bonus_percent: 0, // Placeholder
+          attendance_rate: 100, // Placeholder
+        }
+      );
+
+      // Return the calculated total salary
+      return this.roundMoney(Math.max(0, result.value));
+    } catch (error) {
+      logger.warn(
+        { error, tenantId },
+        'Failed to apply salary formula, falling back to default calculation'
+      );
+      return null;
+    }
   }
 
   private normalizeRuleRow(row: PayrollRuleRecord): PayrollRuleRecord {

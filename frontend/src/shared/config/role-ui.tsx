@@ -66,11 +66,29 @@ const icon = {
       <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z" />
     </svg>
   ),
+  formulas: (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75}>
+      <path d="M3 12h18" />
+      <path d="M3 6h18" />
+      <path d="M3 18h18" />
+      <path d="M8 9v6" />
+      <path d="M16 9v6" />
+    </svg>
+  ),
+  objects: (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75}>
+      <rect x="3" y="3" width="7" height="7" rx="1" />
+      <rect x="14" y="3" width="7" height="7" rx="1" />
+      <rect x="3" y="14" width="7" height="7" rx="1" />
+      <rect x="14" y="14" width="7" height="7" rx="1" />
+    </svg>
+  ),
 };
 
 const NAV_BY_ROLE: Record<Role, NavItemConfig[]> = {
   ADMIN: [
     { to: '/dashboard', label: 'nav.dashboard', icon: icon.dashboard },
+    { to: '/objects', label: 'nav.objects', icon: icon.objects },
     { to: '/employees', label: 'nav.employees', icon: icon.employees },
     { to: '/tasks', label: 'nav.tasks', icon: icon.tasks },
     { to: '/kpi', label: 'nav.kpi', icon: icon.kpi },
@@ -78,10 +96,12 @@ const NAV_BY_ROLE: Record<Role, NavItemConfig[]> = {
     { to: '/messages', label: 'nav.messages', icon: icon.messages },
     { to: '/reports', label: 'nav.reports', icon: icon.reports },
     { to: '/billing', label: 'nav.billing', icon: icon.billing },
+    { to: '/formulas', label: 'nav.formulas', icon: icon.formulas },
     { to: '/settings', label: 'nav.settings', icon: icon.settings },
   ],
   MANAGER: [
     { to: '/dashboard', label: 'nav.dashboard', icon: icon.dashboard },
+    { to: '/objects', label: 'nav.objects', icon: icon.objects },
     { to: '/employees', label: 'nav.employees', icon: icon.employees },
     { to: '/tasks', label: 'nav.tasks', icon: icon.tasks },
     { to: '/kpi', label: 'nav.kpi', icon: icon.kpi },
@@ -100,6 +120,7 @@ const NAV_BY_ROLE: Record<Role, NavItemConfig[]> = {
 
 const ALLOWED_ROLES_BY_ROUTE: Record<string, Role[]> = {
   '/dashboard': ['ADMIN', 'MANAGER'],
+  '/objects': ['ADMIN', 'MANAGER'],
   '/employees': ['ADMIN', 'MANAGER'],
   '/tasks': ['ADMIN', 'MANAGER', 'EMPLOYEE'],
   '/kpi': ['ADMIN', 'MANAGER', 'EMPLOYEE'],
@@ -107,6 +128,7 @@ const ALLOWED_ROLES_BY_ROUTE: Record<string, Role[]> = {
   '/messages': ['ADMIN', 'MANAGER', 'EMPLOYEE'],
   '/reports': ['ADMIN', 'MANAGER'],
   '/billing': ['ADMIN'],
+  '/formulas': ['ADMIN'],
   '/settings': ['ADMIN', 'MANAGER', 'EMPLOYEE'],
 };
 

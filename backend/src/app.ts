@@ -43,6 +43,8 @@ import { invitesRoutes } from './modules/invites/invites.controller.js';
 import { paymentsRoutes } from './modules/payments/payments.controller.js';
 import { financialRoutes } from './modules/financial/financial.controller.js';
 import { messagesRoutes } from './modules/messages/messages.controller.js';
+import { objectsRoutes } from './modules/objects/objects.controller.js';
+import { formulaRoutes } from './modules/formula/formula.controller.js';
 
 export async function buildApp(): Promise<FastifyInstance> {
   initSentry();
@@ -140,6 +142,8 @@ export async function buildApp(): Promise<FastifyInstance> {
   await app.register(paymentsRoutes, { prefix: '/api/v1/payments' });
   await app.register(financialRoutes, { prefix: '/api/v1/financial' });
   await app.register(messagesRoutes, { prefix: '/api/v1/messages' });
+  await app.register(objectsRoutes, { prefix: '/api/v1/objects' });
+  await app.register(formulaRoutes, { prefix: '/api/v1/formulas' });
 
   return app;
 }

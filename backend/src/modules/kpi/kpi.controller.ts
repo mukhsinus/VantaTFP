@@ -3,6 +3,8 @@ import { KpiService } from './kpi.service.js';
 import { KpiRepository } from './kpi.repository.js';
 import { PayrollRepository } from '../payroll/payroll.repository.js';
 import { PayrollService } from '../payroll/payroll.service.js';
+import { FormulaRepository } from '../formula/repository/FormulaRepository.js';
+import { FormulaService } from '../formula/service/FormulaService.js';
 import { requireRoles } from '../../shared/middleware/role-guard.middleware.js';
 import { sendSuccess } from '../../shared/utils/response.js';
 import {
@@ -16,8 +18,10 @@ import {
 export async function kpiRoutes(app: FastifyInstance): Promise<void> {
   const kpiRepository = new KpiRepository(app.db);
   const payrollRepository = new PayrollRepository(app.db);
+  const formulaRepository = new FormulaRepository(app.db);
   const payrollService = new PayrollService(payrollRepository);
-  const kpiService = new KpiService(kpiRepository, payrollService);
+  const formulaService = new FormulaService(formulaRepository);
+  const kpiService = new KpiService(kpiRepository, payrollService, formulaService);
 
   const authenticate = app.authenticate;
 

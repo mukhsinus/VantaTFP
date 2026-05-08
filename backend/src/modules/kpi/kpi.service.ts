@@ -5,6 +5,7 @@ import {
   KpiRecordCacheRow,
 } from './kpi.repository.js';
 import { PayrollService } from '../payroll/payroll.service.js';
+import { FormulaService } from '../formula/service/FormulaService.js';
 import { ApplicationError } from '../../shared/utils/application-error.js';
 import { logger } from '../../shared/utils/logger.js';
 import type { Role } from '../../shared/types/common.types.js';
@@ -102,7 +103,8 @@ export interface KpiAnalyticsAggregatedResponse {
 export class KpiService {
   constructor(
     private readonly kpiRepository: KpiRepository,
-    private readonly payrollService?: PayrollService
+    private readonly payrollService?: PayrollService,
+    private readonly formulaService?: FormulaService
   ) {}
 
   async listKpis(tenantId: string): Promise<KpiResponse[]> {
@@ -443,12 +445,32 @@ export class KpiService {
       periodEnd
     );
 
+    // Apply KPI formula if one exists for this tenant
+    let finalScore = Number(calculated.score);
+    if (this.formulaService) {
+      try {
+        finalScore = await this.applyKpiFormula(tenantId, calculated);
+      } catch (error) {
+        logger.warn(
+          { error, tenantId, userId },
+          'Failed to apply KPI formula, falling back to default calculation'
+        );
+        // Fall back to default score
+      }
+    }
+
+    // Update the calculated object with the formula-applied score
+    const calculatedWithFormula = {
+      ...calculated,
+      score: finalScore,
+    };
+
     const cachedRecord = await this.kpiRepository.upsertKpiRecordCache({
       tenantId,
       userId,
       periodStart,
       periodEnd,
-      calculated,
+      calculated: calculatedWithFormula,
     });
 
     if (!cachedRecord) {
@@ -459,7 +481,7 @@ export class KpiService {
         tasksCompleted: calculated.tasks_completed,
         tasksOnTime: calculated.tasks_on_time,
         tasksOverdue: calculated.tasks_overdue,
-        score: Number(calculated.score),
+        score: finalScore,
       };
     }
 
@@ -472,6 +494,50 @@ export class KpiService {
       tasksOverdue: cachedRecord.tasks_overdue,
       score: Number(cachedRecord.score),
     };
+  }
+
+  /**
+   * Apply KPI formula to calculated metrics
+   */
+  private async applyKpiFormula(
+    tenantId: string,
+    calculated: {
+      tasks_completed: number;
+      tasks_on_time: number;
+      tasks_overdue: number;
+      score: number;
+    }
+  ): Promise<number> {
+    if (!this.formulaService) {
+      return calculated.score;
+    }
+
+    // Get the KPI formula for this tenant
+    const formulas = await this.formulaService.listFormulasByType(tenantId, 'kpi');
+    if (formulas.length === 0) {
+      // No KPI formula defined, use default
+      return calculated.score;
+    }
+
+    // Use the most recent formula
+    const formula = formulas[0];
+
+    // Evaluate the formula with the calculated metrics
+    const result = await this.formulaService.evaluateFormula(
+      formula.id,
+      tenantId,
+      {
+        completed_tasks: calculated.tasks_completed,
+        on_time_tasks: calculated.tasks_on_time,
+        overdue_tasks: calculated.tasks_overdue,
+        performance: calculated.score,
+        quality_score: calculated.score, // Alias for performance
+      }
+    );
+
+    // Clamp the result to 0-100
+    const score = Math.max(0, Math.min(100, result.value));
+    return score;
   }
 
   private async ensureKpiRecordsForUsersAndPeriod(params: {

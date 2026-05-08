@@ -23,6 +23,8 @@ import { AdminUsersPage } from '@pages/admin/AdminUsersPage';
 import { AdminSubscriptionsPage } from '@pages/admin/AdminSubscriptionsPage';
 import { AdminPaymentsPage } from '@pages/admin/AdminPaymentsPage';
 import { MessagesPage } from '@pages/messages/MessagesPage';
+import { FormulaDemoPage } from '@features/formula/FormulaDemoPage';
+import { ObjectsPage } from '@pages/objects/ObjectsPage';
 
 export const router = createBrowserRouter([
   {
@@ -46,6 +48,7 @@ export const router = createBrowserRouter([
               { path: 'tenants', element: <AdminTenantsPage /> },
               { path: 'users', element: <AdminUsersPage /> },
               { path: 'subscriptions', element: <AdminSubscriptionsPage /> },
+              { path: 'formulas', element: <FormulaDemoPage /> },
             ],
           },
         ],
@@ -59,12 +62,14 @@ export const router = createBrowserRouter([
             children: [
               { index: true, element: <HomeRedirect /> },
               { path: 'dashboard', element: <RoleGuard path="/dashboard"><DashboardPage /></RoleGuard> },
+              { path: 'objects', element: <RoleGuard path="/objects"><ObjectsPage /></RoleGuard> },
               { path: 'tasks', element: <RoleGuard path="/tasks"><TasksPage /></RoleGuard> },
               { path: 'employees', element: <RoleGuard path="/employees"><EmployeesPage /></RoleGuard> },
               { path: 'kpi', element: <RoleGuard path="/kpi"><KpiPage /></RoleGuard> },
               { path: 'payroll', element: <RoleGuard path="/payroll"><PayrollPage /></RoleGuard> },
               { path: 'reports', element: <RoleGuard path="/reports"><ReportsPage /></RoleGuard> },
               { path: 'billing', element: <RoleGuard path="/billing"><BillingPage /></RoleGuard> },
+              { path: 'formulas', element: <RoleGuard path="/formulas"><FormulaDemoPage /></RoleGuard> },
               { path: 'settings', element: <RoleGuard path="/settings"><SettingsPage /></RoleGuard> },
               { path: 'messages', element: <RoleGuard path="/messages"><MessagesPage /></RoleGuard> },
             ],

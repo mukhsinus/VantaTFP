@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useBilling } from '@features/billing/hooks/useBilling';
 import { Button } from '@shared/components/ui';
 import styles from './TenantTrialExperience.module.css';
@@ -19,6 +19,7 @@ function trialDaysLeft(trialEndsAt: string | null): number {
 export function TenantTrialExperience() {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const location = useLocation();
   /**
    * Must not pass `enabled: false` here: this hook shares `billingKeys.current()` with BillingPage
    * and other callers. A false observer would block the shared query and leave billing stuck loading.
@@ -28,6 +29,7 @@ export function TenantTrialExperience() {
   const status = data?.status?.toLowerCase() ?? '';
   const isTrial = isSuccess && status === 'trial';
   const isPastDue = isSuccess && status === 'past_due';
+  const isOnBillingPage = location.pathname.includes('/billing');
 
   const daysLeft = useMemo(
     () => (isTrial && data?.trial_ends_at ? trialDaysLeft(data.trial_ends_at) : null),
@@ -46,16 +48,20 @@ export function TenantTrialExperience() {
   }, [daysLeft, t]);
 
   useEffect(() => {
-    if (isPastDue) {
+    // Only lock body scroll if past due AND not on billing page
+    if (isPastDue && !isOnBillingPage) {
       document.body.style.overflow = 'hidden';
       return () => {
         document.body.style.overflow = '';
       };
     }
     return undefined;
-  }, [isPastDue]);
+  }, [isPastDue, isOnBillingPage]);
 
-  const modal = isPastDue ? (
+  // Show blocking modal only when past due AND not on billing page
+  const shouldShowBlockingModal = isPastDue && !isOnBillingPage;
+
+  const modal = shouldShowBlockingModal ? (
     createPortal(
       <div className={styles.modalRoot} role="presentation">
         <div className={styles.modalBackdrop} aria-hidden />

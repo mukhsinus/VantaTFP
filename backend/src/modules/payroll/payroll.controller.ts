@@ -1,6 +1,8 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { PayrollService } from './payroll.service.js';
 import { PayrollRepository } from './payroll.repository.js';
+import { FormulaRepository } from '../formula/repository/FormulaRepository.js';
+import { FormulaService } from '../formula/service/FormulaService.js';
 import { requireRoles } from '../../shared/middleware/role-guard.middleware.js';
 import { sendSuccess, successEnvelope } from '../../shared/utils/response.js';
 import { attachIdempotencyKey } from '../../shared/middleware/idempotency.middleware.js';
@@ -19,7 +21,9 @@ import {
 
 export async function payrollRoutes(app: FastifyInstance): Promise<void> {
   const payrollRepository = new PayrollRepository(app.db);
-  const payrollService = new PayrollService(payrollRepository);
+  const formulaRepository = new FormulaRepository(app.db);
+  const formulaService = new FormulaService(formulaRepository);
+  const payrollService = new PayrollService(payrollRepository, formulaService);
   const idempotency = new IdempotencyService(app.db);
 
   const authenticate = app.authenticate;

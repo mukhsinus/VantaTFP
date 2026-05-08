@@ -41,7 +41,9 @@
       "confirm": "Confirm",
       "close": "Close",
       "retry": "Try again",
-      "create": "Create"
+      "create": "Create",
+      "previous": "Previous",
+      "next": "Next"
     },
     "fields": {
       "status": "Status"
@@ -76,18 +78,30 @@
     "noData": "No data yet",
     "retry": "Try again",
     "errorTitle": "Something went wrong",
-    "errorDescription": "We couldn't load this page. Please try again."
+    "errorDescription": "We couldn't load this page. Please try again.",
+    "validation": {
+      "required": "is required"
+    },
+    "errors": {
+      "unexpected": "An unexpected error occurred."
+    },
+    "pagination": {
+      "page": "Page",
+      "of": "of"
+    }
   },
   "nav": {
     "section": { "main": "Main" },
     "labels": {
       "dashboard": "Dashboard",
+      "objects": "Objects",
       "tasks": "Tasks",
       "employees": "Employees",
       "kpi": "KPI",
       "payroll": "Payroll",
       "reports": "Reports",
       "billing": "Billing",
+      "formulas": "Formulas",
       "settings": "Settings",
       "messages": "Messages",
       "logout": "Sign out"
@@ -110,12 +124,14 @@
     },
     "overview": "Overview",
     "dashboard": "Dashboard",
+    "objects": "Objects",
     "tasks": "Tasks",
     "employees": "Employees",
     "kpi": "KPI",
     "payroll": "Payroll",
     "reports": "Reports",
     "billing": "Billing",
+    "formulas": "Formulas",
     "settings": "Settings",
     "logout": "Sign out"
   },
@@ -747,5 +763,137 @@
   "time": {
     "minutesAgo": "{{count}}m ago",
     "hoursAgo": "{{count}}h ago"
+  },
+  "formula": {
+    "title": "Formula Builder",
+    "subtitle": "Create KPI and salary formulas with a simple UI",
+    "sections": {
+      "help": "Quick Help",
+      "examples": "Examples",
+      "actions": "Actions"
+    },
+    "elements": {
+      "constant": "Constant",
+      "variable": "Variable",
+      "operators": "Operators",
+      "comparisons": "Comparisons",
+      "conditional": "If-Then-Else",
+      "tier": "Tier"
+    },
+    "descriptions": {
+      "constant": "Fixed numeric values (e.g., 1000, 1.5)",
+      "variable": "Dynamic values from context",
+      "operators": "+, -, ×, ÷ for math operations",
+      "comparisons": ">, <, ==, ≥, ≤ for comparisons",
+      "conditional": "Conditional logic (IF-THEN-ELSE)",
+      "tier": "Tiered bonuses (e.g., performance bands)"
+    },
+    "examples": {
+      "salaryBonus": "Salary Bonus (if-then-else)",
+      "tierPerformance": "Tiered Performance Bonus",
+      "complex": "Complex Calculation"
+    },
+    "actions": {
+      "save": "Save Formula"
+    },
+    "defaults": {
+      "myFormula": "My Formula",
+      "generatedFromBuilder": "Generated formula from builder"
+    },
+    "messages": {
+      "saved": "Formula saved with ID:"
+    },
+    "errors": {
+      "buildFirst": "Please build a formula first",
+      "saveFailed": "Failed to save formula"
+    },
+    "types": {
+      "kpi": {
+        "label": "KPI Formula",
+        "description": "Create KPI formula",
+        "tooltip": "Create KPI formula"
+      },
+      "salary": {
+        "label": "Salary Formula",
+        "description": "Create Salary formula",
+        "tooltip": "Create Salary formula"
+      }
+    },
+    "buttons": {
+      "help": "Help",
+      "hideHelp": "Hide Help",
+      "reset": "Reset",
+      "showHelp": "Show help and examples"
+    },
+    "managementPage": {
+      "title": "Formula Management",
+      "createNew": "Create Formula",
+      "edit": "Edit",
+      "delete": "Delete",
+      "update": "Update Formula",
+      "save": "Save Formula",
+      "backToList": "Back to Formulas",
+      "namePlaceholder": "Formula name",
+      "descriptionPlaceholder": "Description (optional)",
+      "deleteConfirm": "Are you sure you want to delete this formula?",
+      "empty": {
+        "title": "No formulas yet",
+        "description": "Create your first formula to automate KPI or salary calculations"
+      },
+      "access": {
+        "restrictedTitle": "Access Denied",
+        "restrictedDescription": "Only tenant owners can manage formulas"
+      }
+    }
+  },
+  "objects": {
+    "title": "Objects Management",
+    "labels": {
+      "name": "Name",
+      "description": "Description",
+      "type": "Type",
+      "status": "Status",
+      "created": "Created",
+      "updated": "Updated",
+      "assignEmployees": "Assign Employees",
+      "assignTasks": "Assign Tasks"
+    },
+    "types": {
+      "equipment": "Equipment",
+      "department": "Department",
+      "vehicle": "Vehicle",
+      "location": "Location",
+      "facility": "Facility",
+      "asset": "Asset",
+      "other": "Other"
+    },
+    "statuses": {
+      "active": "Active",
+      "inactive": "Inactive",
+      "archived": "Archived"
+    },
+    "actions": {
+      "create": "Create Object",
+      "edit": "Edit",
+      "delete": "Delete",
+      "search": "Search objects by name...",
+      "filterByType": "All Types"
+    },
+    "empty": {
+      "title": "No objects yet",
+      "description": "Create your first object to get started managing your resources.",
+      "action": "Create Object"
+    },
+    "messages": {
+      "created": "Object created successfully",
+      "updated": "Object updated successfully",
+      "deleted": "Object deleted successfully",
+      "failed": "Failed to load objects"
+    },
+    "tasks": {
+      "title": "Associated Tasks",
+      "empty": "No tasks assigned to this object yet",
+      "add": "Add Task"
+    }
   }
 }

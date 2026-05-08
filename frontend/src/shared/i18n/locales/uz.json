@@ -63,6 +63,7 @@
     "payroll": "Ish haqi",
     "reports": "Hisobotlar",
     "billing": "Billing",
+    "formulas": "Formulalar",
     "settings": "Sozlamalar",
     "logout": "Chiqish",
     "projects": "Loyihalar",
@@ -83,7 +84,9 @@
     "actions": {
       "save": "Saqlash",
       "cancel": "Bekor qilish",
-      "retry": "Qayta urinish"
+      "retry": "Qayta urinish",
+      "previous": "Orqaga",
+      "next": "Oldinga"
     },
     "save": "Saqlash",
     "cancel": "Bekor qilish",
@@ -97,6 +100,16 @@
       "en": "EN"
     },
     "languageSwitcher": "Til tanlash",
+    "validation": {
+      "required": "talab qilinadi"
+    },
+    "errors": {
+      "unexpected": "Kutilmagan xato yuz berdi."
+    },
+    "pagination": {
+      "page": "Sahifa",
+      "of": "dan"
+    },
     "errorTitle": "Xatolik yuz berdi",
     "errorDescription": "Sahifa yuklanmadi. Qayta urinib ko'ring.",
     "notifications": {
@@ -567,5 +580,116 @@
     "fields": {
       "name": "Shablon nomi",
       "description": "Tavsif"
-    }  }
+    }
+  },
+  "formula": {
+    "title": "Formula quruvchisi",
+    "subtitle": "Oddiy interfeys bilan KPI va oylik ish haqi formulalarini yarating",
+    "sections": {
+      "help": "Tez yordam",
+      "examples": "Misollar",
+      "actions": "Harakatlar"
+    },
+    "elements": {
+      "constant": "Konstanta",
+      "variable": "O'zgaruvchi",
+      "operators": "Operatorlar",
+      "comparisons": "Solishtirmalar",
+      "conditional": "Agar-Keyin-Boshqa",
+      "tier": "Darajalar"
+    },
+    "descriptions": {
+      "constant": "Belgilangan sonli qiymatlar (masalan, 1000, 1.5)",
+      "variable": "Kontekstdan dinamik qiymatlar",
+      "operators": "+, -, ×, ÷ matematik operatsiyalar uchun",
+      "comparisons": ">, <, ==, ≥, ≤ solishtirish uchun",
+      "conditional": "Shartli mantiq (AGAR-KEYIN-BOSHQA)",
+      "tier": "Ko'p qatlamli bonuslar (masalan, faoliyat diapazoni)"
+    },
+    "examples": {
+      "salaryBonus": "Oylik ish haqi bonusi (agar-keyin-boshqa)",
+      "tierPerformance": "Ko'p qatlamli faoliyat bonusi",
+      "complex": "Murakkab hisob-kitob"
+    },
+    "actions": {
+      "save": "Formulani saqlash"
+    },
+    "defaults": {
+      "myFormula": "Mening formulam",
+      "generatedFromBuilder": "Quruvchidan yaratilgan formula"
+    },
+    "messages": {
+      "saved": "Formula ID bilan saqlandi:"
+    },
+    "errors": {
+      "buildFirst": "Iltimos, avval formulani yarating",
+      "saveFailed": "Formulani saqlab bo'lmadi"
+    },
+    "types": {
+      "kpi": {
+        "label": "KPI formulasi",
+        "description": "KPI formulasi yarating",
+        "tooltip": "KPI formulasi yarating"
+      },
+      "salary": {
+        "label": "Oylik ish haqi formulasi",
+        "description": "Oylik ish haqi formulasi yarating",
+        "tooltip": "Oylik ish haqi formulasi yarating"
+      }
+    },
+    "buttons": {
+      "help": "Yordam",
+      "hideHelp": "Yordamni yashirish",
+      "reset": "Qayta o'rnatish",
+      "showHelp": "Yordam va misollarni ko'rsatish"
+    }
+  },
+  "objects": {
+    "title": "Ob'ektlarni boshqarish",
+    "labels": {
+      "name": "Nomi",
+      "description": "Tavsifi",
+      "type": "Turi",
+      "status": "Holati",
+      "created": "Yaratilgan",
+      "updated": "Yangilangan"
+    },
+    "types": {
+      "equipment": "Uskunalar",
+      "department": "Bo'lim",
+      "vehicle": "Avtomobil",
+      "location": "Joylashuvi",
+      "facility": "Ob'ekt",
+      "asset": "Aktivlar",
+      "other": "Boshqalar"
+    },
+    "statuses": {
+      "active": "Faol",
+      "inactive": "Faol emas",
+      "archived": "Arxivlangan"
+    },
+    "actions": {
+      "create": "Ob'ekt yaratish",
+      "edit": "Tahrirlash",
+      "delete": "O'chirish",
+      "search": "Ob'ektlarni nomi bo'yicha qidirish...",
+      "filterByType": "Barcha turlar"
+    },
+    "empty": {
+      "title": "Ob'ektlar hali yo'q",
+      "description": "Resurslarni boshqarish uchun birinchi ob'ektni yarating.",
+      "action": "Ob'ekt yaratish"
+    },
+    "messages": {
+      "created": "Ob'ekt muvaffaqiyatli yaratildi",
+      "updated": "Ob'ekt muvaffaqiyatli yangilandi",
+      "deleted": "Ob'ekt muvaffaqiyatli o'chirildi",
+      "failed": "Ob'ektlarni yuklob bo'lmadi"
+    },
+    "tasks": {
+      "title": "Bog'langan vazifalar",
+      "empty": "Bu ob'ektga vazifalar tayinlanmagan",
+      "add": "Vazifa qo'shish"
+    }
+  }
 }
