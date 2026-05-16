@@ -17,7 +17,7 @@ export type TaskPriority = z.infer<typeof TaskPriorityEnum>;
 export const createObjectInputSchema = z.object({
   name: z.string().min(1, 'Name is required').max(255, 'Name is too long'),
   description: z.string().optional().nullable(),
-  object_type: ObjectTypeEnum,
+  object_type: z.string().min(1, 'Object type is required').max(255, 'Object type is too long'),
   status: z.string().default('active').optional(),
   metadata: z.record(z.unknown()).optional().nullable(),
 });

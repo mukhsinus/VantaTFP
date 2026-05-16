@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { apiClient } from '@shared/api/client';
 import { Badge, Button, EmptyState, PageSkeleton } from '@shared/components/ui';
+import styles from '../objects.module.css';
 
 interface Object {
   id: string;
@@ -85,8 +86,8 @@ export const ObjectsList: React.FC<ObjectsListProps> = ({
   const totalPages = Math.ceil(total / 20);
 
   return (
-    <div className="objects-list">
-      <div className="objects-list__header">
+    <div className={styles['objects-list']}>
+      <div className={styles['objects-list__header']}>
         <h2>{t('objects.title')}</h2>
         {showCreate && (
           <Button
@@ -103,7 +104,7 @@ export const ObjectsList: React.FC<ObjectsListProps> = ({
         )}
       </div>
 
-      <div className="objects-list__filters">
+      <div className={styles['objects-list__filters']}>
         <input
           type="text"
           placeholder={t('objects.actions.search')}
@@ -112,7 +113,7 @@ export const ObjectsList: React.FC<ObjectsListProps> = ({
             setSearchTerm(e.target.value);
             setPage(1);
           }}
-          className="objects-list__search-input"
+          className={styles['objects-list__search-input']}
         />
 
         <select
@@ -121,7 +122,7 @@ export const ObjectsList: React.FC<ObjectsListProps> = ({
             setObjectType(e.target.value || undefined);
             setPage(1);
           }}
-          className="objects-list__type-select"
+          className={styles['objects-list__type-select']}
         >
           <option value="">{t('objects.actions.filterByType')}</option>
           {objectTypes.map((type) => (
@@ -145,27 +146,27 @@ export const ObjectsList: React.FC<ObjectsListProps> = ({
         />
       ) : (
         <>
-          <div className="objects-list__grid">
+          <div className={styles['objects-list__grid']}>
             {objects.map((object: Object) => (
               <div
                 key={object.id}
-                className="object-card"
+                className={styles['object-card']}
                 onClick={() => onObjectSelect?.(object)}
                 role="button"
                 tabIndex={0}
               >
-                <div className="object-card__header">
+                <div className={styles['object-card__header']}>
                   <h3>{object.name}</h3>
                   <Badge variant="default">{object.object_type}</Badge>
                 </div>
                 {object.description && (
-                  <p className="object-card__description">{object.description}</p>
+                  <p className={styles['object-card__description']}>{object.description}</p>
                 )}
-                <div className="object-card__meta">
-                  <span className={`object-card__status object-card__status--${object.status}`}>
+                <div className={styles['object-card__meta']}>
+                  <span className={`${styles['object-card__status']} ${styles[`object-card__status--${object.status}`]}`}>
                     {object.status}
                   </span>
-                  <span className="object-card__date">
+                  <span className={styles['object-card__date']}>
                     {new Date(object.updated_at).toLocaleDateString()}
                   </span>
                 </div>
@@ -174,7 +175,7 @@ export const ObjectsList: React.FC<ObjectsListProps> = ({
           </div>
 
           {totalPages > 1 && (
-            <div className="objects-list__pagination">
+            <div className={styles['objects-list__pagination']}>
               <Button
                 variant="secondary"
                 size="sm"
@@ -183,7 +184,7 @@ export const ObjectsList: React.FC<ObjectsListProps> = ({
               >
                 ← {t('common.actions.previous')}
               </Button>
-              <span className="objects-list__pagination-info">
+              <span className={styles['objects-list__pagination-info']}>
                 {t('common.pagination.page')} {page} {t('common.pagination.of')} {totalPages}
               </span>
               <Button

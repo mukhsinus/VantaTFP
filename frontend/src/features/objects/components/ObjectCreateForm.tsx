@@ -21,6 +21,7 @@ export const ObjectCreateForm: React.FC<ObjectCreateFormProps> = ({
     description: '',
     object_type: 'equipment' as const,
     status: 'active' as const,
+    custom_type: '',
   });
 
   const createMutation = useMutation({
@@ -29,6 +30,7 @@ export const ObjectCreateForm: React.FC<ObjectCreateFormProps> = ({
       return res.data;
     },
     onSuccess: (newObject) => {
+      // Invalidate all objects queries to ensure list refreshes with the new object
       queryClient.invalidateQueries({ queryKey: ['objects'] });
       onSuccess?.(newObject);
     },
@@ -40,7 +42,20 @@ export const ObjectCreateForm: React.FC<ObjectCreateFormProps> = ({
       alert(t('objects.labels.name') + ' ' + t('common.validation.required'));
       return;
     }
-    createMutation.mutate(formData);
+    if (formData.object_type === 'other' && !formData.custom_type.trim()) {
+      alert(t('objects.labels.type') + ' ' + t('common.validation.required'));
+      return;
+    }
+    
+    // When type is "other", use the custom type; otherwise use the selected type
+    const objectType = formData.object_type === 'other' ? formData.custom_type : formData.object_type;
+    
+    createMutation.mutate({
+      name: formData.name,
+      description: formData.description,
+      object_type: objectType,
+      status: formData.status,
+    });
   };
 
   const objectTypes = ['equipment', 'department', 'vehicle', 'location', 'facility', 'asset', 'other'];
@@ -92,6 +107,20 @@ export const ObjectCreateForm: React.FC<ObjectCreateFormProps> = ({
               ))}
             </select>
           </div>
+
+          {formData.object_type === 'other' && (
+            <div className={styles['form-group']}>
+              <label htmlFor="custom_type">{t('objects.labels.customType')} *</label>
+              <Input
+                id="custom_type"
+                type="text"
+                value={formData.custom_type}
+                onChange={(e) => setFormData({ ...formData, custom_type: e.target.value })}
+                placeholder="Enter custom type"
+                required
+              />
+            </div>
+          )}
 
           <div className={styles['form-group']}>
             <label htmlFor="status">{t('objects.labels.status')}</label>

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { apiClient } from '@shared/api/client';
@@ -35,9 +35,11 @@ export const EmployeeAssignment: React.FC<EmployeeAssignmentProps> = ({
   const [selectedUserId, setSelectedUserId] = useState('');
   const [selectedRole, setSelectedRole] = useState('worker');
   const [searchTerm, setSearchTerm] = useState('');
+  const [showDropdown, setShowDropdown] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Fetch available employees
-  const { data: employeesData } = useQuery({
+  const { data: employeesData, isLoading: employeesLoading } = useQuery({
     queryKey: ['employees'],
     queryFn: async () => {
       const res = await apiClient.get('/api/v1/employees', { params: { limit: 100 } });
@@ -45,8 +47,6 @@ export const EmployeeAssignment: React.FC<EmployeeAssignmentProps> = ({
     },
     staleTime: 60000,
   });
-
-  // Fetch assigned employees
   const { data: assignedResponse, refetch: refetchAssigned } = useQuery({
     queryKey: ['object-employees', objectId],
     queryFn: async () => {
@@ -69,6 +69,8 @@ export const EmployeeAssignment: React.FC<EmployeeAssignmentProps> = ({
       queryClient.invalidateQueries({ queryKey: ['object-employees', objectId] });
       setSelectedUserId('');
       setSelectedRole('worker');
+      setSearchTerm('');
+      setShowDropdown(false);
       onSuccess?.();
     },
   });
@@ -86,6 +88,22 @@ export const EmployeeAssignment: React.FC<EmployeeAssignmentProps> = ({
     },
   });
 
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setShowDropdown(false);
+      }
+    };
+
+    if (showDropdown) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => {
+        document.removeEventListener('mousedown', handleClickOutside);
+      };
+    }
+  }, [showDropdown]);
+
   const handleAssign = () => {
     if (selectedUserId) {
       assignMutation.mutate();
@@ -95,14 +113,32 @@ export const EmployeeAssignment: React.FC<EmployeeAssignmentProps> = ({
   const employees = employeesData?.data || [];
   const assignedEmployees = assignedResponse?.employees || [];
   const assignedUserIds = new Set(assignedEmployees.map((e: ObjectEmployee) => e.user_id));
+  const assignedMap = new Map(assignedEmployees.map((e: ObjectEmployee) => [e.user_id, e]));
 
-  const availableEmployees = employees.filter((emp: Employee) => {
-    const isAssigned = assignedUserIds.has(emp.id);
+  // Show all employees, but filter by search term
+  const filteredEmployees = employees.filter((emp: Employee) => {
     const matchesSearch = searchTerm
       ? `${emp.first_name} ${emp.last_name}`.toLowerCase().includes(searchTerm.toLowerCase())
       : true;
-    return !isAssigned && matchesSearch;
+    return matchesSearch;
   });
+
+  const handleSelectEmployee = (empId: string, firstName: string, lastName: string) => {
+    setSelectedUserId(empId);
+    setSearchTerm(`${firstName} ${lastName}`);
+    setShowDropdown(false);
+    
+    // If already assigned, set role to current role; otherwise default
+    const existing = assignedMap.get(empId);
+    if (existing) {
+      setSelectedRole(existing.role);
+    } else {
+      setSelectedRole('worker');
+    }
+  };
+
+  const selectedEmployee = assignedMap.get(selectedUserId);
+  const isReassigning = selectedUserId && selectedEmployee;
 
   return (
     <div className={styles['employee-assignment']}>
@@ -139,30 +175,58 @@ export const EmployeeAssignment: React.FC<EmployeeAssignmentProps> = ({
       {/* Assignment Form */}
       <div className={styles['assignment-form']}>
         <div className={styles['form-row']}>
-          <div className={styles['form-group']}>
-            <label htmlFor="employee-search">Select Employee</label>
+          <div className={styles['form-group']} ref={dropdownRef} style={{ position: 'relative' }}>
+            <label htmlFor="employee-search">
+              {isReassigning ? 'Change Employee Role' : 'Select Employee'}
+            </label>
             <input
               id="employee-search"
               type="text"
-              placeholder="Search or select..."
+              placeholder={employeesLoading ? 'Loading...' : 'Search employee...'}
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={(e) => {
+                setSearchTerm(e.target.value);
+                setShowDropdown(true);
+              }}
+              onFocus={() => setShowDropdown(true)}
               className={styles['input']}
             />
-            {availableEmployees.length > 0 && (
+            {showDropdown && filteredEmployees.length > 0 && (
               <div className={styles['employee-dropdown']}>
-                {availableEmployees.slice(0, 5).map((emp: Employee) => (
-                  <button
-                    key={emp.id}
-                    className={styles['dropdown-item']}
-                    onClick={() => {
-                      setSelectedUserId(emp.id);
-                      setSearchTerm(`${emp.first_name} ${emp.last_name}`);
-                    }}
-                  >
-                    {emp.first_name} {emp.last_name}
-                  </button>
-                ))}
+                {filteredEmployees.slice(0, 8).map((emp: Employee) => {
+                  const isAssigned = assignedUserIds.has(emp.id);
+                  const currentRole = assignedMap.get(emp.id)?.role;
+                  return (
+                    <button
+                      key={emp.id}
+                      className={styles['dropdown-item']}
+                      onClick={() =>
+                        handleSelectEmployee(emp.id, emp.first_name, emp.last_name)
+                      }
+                      style={{
+                        opacity: isAssigned ? 0.7 : 1,
+                      }}
+                    >
+                      <div
+                        style={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                          width: '100%',
+                        }}
+                      >
+                        <span>
+                          {emp.first_name} {emp.last_name}
+                        </span>
+                        {isAssigned && (
+                          <Badge variant="secondary" style={{ marginLeft: '0.5rem' }}>
+                            {currentRole}
+                          </Badge>
+                        )}
+                      </div>
+                    </button>
+                  );
+                })}
               </div>
             )}
           </div>
@@ -188,7 +252,7 @@ export const EmployeeAssignment: React.FC<EmployeeAssignmentProps> = ({
             disabled={!selectedUserId || assignMutation.isPending}
             style={{ alignSelf: 'flex-end' }}
           >
-            Assign
+            {isReassigning ? 'Update Role' : 'Assign'}
           </Button>
         </div>
       </div>

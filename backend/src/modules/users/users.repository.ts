@@ -163,6 +163,36 @@ export class UsersRepository {
     return result.rows[0] ?? null;
   }
 
+  async findByPhone(phone: string): Promise<UserRecord | null> {
+    const caps = await getAuthSchemaCaps(this.db);
+    if (!caps.usersPhoneColumn) {
+      return null;
+    }
+
+    const result = await this.db.query<UserRecord>(
+      `
+      SELECT
+        id,
+        tenant_id,
+        email,
+        password_hash,
+        first_name,
+        last_name,
+        role,
+        manager_id,
+        is_active,
+        created_at,
+        updated_at
+      FROM users
+      WHERE phone = $1
+      LIMIT 1
+      `,
+      [phone]
+    );
+
+    return result.rows[0] ?? null;
+  }
+
   async create(
     data: Omit<UserRecord, 'id' | 'created_at' | 'updated_at'>,
     executor: Pick<Pool, 'query'> | Pick<PoolClient, 'query'> = this.db

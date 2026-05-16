@@ -107,6 +107,12 @@ export class EmployeesService {
       await this.billing.assertCanAddUser(tenantId);
     }
 
+    // Check for duplicate phone
+    const existingUser = await this.usersRepository.findByPhone(body.phone);
+    if (existingUser) {
+      throw ApplicationError.conflict(`Phone number ${body.phone} is already registered`);
+    }
+
     const passwordHash = await bcrypt.hash(body.password, 10);
 
     const employeeData = {

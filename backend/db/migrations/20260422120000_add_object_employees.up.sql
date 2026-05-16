@@ -12,8 +12,7 @@ CREATE TABLE IF NOT EXISTS object_employees (
   CONSTRAINT fk_object_employees_tenant FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE,
   CONSTRAINT fk_object_employees_object FOREIGN KEY (object_id) REFERENCES objects(id) ON DELETE CASCADE,
   CONSTRAINT fk_object_employees_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-  CONSTRAINT fk_object_employees_assigned_by FOREIGN KEY (assigned_by) REFERENCES users(id) ON DELETE SET NULL,
-  CONSTRAINT unique_active_assignment UNIQUE (object_id, user_id) WHERE removed_at IS NULL
+  CONSTRAINT fk_object_employees_assigned_by FOREIGN KEY (assigned_by) REFERENCES users(id) ON DELETE SET NULL
 );
 
 -- Indexes for object_employees
@@ -22,6 +21,8 @@ CREATE INDEX IF NOT EXISTS idx_object_employees_object_id ON object_employees(ob
 CREATE INDEX IF NOT EXISTS idx_object_employees_user_id ON object_employees(user_id);
 CREATE INDEX IF NOT EXISTS idx_object_employees_active ON object_employees(object_id) WHERE removed_at IS NULL;
 CREATE INDEX IF NOT EXISTS idx_object_employees_assigned_at ON object_employees(tenant_id, assigned_at DESC);
+-- Partial unique index: only one active assignment per object-user pair
+CREATE UNIQUE INDEX IF NOT EXISTS idx_object_employees_unique_active ON object_employees(object_id, user_id) WHERE removed_at IS NULL;
 
 -- Link regular tasks to objects
 CREATE TABLE IF NOT EXISTS task_objects (

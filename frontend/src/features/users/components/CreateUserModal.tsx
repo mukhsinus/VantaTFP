@@ -84,8 +84,12 @@ export function CreateUserModal({ isOpen, onClose, creatorRole }: CreateUserModa
         roleDescription: form.roleDescription.trim() || undefined,
       });
       handleClose();
-    } catch {
-      // toast handled in hook
+    } catch (err) {
+      // Check if it's a duplicate phone error
+      if (err instanceof Error && err.message.includes('already')) {
+        setError(t('employees.modal.errors.phoneExists') || err.message);
+      }
+      // Other errors are handled by toast in the hook
     }
   };
 

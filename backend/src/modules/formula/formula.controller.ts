@@ -9,8 +9,8 @@ import { z } from 'zod';
 import { FormulaRepository } from './repository/FormulaRepository.js';
 import { FormulaService } from './service/FormulaService.js';
 import { sendSuccess, sendError } from '../../shared/utils/response.js';
-import { ApplicationError } from '../../shared/errors/ApplicationError.js';
-import { assertTenantEntityMatch } from '../../shared/utils/tenant-isolation.js';
+import { ApplicationError } from '../../shared/utils/application-error.js';
+import { assertTenantEntityMatch } from '../../shared/utils/tenant-scope.js';
 
 // Schemas
 const createFormulaSchema = z.object({

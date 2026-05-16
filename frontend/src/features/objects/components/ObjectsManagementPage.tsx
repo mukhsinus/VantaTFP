@@ -1,8 +1,11 @@
 import React, { useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import { ObjectsList } from './ObjectsList';
 import { ObjectDetails } from './ObjectDetails';
 import { TaskAssignment } from './TaskAssignment';
 import { ObjectCreateForm } from './ObjectCreateForm';
+import styles from '../objects.module.css';
 
 interface Object {
   id: string;
@@ -27,6 +30,8 @@ interface ObjectTask {
 type ViewMode = 'list' | 'create' | 'details' | 'task-assignment';
 
 export const ObjectsManagementPage: React.FC = () => {
+  const { t } = useTranslation();
+  const queryClient = useQueryClient();
   const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [selectedObject, setSelectedObject] = useState<Object | null>(null);
   const [selectedTask, setSelectedTask] = useState<ObjectTask | null>(null);
@@ -63,6 +68,8 @@ export const ObjectsManagementPage: React.FC = () => {
   const handleBackToList = () => {
     setSelectedObject(null);
     setSelectedTask(null);
+    // Invalidate objects cache to refresh the list with any new objects
+    queryClient.invalidateQueries({ queryKey: ['objects'] });
     setViewMode('list');
   };
 
@@ -75,19 +82,19 @@ export const ObjectsManagementPage: React.FC = () => {
     <div className="objects-management-page">
       {/* Header - only show for details view (not for list, create, or task-assignment) */}
       {viewMode === 'details' && (
-        <div className="page-header">
-          <h1>Object Details</h1>
+        <div className={styles['page-header']}>
+          <h1>{t('objects.title') || 'Object Details'}</h1>
           <button
-            className="btn btn-secondary"
+            className={`${styles['btn']} ${styles['btn-secondary']}`}
             onClick={handleBackToList}
           >
-            ← Back to List
+            ← {t('common.actions.backToList') || 'Back to List'}
           </button>
         </div>
       )}
 
       {/* Main content */}
-      <div className="page-content">
+      <div className={styles['page-content']}>
         {viewMode === 'list' && (
           <ObjectsList
             onObjectSelect={handleObjectSelect}
@@ -105,7 +112,7 @@ export const ObjectsManagementPage: React.FC = () => {
         )}
 
         {viewMode === 'task-assignment' && selectedObject && (
-          <div className="modal-overlay">
+          <div className={styles['modal-overlay']}>
             <TaskAssignment
               objectId={selectedObject.id}
               taskId={selectedTask?.id}
@@ -115,7 +122,7 @@ export const ObjectsManagementPage: React.FC = () => {
           </div>
         )}
         {viewMode === 'create' && (
-          <div className="modal-overlay">
+          <div className={styles['modal-overlay']}>
             <ObjectCreateForm
               onSuccess={handleObjectCreated}
               onCancel={handleBackToList}

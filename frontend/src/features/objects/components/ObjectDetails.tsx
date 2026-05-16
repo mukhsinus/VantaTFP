@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import { apiClient } from '@shared/api/client';
 import { Button, Badge, EmptyState, PageSkeleton, Input, ConfirmModal } from '@shared/components/ui';
 import { EmployeeAssignment } from './EmployeeAssignment';
 import { TaskAssignmentToObject } from './TaskAssignmentToObject';
+import styles from '../objects.module.css';
 
 interface ObjectTask {
   id: string;
@@ -37,6 +39,7 @@ export const ObjectDetails: React.FC<ObjectDetailsProps> = ({
   onTaskCreate,
   onTaskSelect,
 }) => {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [isEditing, setIsEditing] = useState(false);
   const [editData, setEditData] = useState<Partial<ObjectRecord>>({});
@@ -111,11 +114,12 @@ export const ObjectDetails: React.FC<ObjectDetailsProps> = ({
   }
 
   if (objectError) {
+    console.error('Object fetch error:', objectError);
     return (
       <EmptyState
-        title="Failed to load object"
+        title={t('objects.messages.loadFailed') || 'Failed to load object'}
         description={objectError instanceof Error ? objectError.message : 'An unexpected error occurred.'}
-        action={{ label: 'Try again', onClick: () => refetchObject() }}
+        action={{ label: t('common.actions.tryAgain') || 'Try again', onClick: () => refetchObject() }}
         icon={
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5}>
             <circle cx="12" cy="12" r="10" /><path d="M12 8v4M12 16h.01" />
@@ -125,11 +129,12 @@ export const ObjectDetails: React.FC<ObjectDetailsProps> = ({
     );
   }
 
-  if (!object) {
+  if (!object || !object.id) {
+    console.warn('No object data returned from API');
     return (
       <EmptyState
-        title="Object not found"
-        description="The object you're looking for doesn't exist or has been deleted."
+        title={t('objects.messages.notFound') || 'Object not found'}
+        description={t('objects.messages.notFoundDesc') || "The object you're looking for doesn't exist or has been deleted."}
         icon={
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5}>
             <circle cx="12" cy="12" r="10" /><path d="M12 8v4M12 16h.01" />
@@ -150,9 +155,9 @@ export const ObjectDetails: React.FC<ObjectDetailsProps> = ({
   const tasks = tasksResponse?.data || [];
 
   return (
-    <div className="object-details">
-      <div className="object-details__header">
-        <div className="object-details__title-section">
+    <div className={styles['object-details']}>
+      <div className={styles['object-details__header']}>
+        <div className={styles['object-details__title-section']}>
           {isEditing ? (
             <Input
               type="text"
@@ -172,7 +177,7 @@ export const ObjectDetails: React.FC<ObjectDetailsProps> = ({
           )}
         </div>
 
-        <div className="object-details__actions">
+        <div className={styles['object-details__actions']}>
           {!isEditing && (
             <>
               <Button
@@ -227,16 +232,16 @@ export const ObjectDetails: React.FC<ObjectDetailsProps> = ({
         </div>
       </div>
 
-      <div className="object-details__info">
-        <div className="info-row">
-          <label>Type</label>
+      <div className={styles['object-details__info']}>
+        <div className={styles['info-row']}>
+          <label>{t('objects.labels.type') || 'Type'}</label>
           {isEditing ? (
             <select
               value={editData.object_type || object.object_type}
               onChange={(e) =>
                 setEditData({ ...editData, object_type: e.target.value })
               }
-              className="form-group"
+              className={styles['form-group']}
             >
               {objectTypes.map((type) => (
                 <option key={type} value={type}>
@@ -249,15 +254,15 @@ export const ObjectDetails: React.FC<ObjectDetailsProps> = ({
           )}
         </div>
 
-        <div className="info-row">
-          <label>Description</label>
+        <div className={styles['info-row']}>
+          <label>{t('objects.labels.description') || 'Description'}</label>
           {isEditing ? (
             <textarea
               value={editData.description || object.description || ''}
               onChange={(e) =>
                 setEditData({ ...editData, description: e.target.value })
               }
-              className="form-group"
+              className={styles['form-group']}
               rows={4}
               placeholder="Add a description..."
             />
@@ -266,20 +271,20 @@ export const ObjectDetails: React.FC<ObjectDetailsProps> = ({
           )}
         </div>
 
-        <div className="info-row">
-          <label>Created</label>
+        <div className={styles['info-row']}>
+          <label>{t('objects.labels.created') || 'Created'}</label>
           <span>{new Date(object.created_at).toLocaleString()}</span>
         </div>
 
-        <div className="info-row">
-          <label>Updated</label>
+        <div className={styles['info-row']}>
+          <label>{t('objects.labels.updated') || 'Updated'}</label>
           <span>{new Date(object.updated_at).toLocaleString()}</span>
         </div>
       </div>
 
-      <div className="object-details__tasks">
-        <div className="tasks-header">
-          <h2>Associated Tasks</h2>
+      <div className={styles['object-details__tasks']}>
+        <div className={styles['tasks-header']}>
+          <h2>{t('objects.labels.associatedTasks') || 'Associated Tasks'}</h2>
           <Button
             variant="primary"
             size="sm"
@@ -313,14 +318,14 @@ export const ObjectDetails: React.FC<ObjectDetailsProps> = ({
         )}
 
         {tasks.length > 0 && (
-          <div className="tasks-list">
+          <div className={styles['tasks-list']}>
             {tasks.map((task: ObjectTask) => (
               <div
                 key={task.id}
-                className="task-item"
+                className={styles['task-item']}
                 onClick={() => onTaskSelect?.(task)}
               >
-                <div className="task-item__main">
+                <div className={styles['task-item__main']}>
                   <h4>{task.title}</h4>
                   <Badge variant={task.status === 'completed' ? 'success' : 'default'}>
                     {task.status}
@@ -340,7 +345,7 @@ export const ObjectDetails: React.FC<ObjectDetailsProps> = ({
                   )}
                 </div>
                 {task.due_date && (
-                  <span className="task-item__status">
+                  <span className={styles['task-item__status']}>
                     Due: {new Date(task.due_date).toLocaleDateString()}
                   </span>
                 )}
